@@ -1,0 +1,227 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2025-09-10 09:09:28.452925",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "api_configuration_section",
+  "column_break_lyaj",
+  "company",
+  "taxpayer_pin",
+  "column_break_cpix",
+  "base_url",
+  "environment_section",
+  "environment",
+  "sandbox_environemnt",
+  "column_break_xogn",
+  "is_active",
+  "auto_create_branch_accounting_dimension",
+  "submission_frequency_settings_tab",
+  "frequency_of_communication_with_zra_section",
+  "notices_refresh_frequency",
+  "column_break_ofjm",
+  "codes_refresh_frequency",
+  "section_break_qofc",
+  "sales_auto_submission_enabled",
+  "max_allowed_revisions",
+  "column_break_htoc",
+  "purchase_auto_submission_enabled",
+  "column_break_xpax",
+  "stock_auto_submission_enabled",
+  "field_defaults_tab",
+  "sales_details_defaults_section",
+  "mode_of_payment",
+  "auth_details_tab",
+  "username",
+  "password"
+ ],
+ "fields": [
+  {
+   "fieldname": "api_configuration_section",
+   "fieldtype": "Section Break",
+   "label": "API Configuration"
+  },
+  {
+   "fieldname": "column_break_lyaj",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "company",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Company",
+   "reqd": 1
+  },
+  {
+   "fieldname": "taxpayer_pin",
+   "fieldtype": "Password",
+   "label": "Tax Payer's PIN"
+  },
+  {
+   "fieldname": "column_break_cpix",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "base_url",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Base URL",
+   "reqd": 1
+  },
+  {
+   "fieldname": "environment_section",
+   "fieldtype": "Section Break",
+   "label": "Environment"
+  },
+  {
+   "fieldname": "environment",
+   "fieldtype": "Select",
+   "label": "Environment",
+   "options": "Production\nSandbox"
+  },
+  {
+   "default": "0",
+   "description": "Marks current environment as either Sandbox, or Production.",
+   "fieldname": "sandbox_environemnt",
+   "fieldtype": "Check",
+   "label": "Sandbox Environment"
+  },
+  {
+   "fieldname": "column_break_xogn",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "0",
+   "fieldname": "is_active",
+   "fieldtype": "Check",
+   "label": "Is Active"
+  },
+  {
+   "default": "0",
+   "description": "Auto creates the \"Branch\" Accounting Dimension which will be mandatory for all P&L transactions. Recommended.",
+   "fieldname": "auto_create_branch_accounting_dimension",
+   "fieldtype": "Check",
+   "label": "Auto Create Branch Accounting Dimension"
+  },
+  {
+   "fieldname": "submission_frequency_settings_tab",
+   "fieldtype": "Tab Break",
+   "label": "Submission Frequency Settings"
+  },
+  {
+   "fieldname": "frequency_of_communication_with_zra_section",
+   "fieldtype": "Section Break",
+   "label": "Frequency of Communication with ZRA"
+  },
+  {
+   "fieldname": "notices_refresh_frequency",
+   "fieldtype": "Select",
+   "label": "Notices Refresh Frequency",
+   "options": "All\nHourly\nDaily\nWeekly\nMonthly\nYearly\nAnnual\nCron"
+  },
+  {
+   "fieldname": "column_break_ofjm",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "codes_refresh_frequency",
+   "fieldtype": "Select",
+   "label": "Codes Refresh Frequency",
+   "options": "All\nHourly\nDaily\nWeekly\nMonthly\nYearly\nAnnual\nCron"
+  },
+  {
+   "fieldname": "section_break_qofc",
+   "fieldtype": "Section Break"
+  },
+  {
+   "default": "0",
+   "fieldname": "sales_auto_submission_enabled",
+   "fieldtype": "Check",
+   "label": "Sales Auto Submission Enabled"
+  },
+  {
+   "fieldname": "max_allowed_revisions",
+   "fieldtype": "Int",
+   "label": "Max Allowed Revisions"
+  },
+  {
+   "fieldname": "column_break_htoc",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "0",
+   "fieldname": "purchase_auto_submission_enabled",
+   "fieldtype": "Check",
+   "label": "Purchase Auto Submission Enabled"
+  },
+  {
+   "fieldname": "column_break_xpax",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "0",
+   "fieldname": "stock_auto_submission_enabled",
+   "fieldtype": "Check",
+   "label": " Stock Auto Submission Enabled"
+  },
+  {
+   "fieldname": "field_defaults_tab",
+   "fieldtype": "Tab Break",
+   "label": "Field Defaults"
+  },
+  {
+   "fieldname": "sales_details_defaults_section",
+   "fieldtype": "Section Break",
+   "label": "Sales Details Defaults"
+  },
+  {
+   "fieldname": "mode_of_payment",
+   "fieldtype": "Data",
+   "label": "Mode of Payment"
+  },
+  {
+   "fieldname": "auth_details_tab",
+   "fieldtype": "Tab Break",
+   "label": "Auth Details"
+  },
+  {
+   "fieldname": "username",
+   "fieldtype": "Data",
+   "label": "Username",
+   "reqd": 1
+  },
+  {
+   "fieldname": "password",
+   "fieldtype": "Password",
+   "label": "Password",
+   "reqd": 1
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2025-09-10 10:54:24.239418",
+ "modified_by": "Administrator",
+ "module": "Ca Erpnext Zra",
+ "name": "ZRA Settings",
+ "owner": "mwambia@navari.co.ke",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}
