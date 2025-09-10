@@ -1,6 +1,10 @@
 ### Ca Erpnext Zra
 
-A Frappe custom app that integrates with ZRA VSDC API.
+#### Zambia Revenue Authority (ZRA) VSDC API Integration for Frappe/ERPNext
+
+A Frappe custom application that integrates with the Zambia Revenue Authority (ZRA) Virtual Sales Data Controller (VSDC) API to enable seamless tax compliance, e-invoicing, and reporting directly within your ERP system.
+
+This app provides a secure and standardized way for businesses to interact with ZRA’s VSDC platform, ensuring all electronic invoices, receipts, and related tax data are automatically transmitted in compliance with ZRA regulations.
 
 ### Installation
 
