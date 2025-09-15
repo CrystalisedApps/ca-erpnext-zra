@@ -1,0 +1,65 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2025-09-14 12:14:44.715371",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "vendor_settings_section",
+  "vendor",
+  "section_break_srmg",
+  "route_table"
+ ],
+ "fields": [
+  {
+   "fieldname": "route_table",
+   "fieldtype": "Table",
+   "label": "Route Table",
+   "options": "Crystal Smart Invoice Route Item"
+  },
+  {
+   "fieldname": "section_break_srmg",
+   "fieldtype": "Section Break",
+   "label": "Routes Mapping"
+  },
+  {
+   "fieldname": "vendor",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "API Provider",
+   "options": "Crystal VSDC",
+   "reqd": 1
+  },
+  {
+   "fieldname": "vendor_settings_section",
+   "fieldtype": "Section Break",
+   "label": "Vendor Settings"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2025-09-14 14:10:36.666523",
+ "modified_by": "Administrator",
+ "module": "Ca Erpnext Zra",
+ "name": "Crystal Smart Invoice Routes",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

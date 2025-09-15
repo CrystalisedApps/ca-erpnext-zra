@@ -1,6 +1,7 @@
 {
  "actions": [],
  "allow_rename": 1,
+ "autoname": "hash",
  "creation": "2025-09-10 09:09:28.452925",
  "doctype": "DocType",
  "engine": "InnoDB",
@@ -10,7 +11,7 @@
   "company",
   "taxpayer_pin",
   "column_break_cpix",
-  "base_url",
+  "server_url",
   "environment_section",
   "environment",
   "sandbox_environemnt",
@@ -34,7 +35,13 @@
   "mode_of_payment",
   "auth_details_tab",
   "username",
-  "password"
+  "password",
+  "section_break_rwhr",
+  "jwt",
+  "column_break_vscq",
+  "expires_in",
+  "column_break_gyxg",
+  "expiry_time"
  ],
  "fields": [
   {
@@ -61,13 +68,6 @@
   {
    "fieldname": "column_break_cpix",
    "fieldtype": "Column Break"
-  },
-  {
-   "fieldname": "base_url",
-   "fieldtype": "Data",
-   "in_list_view": 1,
-   "label": "Base URL",
-   "reqd": 1
   },
   {
    "fieldname": "environment_section",
@@ -196,15 +196,50 @@
    "fieldtype": "Password",
    "label": "Password",
    "reqd": 1
+  },
+  {
+   "fieldname": "server_url",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Server URL",
+   "reqd": 1
+  },
+  {
+   "fieldname": "jwt",
+   "fieldtype": "Data",
+   "label": "JWT"
+  },
+  {
+   "fieldname": "section_break_rwhr",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "column_break_vscq",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "expires_in",
+   "fieldtype": "Int",
+   "label": "Expires In"
+  },
+  {
+   "fieldname": "column_break_gyxg",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "expiry_time",
+   "fieldtype": "Datetime",
+   "label": "Expiry"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-09-10 10:54:24.239418",
+ "modified": "2025-09-14 14:17:03.024117",
  "modified_by": "Administrator",
  "module": "Ca Erpnext Zra",
- "name": "ZRA Settings",
+ "name": "Crystal ZRA Smart Invoice Settings",
+ "naming_rule": "Random",
  "owner": "mwambia@navari.co.ke",
  "permissions": [
   {

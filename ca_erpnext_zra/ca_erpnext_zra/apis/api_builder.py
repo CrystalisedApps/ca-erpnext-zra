@@ -9,9 +9,7 @@ import frappe
 from frappe.integrations.utils import create_request_log
 from frappe.model.document import Document
 
-# from ..logger import etims_logger
-# from ..utils import update_last_request_date, update_navari_settings_with_token, reset_auth_password
-#from .remote_response_status_handlers import on_zra_error
+
 
 
 class BaseEndpointsBuilder:
@@ -59,7 +57,7 @@ class ErrorObserver:
 
 
 class ZRAEndpointsBuilder(BaseEndpointsBuilder):
-    """Handles communication with ZRA VSDC API"""
+    """Handles communication with Crystal VSDC API"""
 
     def __init__(self) -> None:
         super().__init__()
@@ -140,8 +138,8 @@ class ZRAEndpointsBuilder(BaseEndpointsBuilder):
 
         if not self._settings or not getattr(self._settings, "is_active", 1):
             frappe.log_error(
-                title="Inactive ZRA Settings",
-                message=f"ZRA settings {self._settings.name if self._settings else ''} is inactive.",
+                title="Inactive Crystal ZRA Smart Invoice Settings",
+                message=f"Crystal ZRA Smart Invoice settings {self._settings.name if self._settings else ''} is inactive.",
                 reference_doctype=doctype,
                 reference_name=document_name,
             )
@@ -158,7 +156,7 @@ class ZRAEndpointsBuilder(BaseEndpointsBuilder):
                     data=self._payload,
                     request_description=self._request_description,
                     is_remote_request=True,
-                    service_name="ZRA VSDC",
+                    service_name="Crystal VSDC",
                     request_headers=self._headers,
                     url=self._url,
                     reference_docname=document_name,
@@ -169,7 +167,7 @@ class ZRAEndpointsBuilder(BaseEndpointsBuilder):
                     data=self._payload,
                     request_description=self._request_description,
                     is_remote_request=True,
-                    service_name="ZRA VSDC",
+                    service_name="Crystal VSDC",
                     request_headers=self._headers,
                     url=self._url,
                     reference_doctype=doctype,
@@ -259,7 +257,7 @@ def extract_error(response_data: Union[dict, str, list]) -> str:
         return str(response_data[0])
     if isinstance(response_data, dict):
         return str(response_data.get("message", response_data))
-    return "Unknown error from ZRA API"
+    return "Unknown error from Crystal VSDC API"
 
 
 def update_integration_request(
