@@ -4,7 +4,7 @@ import frappe
 def parse_request_data(request_data: str | dict | None) -> dict:
     """
     Normalize incoming request_data into a Python dict.
-    Used before sending data to Crystal VSDC APIs.
+    Used before sending data to Crystal Smart Invoice APIs.
 
     Args:
         request_data (str | dict | None): The request data provided

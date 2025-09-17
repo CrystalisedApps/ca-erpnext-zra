@@ -2,13 +2,13 @@ from datetime import datetime
 import frappe
 from frappe import _
 
-from ..utils.settings import get_settings
+from .settings_utils import get_settings
 from ..apis.auth import authenticate  # refreshes token and updates settings
 
 
 def build_headers(company_name: str, branch_id: str, settings_name: str = None) -> dict[str, str] | None:
     """
-    Build headers for ZRA VSDC API requests.
+    Build headers for Crystal Smart Invoice API requests.
     Ensures access token is valid; refreshes if expired.
 
     Args:

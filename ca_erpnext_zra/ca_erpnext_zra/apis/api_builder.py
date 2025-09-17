@@ -56,8 +56,8 @@ class ErrorObserver:
             )
 
 
-class ZRAEndpointsBuilder(BaseEndpointsBuilder):
-    """Handles communication with Crystal VSDC API"""
+class EndpointsBuilder(BaseEndpointsBuilder):
+    """Handles communication with Crystal Smart Invoice API"""
 
     def __init__(self) -> None:
         super().__init__()

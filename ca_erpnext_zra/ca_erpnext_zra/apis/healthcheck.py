@@ -1,11 +1,11 @@
 import frappe
 from frappe.model.document import Document
 
-from .api_builder import ZRAEndpointsBuilder
+from .api_builder import EndpointsBuilder
 
 @frappe.whitelist()
 def ping_server(settings: Document | str) -> dict | None:
-    """Ping the Crystal VSDC server to check connectivity.
+    """Ping the Crystal Smart Invoice server to check connectivity.
 
     Args:
         settings (Document | str): The Crystal ZRA settings Doc or name of the Doc.
@@ -16,7 +16,7 @@ def ping_server(settings: Document | str) -> dict | None:
     if isinstance(settings, str):
         settings = frappe.get_doc("Crystal ZRA Smart Invoice Settings", settings)
 
-    builder = ZRAEndpointsBuilder()
+    builder = EndpointsBuilder()
     builder.settings = settings
     builder.url = f"{settings.server_url}/ping"
     builder.method = "GET"

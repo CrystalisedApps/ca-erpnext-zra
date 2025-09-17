@@ -1,0 +1,87 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2025-09-17 09:37:48.805339",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "itemclscd",
+  "crystal_id",
+  "itemclslvl",
+  "column_break_gzaz",
+  "itemclsnm",
+  "taxation_type_code",
+  "is_used",
+  "is_major_target"
+ ],
+ "fields": [
+  {
+   "fieldname": "itemclscd",
+   "fieldtype": "Data",
+   "label": "Item Classification Code"
+  },
+  {
+   "fieldname": "crystal_id",
+   "fieldtype": "Data",
+   "label": "Crystal ID"
+  },
+  {
+   "fieldname": "itemclslvl",
+   "fieldtype": "Int",
+   "label": "Item Classification Level"
+  },
+  {
+   "fieldname": "column_break_gzaz",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "itemclsnm",
+   "fieldtype": "Data",
+   "label": "Item Classification Name"
+  },
+  {
+   "fieldname": "taxation_type_code",
+   "fieldtype": "Link",
+   "label": "Taxation Type Code",
+   "options": "Crystal ZRA Smart Invoice Taxation Type"
+  },
+  {
+   "default": "0",
+   "fieldname": "is_used",
+   "fieldtype": "Check",
+   "label": "Is Used"
+  },
+  {
+   "default": "0",
+   "fieldname": "is_major_target",
+   "fieldtype": "Check",
+   "label": "Is Major Target"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2025-09-17 09:59:51.648354",
+ "modified_by": "Administrator",
+ "module": "Ca Erpnext Zra",
+ "name": "Crystal ZRA Smart Invoice Item Classification",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

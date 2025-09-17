@@ -35,6 +35,48 @@ frappe.ui.form.on("Crystal ZRA Smart Invoice Settings", {
 			},
 			__("Smart Actions")
 		);
+		frm.add_custom_button(
+  __("Get Codes"),
+  function () {
+    frappe.call({
+      method:
+        "ca_erpnext_zra.ca_erpnext_zra.background_tasks.tasks.refresh_code_lists",
+      args: {
+        settings_name: frm.doc.name,
+        request_data: {
+          document_name: frm.doc.name,
+          company_name: companyName,
+          branch_id: frm.doc.bhfid,
+        },
+      },
+      callback: (response) => {
+        frappe.call({
+          method:
+            "ca_erpnext_zra.ca_erpnext_zra.background_tasks.tasks.get_item_classification_codes",
+          args: {
+            settings_name: frm.doc.name,
+            request_data: {
+              document_name: frm.doc.name,
+              company_name: companyName,
+              branch_id: frm.doc.bhfid,
+            },
+          },
+          callback: (response) => {
+            frappe.msgprint(__("Item Classification Codes refreshed successfully."));
+          },
+          error: (error) => {
+            // Error handling deferred to the server
+          },
+        });
+      },
+      error: (error) => {
+        // Error handling deferred to the server
+      },
+    });
+  },
+  __("Smart Actions")
+);
+
 		//Initialize Device Button
 		frm.add_custom_button(
 			__("Initialize Device"),

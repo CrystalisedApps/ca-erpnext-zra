@@ -27,7 +27,7 @@ def process_request(
     company: str = None,
 ) -> str | dict | None:
     """
-    Core request processor for Crystal VSDC servers.
+    Core request processor for Crystal Smart Invoice servers.
 
     Handles preparation of headers, server URL, and route path,
     then delegates to `execute_request` for remote API interaction.
