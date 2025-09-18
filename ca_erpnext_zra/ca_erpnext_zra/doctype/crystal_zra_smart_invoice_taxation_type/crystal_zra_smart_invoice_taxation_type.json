@@ -1,0 +1,116 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2025-09-16 17:56:09.227516",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "taxation_rate_details_section",
+  "code",
+  "code_name",
+  "code_description",
+  "code_class",
+  "column_break_hsvo",
+  "crystal_id",
+  "is_used",
+  "user_defined_code_1",
+  "user_defined_code_2",
+  "user_defined_code_3",
+  "smart_invoice_setup_mapping_section",
+  "smart_invoice_setup"
+ ],
+ "fields": [
+  {
+   "fieldname": "taxation_rate_details_section",
+   "fieldtype": "Section Break",
+   "label": "Taxation Rate Details"
+  },
+  {
+   "fieldname": "code",
+   "fieldtype": "Data",
+   "label": "Code"
+  },
+  {
+   "fieldname": "code_name",
+   "fieldtype": "Data",
+   "label": "Code Name"
+  },
+  {
+   "fieldname": "code_description",
+   "fieldtype": "Data",
+   "label": "Code Description"
+  },
+  {
+   "fieldname": "code_class",
+   "fieldtype": "Data",
+   "label": "Code Class"
+  },
+  {
+   "fieldname": "column_break_hsvo",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "crystal_id",
+   "fieldtype": "Data",
+   "label": "Crystal ID"
+  },
+  {
+   "default": "0",
+   "fieldname": "is_used",
+   "fieldtype": "Check",
+   "label": "Is Used"
+  },
+  {
+   "fieldname": "user_defined_code_1",
+   "fieldtype": "Data",
+   "label": "User Defined Code 1"
+  },
+  {
+   "fieldname": "user_defined_code_2",
+   "fieldtype": "Data",
+   "label": "User Defined Code 2"
+  },
+  {
+   "fieldname": "user_defined_code_3",
+   "fieldtype": "Data",
+   "label": "User Defined Code 3"
+  },
+  {
+   "fieldname": "smart_invoice_setup_mapping_section",
+   "fieldtype": "Section Break",
+   "label": "Smart Invoice Setup Mapping"
+  },
+  {
+   "fieldname": "smart_invoice_setup",
+   "fieldtype": "Table",
+   "label": "Smart Invoice Setup",
+   "options": "Smart Invoice Crystal ID Mapping"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2025-09-16 18:06:29.164423",
+ "modified_by": "Administrator",
+ "module": "Ca Erpnext Zra",
+ "name": "Crystal ZRA Smart Invoice Taxation Type",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

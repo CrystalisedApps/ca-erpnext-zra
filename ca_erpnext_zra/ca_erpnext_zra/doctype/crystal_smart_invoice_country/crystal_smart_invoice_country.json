@@ -1,0 +1,78 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2025-09-16 09:22:27.119365",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "country_details_section",
+  "code",
+  "code_name",
+  "code_description",
+  "column_break_khrh",
+  "currency_code",
+  "sort_order"
+ ],
+ "fields": [
+  {
+   "fieldname": "country_details_section",
+   "fieldtype": "Section Break",
+   "label": "Country Details"
+  },
+  {
+   "fieldname": "code",
+   "fieldtype": "Data",
+   "label": "Code"
+  },
+  {
+   "fieldname": "code_name",
+   "fieldtype": "Data",
+   "label": "Code Name"
+  },
+  {
+   "fieldname": "code_description",
+   "fieldtype": "Data",
+   "label": "Code Description"
+  },
+  {
+   "fieldname": "column_break_khrh",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "currency_code",
+   "fieldtype": "Data",
+   "label": "Currency Code"
+  },
+  {
+   "fieldname": "sort_order",
+   "fieldtype": "Data",
+   "label": "Sort Order"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2025-09-16 09:27:28.254911",
+ "modified_by": "Administrator",
+ "module": "Ca Erpnext Zra",
+ "name": "Crystal Smart Invoice Country",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

@@ -4,7 +4,7 @@ SETTINGS_DOCTYPE_NAME = "Crystal ZRA Smart Invoice Settings"
 
 
 def get_settings(settings_name: str = None) -> dict | None:
-    """Fetch ZRA integration settings.
+    """Fetch Crystal ZRA Smart Invoice integration settings.
 
     Args:
         settings_name (str, optional): The name of the Crystal ZRA Smart Invoice Settings document.

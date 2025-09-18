@@ -13,7 +13,7 @@ def get_route_path(
     parent_doctype: str = ROUTES_TABLE_DOCTYPE_NAME,
 ) -> tuple[str, str] | None:
     """
-    Fetch the API route path for Crystal VSDC based on the search field.
+    Fetch the API route path for CrystalSmart Invoice based on the search field.
 
     Args:
         search_field (str): Function name or identifier used to match the route.
