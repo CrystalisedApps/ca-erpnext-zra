@@ -5,10 +5,10 @@ from frappe.model.document import Document
 
 from ...apis.api_processor import process_request
 from ...apis.api_builder import EndpointsBuilder
-# from services.remote_response_status_handlers import (
-#     sales_information_submission_on_success,
-#     sales_information_submission_on_error,
-# )
+from ...services.sales_service import (
+    sales_information_submission_on_success,
+     sales_information_submission_on_error,
+)
 from ...utils.settings_utils import get_settings
 from ...utils.payload_utils import build_invoice_payload, get_invoice_reference_number
 
@@ -43,7 +43,7 @@ def generic_invoices_on_submit_override(
             )
             return
 
-        # from ...services.sales_service import submit_credit_note
+        from ...apis.sales_api import submit_credit_note
 
         reference_number = get_invoice_reference_number(return_invoice)
         request_data = {
@@ -85,11 +85,8 @@ def generic_invoices_on_submit_override(
             error_callback=sales_information_submission_on_error,
         )
 
-def sales_information_submission_on_success():
-    pass
 
-def sales_information_submission_on_error():
-    pass
+
 
 def submit_credit_note():
     pass
