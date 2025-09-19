@@ -137,14 +137,19 @@ app_license = "agpl-3.0"
 # ---------------
 # Hook on document methods and events
 
-# doc_events = {
-# 	"*": {
-# 		"on_update": "method",
-# 		"on_cancel": "method",
-# 		"on_trash": "method"
-# 	}
-# }
-
+doc_events = {
+	# "*": {
+	# 	"on_update": "method",
+	# 	"on_cancel": "method",
+	# 	"on_trash": "method"
+	
+     "Sales Invoice": {
+  
+        "on_submit": [
+            "ca_erpnext_zra.ca_erpnext_zra.overrides.server.sales_invoice_override.on_submit"
+        ],
+    }
+}
 # Scheduled Tasks
 # ---------------
 
