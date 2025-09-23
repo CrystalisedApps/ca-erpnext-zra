@@ -47,15 +47,15 @@ def process_request(
     )
 
     # Build request headers and URL
-    headers = build_headers(company_name, branch_id, settings_name)
+    headers = build_headers( settings_name)
     server_url = get_server_url(company_name, branch_id, settings_name)
 
     # Resolve route from key (specific to ZRA VSDC)
-    route_path, _ = get_route_path(route_key, "ZRA VSDC")
+    route_path, _ = get_route_path(route_key, "Crystal VSDC")
     dynamic_route_path = process_dynamic_url(route_path, request_data)
     url = f"{server_url}{dynamic_route_path}"
 
-    settings = get_settings(company_name, branch_id, settings_name)
+    settings = get_settings( settings_name)
     if not settings:
         return
 

@@ -6,7 +6,7 @@ from .settings_utils import get_settings
 from ..apis.auth import authenticate  # refreshes token and updates settings
 
 
-def build_headers(company_name: str, branch_id: str, settings_name: str = None) -> dict[str, str] | None:
+def build_headers(settings_name: str = None) -> dict[str, str] | None:
     """
     Build headers for Crystal Smart Invoice API requests.
     Ensures access token is valid; refreshes if expired.
@@ -19,7 +19,7 @@ def build_headers(company_name: str, branch_id: str, settings_name: str = None) 
     Returns:
         dict[str, str] | None: The headers including Authorization, Device ID, etc.
     """
-    settings = get_settings(company_name, branch_id, settings_name)
+    settings = get_settings(settings_name)
 
     if not settings:
         return None
@@ -28,26 +28,26 @@ def build_headers(company_name: str, branch_id: str, settings_name: str = None) 
     token_expiry = settings.get("token_expiry")
 
     # Check if token is missing or expired
-    if (
-        not jwt
-        or not token_expiry
-        or (
-            datetime.strptime(str(token_expiry).split(".")[0], "%Y-%m-%d %H:%M:%S")
-            < datetime.now()
-        )
-    ):
-        # Call authenticate → refresh token and update settings
-        auth_response = authenticate(settings.name)
+    # if (
+    #     not jwt
+    #     or not token_expiry
+    #     or (
+    #         datetime.strptime(str(token_expiry).split(".")[0], "%Y-%m-%d %H:%M:%S")
+    #         < datetime.now()
+    #     )
+    # ):
+    #     # Call authenticate → refresh token and update settings
+    #     auth_response = authenticate(settings.name)
 
-        if not auth_response or not auth_response.get("access_token"):
-            frappe.throw(
-                _("Failed to refresh Crystal VSDC token. Please check your ZRA Settings."),
-                frappe.AuthenticationError,
-            )
+    #     if not auth_response or not auth_response.get("access_token"):
+    #         frappe.throw(
+    #             _("Failed to refresh Crystal VSDC token. Please check your ZRA Settings."),
+    #             frappe.AuthenticationError,
+    #         )
 
-        # Use new token directly from updated settings
-        settings.reload()
-        access_token = settings.get("jwt")
+    #     # Use new token directly from updated settings
+    #     settings.reload()
+    #     jwt = settings.get("jwt")
 
     # Build base headers
     headers = {

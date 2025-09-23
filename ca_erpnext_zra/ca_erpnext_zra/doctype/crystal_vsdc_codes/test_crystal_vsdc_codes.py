@@ -5,5 +5,5 @@
 from frappe.tests.utils import FrappeTestCase
 
 
-class TestCrystalSmartInvoiceCountry(FrappeTestCase):
+class TestCrystalVSDCCodes(FrappeTestCase):
 	pass
