@@ -12,100 +12,91 @@ ITEM_CLASSIFICATIONS_DOCTYPE_NAME,
 
 from ..utils.update_utils import update_documents
 
+from ..apis.api_processor import process_request
 
-# def update_countries(response: dict | list, settings_name: str = None, **kwargs) -> None:
-#     """Update ERPNext Countries from Crystal VSDC API response."""
-#     if isinstance(response, str):
-#         response = json.loads(response)
 
-#     # Example Crystal response: [{"code": "UG", "name": "Uganda", "currency_code": "UGX"}]
+CRYSTAL_CODES_DOCTYPE_NAME = "Crystal VSDC Codes"
+CRYSTAL_CODES_CHILD_TABLE = "Code Details"
+
+def sync_vsdc_codes(settings_name: str, last_req_dt: str = None, **kwargs) -> dict:
+    """
+    Fetch codes from Crystal VSDC and update them into custom DocTypes.
+    """
+
+    settings = frappe.get_doc("Crystal ZRA Smart Invoice Settings", settings_name)
+    payload = {
+        "tpin": settings.tpin,
+        "bhfId": "000",
+        "lastReqDt": last_req_dt or None,
+    }
+
+    response = process_request(
+        request_data=payload,
+        route_key="SelectCodes",
+        request_method="POST",
+        settings_name=settings_name,
+    )
+
+    if isinstance(response, str):
+        response = json.loads(response)
+
+    if not response or "Result" not in response:
+        frappe.throw("Invalid response from Crystal VSDC")
+
+    cls_list = response["Result"]["data"].get("clsList", [])
+
+    for cls in cls_list:
+        field_mapping = {
+            "cdCls": "code_class",
+            "cdClsNm": "code_class_name",
+        }
+
+        # Save/update the parent "Crystal VSDC Codes" record
+        parent_doc = update_documents(
+            [cls],
+            CRYSTAL_CODES_DOCTYPE_NAME,
+            field_mapping,
+            settings_name=settings_name,
+            return_docs=True,  # so we can attach children
+        )[0]
+
+        # Now handle children (dtlList → Code Details)
+        child_mapping = {
+            "cd": "code",
+            "cdNm": "code_name",
+            "userDfnCd1": "user_def_cd1",
+            "userDfnCd2": "user_def_cd2",
+        }
+
+        update_documents(
+            cls.get("dtlList", []),
+            CRYSTAL_CODES_CHILD_TABLE,
+            child_mapping,
+            parent=parent_doc.name,
+            parenttype=CRYSTAL_CODES_DOCTYPE_NAME,
+            parentfield="codes",
+            settings_name=settings_name,
+        )
+
+    return response
+
+
+# def update_item_classification_codes(response: dict | list, **kwargs) -> None:
+#     """
+#     Update Item Classification Codes (HS/Tariff) from Crystal VSDC response.
+#     """
 #     field_mapping = {
-#         "code": "code",
-#         "code_name": "name",
-#         "currency_code": "currency_code",
-#         "code_description": "description",
-#         "sort_order": "sort_order",
+#         "classification_code": "itemClsCd",
+#         "classification_level": "itemClsLvl",
+#         "classification_name": "itemClsNm",
+#         "tax_type_code": "taxTyCd",
+#         "is_used": lambda x: 1 if str(x.get("useYn", "")).upper() == "Y" else 0,
+#         "is_frequently_used": lambda x: 1 if str(x.get("mjrTgYn", "")).upper() == "Y" else 0,
 #     }
 
-#     update_documents(response, COUNTRIES_DOCTYPE_NAME, field_mapping, settings_name=settings_name)
-
-
-def update_currencies(response: dict | list, settings_name: str = None, **kwargs) -> None:
-    """Update ERPNext Currencies from Crystal VSDC API response."""
-    if isinstance(response, str):
-        response = json.loads(response)
-
-    # Example Crystal response: [{"iso_code": "UGX", "conversion_rate": 1.0, "active": true}]
-    field_mapping = {
-        "currency_name": "iso_code",
-        "enabled": lambda x: 1 if x.get("active") else 0,
-        "custom_conversion_rate": "conversion_rate",
-    }
-
-    update_documents(response, "Currency", field_mapping, filter_field="currency_name", settings_name=settings_name)
-
-
-def update_packaging_units(response: dict | list, settings_name: str = None, **kwargs) -> None:
-    """Update Packaging Units from Crystal VSDC API response."""
-    if isinstance(response, str):
-        response = json.loads(response)
-
-    # Example Crystal response: [{"code": "BOX", "name": "Box", "description": "Standard Box"}]
-    field_mapping = {
-        "code": "code",
-        "code_name": "name",
-        "code_description": "description",
-    }
-
-    update_documents(response, PACKAGING_UNIT_DOCTYPE_NAME, field_mapping, settings_name=settings_name)
-
-
-def update_unit_of_quantity(response: dict | list, settings_name: str = None, **kwargs) -> None:
-    """Update Units of Quantity (UOM) from Crystal VSDC API response."""
-    if isinstance(response, str):
-        response = json.loads(response)
-
-    # Example Crystal response: [{"code": "LTR", "name": "Liters", "description": "Liquid volume"}]
-    field_mapping = {
-        "code": "code",
-        "code_name": "name",
-        "code_description": "description",
-    }
-
-    update_documents(response, UNIT_OF_QUANTITY_DOCTYPE_NAME, field_mapping, settings_name=settings_name)
-
-
-def update_taxation_type(response: dict | list, settings_name: str = None, **kwargs) -> None:
-    """Update Taxation Types from Crystal VSDC API response."""
-    if isinstance(response, str):
-        response = json.loads(response)
-
-    # Example Crystal response: [{"code": "VAT", "name": "Value Added Tax", "description": "Standard VAT"}]
-    field_mapping = {
-        "code": "code",
-        "code_name": "name",
-        "code_description": "description",
-    }
-
-    update_documents(response, TAXATION_TYPE_DOCTYPE_NAME, field_mapping, settings_name=settings_name)
-
-
-def update_item_classification_codes(response: dict | list, **kwargs) -> None:
-    """
-    Update Item Classification Codes (HS/Tariff) from Crystal VSDC response.
-    """
-    field_mapping = {
-        "classification_code": "itemClsCd",
-        "classification_level": "itemClsLvl",
-        "classification_name": "itemClsNm",
-        "tax_type_code": "taxTyCd",
-        "is_used": lambda x: 1 if str(x.get("useYn", "")).upper() == "Y" else 0,
-        "is_frequently_used": lambda x: 1 if str(x.get("mjrTgYn", "")).upper() == "Y" else 0,
-    }
-
-    update_documents(
-        response,
-        ITEM_CLASSIFICATIONS_DOCTYPE_NAME,
-        field_mapping,
-        filter_field="classification_code",
-    )
+#     update_documents(
+#         response,
+#         ITEM_CLASSIFICATIONS_DOCTYPE_NAME,
+#         field_mapping,
+#         filter_field="classification_code",
+#     )

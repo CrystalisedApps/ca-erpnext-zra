@@ -39,35 +39,27 @@ frappe.ui.form.on("Crystal ZRA Smart Invoice Settings", {
   __("Get Codes"),
   function () {
     frappe.call({
-      method:
-        "ca_erpnext_zra.ca_erpnext_zra.background_tasks.tasks.refresh_code_lists",
+         method:
+        "ca_erpnext_zra.ca_erpnext_zra.background_tasks.tasks.refresh_vsdc_codes",
       args: {
         settings_name: frm.doc.name,
-        request_data: {
-          document_name: frm.doc.name,
-          company_name: companyName,
-          branch_id: frm.doc.bhfid,
-        },
+        LastReqDt: frm.doc.LastReqDt || "", 
       },
       callback: (response) => {
-        frappe.call({
-          method:
-            "ca_erpnext_zra.ca_erpnext_zra.background_tasks.tasks.get_item_classification_codes",
-          args: {
-            settings_name: frm.doc.name,
-            request_data: {
-              document_name: frm.doc.name,
-              company_name: companyName,
-              branch_id: frm.doc.bhfid,
-            },
-          },
-          callback: (response) => {
-            frappe.msgprint(__("Item Classification Codes refreshed successfully."));
-          },
-          error: (error) => {
-            // Error handling deferred to the server
-          },
-        });
+        console.log("Full response:", response.message);
+
+        if (
+          response.message &&
+          response.message.Result &&
+          response.message.Result.data &&
+          response.message.Result.data.clsList
+        ) {
+          console.log("Code Lists (clsList):", response.message.Result.data.clsList);
+          frappe.msgprint(__("Code lists fetched. Check browser console for details."));
+        } else {
+          frappe.msgprint(__("No code lists found in response."));
+        }
+
       },
       error: (error) => {
         // Error handling deferred to the server

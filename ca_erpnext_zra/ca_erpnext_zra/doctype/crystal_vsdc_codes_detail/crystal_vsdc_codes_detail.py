@@ -5,5 +5,5 @@
 from frappe.model.document import Document
 
 
-class CrystalSmartInvoiceUnitOfQuantity(Document):
+class CrystalVSDCCodesDetail(Document):
 	pass

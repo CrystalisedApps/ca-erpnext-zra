@@ -8,8 +8,8 @@
  "field_order": [
   "api_configuration_section",
   "column_break_lyaj",
-  "company",
-  "taxpayer_pin",
+  "company_name",
+  "tpin",
   "column_break_cpix",
   "server_url",
   "environment_section",
@@ -52,18 +52,6 @@
   {
    "fieldname": "column_break_lyaj",
    "fieldtype": "Column Break"
-  },
-  {
-   "fieldname": "company",
-   "fieldtype": "Data",
-   "in_list_view": 1,
-   "label": "Company",
-   "reqd": 1
-  },
-  {
-   "fieldname": "taxpayer_pin",
-   "fieldtype": "Password",
-   "label": "Tax Payer's PIN"
   },
   {
    "fieldname": "column_break_cpix",
@@ -230,12 +218,24 @@
    "fieldname": "expiry_time",
    "fieldtype": "Datetime",
    "label": "Expiry"
+  },
+  {
+   "fieldname": "company_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Company",
+   "reqd": 1
+  },
+  {
+   "fieldname": "tpin",
+   "fieldtype": "Password",
+   "label": "Tax Payer's PIN"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-09-14 14:17:03.024117",
+ "modified": "2025-09-22 15:50:42.339289",
  "modified_by": "Administrator",
  "module": "Ca Erpnext Zra",
  "name": "Crystal ZRA Smart Invoice Settings",
