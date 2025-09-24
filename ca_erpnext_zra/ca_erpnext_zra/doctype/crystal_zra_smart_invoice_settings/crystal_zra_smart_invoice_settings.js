@@ -45,22 +45,23 @@ frappe.ui.form.on("Crystal ZRA Smart Invoice Settings", {
         settings_name: frm.doc.name,
         LastReqDt: frm.doc.LastReqDt || "", 
       },
-      callback: (response) => {
-        console.log("Full response:", response.message);
+	callback: () => {
+						frappe.call({
+							method:
+								"ca_erpnext_zra.ca_erpnext_zra.background_tasks.tasks.get_item_classification_codes",
+							args: {
+								settings_name: frm.doc.name,
+								
+   
+    lastReqDt: "20231215000000"
 
-        if (
-          response.message &&
-          response.message.Result &&
-          response.message.Result.data &&
-          response.message.Result.data.clsList
-        ) {
-          console.log("Code Lists (clsList):", response.message.Result.data.clsList);
-          frappe.msgprint(__("Code lists fetched. Check browser console for details."));
-        } else {
-          frappe.msgprint(__("No code lists found in response."));
-        }
-
-      },
+							},
+							callback: (r) => {
+								 console.log("Raw API response:", r); 
+								frappe.msgprint(__("Codes and Item Classifications refreshed successfully."));
+							},
+						});
+					},
       error: (error) => {
         // Error handling deferred to the server
       },
