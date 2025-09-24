@@ -1,4 +1,4 @@
-### Ca Erpnext Zra
+### CA ERPNext ZRA Smart Invoice
 
 #### Zambia Revenue Authority (ZRA) VSDC API Integration for Frappe/ERPNext
 
