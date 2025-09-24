@@ -1,0 +1,78 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2025-09-24 14:43:58.158361",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "payment_details_section",
+  "class_code",
+  "code",
+  "code_name",
+  "column_break_msdv",
+  "user_defined_name_1",
+  "user_defined_code_1"
+ ],
+ "fields": [
+  {
+   "fieldname": "payment_details_section",
+   "fieldtype": "Section Break",
+   "label": "Payment Details"
+  },
+  {
+   "fieldname": "class_code",
+   "fieldtype": "Data",
+   "label": "Class Code"
+  },
+  {
+   "fieldname": "code",
+   "fieldtype": "Data",
+   "label": "Code"
+  },
+  {
+   "fieldname": "code_name",
+   "fieldtype": "Data",
+   "label": "Code Name"
+  },
+  {
+   "fieldname": "column_break_msdv",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "user_defined_name_1",
+   "fieldtype": "Data",
+   "label": "User Defined Name 1"
+  },
+  {
+   "fieldname": "user_defined_code_1",
+   "fieldtype": "Data",
+   "label": "User Defined Code 1"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2025-09-24 14:45:20.287670",
+ "modified_by": "Administrator",
+ "module": "Ca Erpnext Zra",
+ "name": "Crystallised Smart Payment Type",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}
