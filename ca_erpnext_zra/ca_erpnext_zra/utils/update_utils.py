@@ -1,11 +1,11 @@
 import frappe
 from frappe.model.document import Document
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, Union, Callable
 
 def update_documents(
     data: List[Dict[str, Any]],
     doctype: str,
-    field_mapping: Dict[str, str],
+    field_mapping: Dict[str, Union[str, tuple[str, Callable[[Dict[str, Any]], Any]]]],
     unique_key: Optional[str] = None,
     parent: str = None,
     parenttype: str = None,
@@ -15,16 +15,15 @@ def update_documents(
     """
     Generic helper to insert or update documents from API responses.
 
-    Args:
-        data (list[dict]): API response payload (list of dicts).
-        doctype (str): Target ERPNext doctype (e.g. "Crystal VSDC Codes").
-        field_mapping (dict): Mapping {api_field: doctype_field}.
-        unique_key (str, optional): Field in API data used to identify unique records.
-        parent/parenttype/parentfield (str, optional): For child tables.
-        return_docs (bool): If True, return list of saved docs.
+    field_mapping supports two formats:
+      - {"api_field": "doctype_field"}
+      - {"api_field": ("doctype_field", lambda entry: computed_value)}
 
-    Returns:
-        list[Document] | None: List of docs if return_docs=True, else None
+    Example:
+        {
+            "itemClsCd": "item_cls_cd",
+            "useYn": ("is_used", lambda x: 1 if str(x.get("useYn", "")).upper() == "Y" else 0)
+        }
     """
     if not data:
         return []
@@ -36,23 +35,51 @@ def update_documents(
 
         # Try to find existing doc if unique_key provided
         if unique_key and lookup_value:
-            existing_doc_name = frappe.get_value(
-                doctype,
-                {field_mapping.get(unique_key, unique_key): lookup_value}
+            key_field = (
+                field_mapping.get(unique_key, unique_key)
+                if isinstance(field_mapping.get(unique_key), str)
+                else unique_key
             )
+            existing_doc_name = frappe.get_value(doctype, {key_field: lookup_value})
         else:
             existing_doc_name = None
 
-        if existing_doc_name:
-            doc: Document = frappe.get_doc(doctype, existing_doc_name)
-        else:
-            doc: Document = frappe.new_doc(doctype)
+        doc: Document = (
+            frappe.get_doc(doctype, existing_doc_name)
+            if existing_doc_name
+            else frappe.new_doc(doctype)
+        )
 
         # Map fields
-        for api_field, doc_field in field_mapping.items():
-            doc.set(doc_field, entry.get(api_field))
+        for api_field, mapping in field_mapping.items():
+            if isinstance(mapping, str):
+        # direct mapping
+                try:
+                    raw_val = entry.get(api_field)
+                    doc.set(mapping, raw_val)
+                except Exception as e:
+                    frappe.log_error(
+                        f"Error applying function mapping for field {api_field}: {e}\nEntry: {entry}",
+                        "update_documents lambda error"
+                    )
 
-        # If this is a child record, attach parent metadata
+            elif isinstance(mapping, tuple) and callable(mapping[1]):
+                target_field, fn = mapping
+                try:
+                    doc.set(target_field, fn(entry.get(api_field)))
+                except Exception as e:
+                    frappe.log_error(
+                        f"Error applying function mapping for field {api_field}: {e}\nEntry: {entry}",
+                        "update_documents lambda error"
+                    )
+            else:
+                frappe.log_error(
+                    f"Invalid mapping for field {api_field}: {mapping}",
+                    "update_documents field_mapping error",
+                )
+
+
+        # Handle parent linkage for child tables
         if parent and parenttype and parentfield:
             doc.parent = parent
             doc.parenttype = parenttype
