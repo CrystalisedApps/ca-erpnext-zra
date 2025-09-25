@@ -5,6 +5,24 @@ app_description = "A Frappe custom app that integrates with ZRA VSDC API."
 app_email = "mwambia@navari.co.ke"
 app_license = "agpl-3.0"
 
+
+
+
+
+fixtures = [
+    {
+        "doctype": "Custom Field",
+        "filters": [
+            [
+                "module",
+                "=",
+                "Ca Erpnext Zra"
+            ]
+        ],
+    }
+]
+
+
 # Apps
 # ------------------
 
@@ -136,6 +154,7 @@ app_license = "agpl-3.0"
 # Document Events
 # ---------------
 # Hook on document methods and events
+
 
 doc_events = {
 	# "*": {
