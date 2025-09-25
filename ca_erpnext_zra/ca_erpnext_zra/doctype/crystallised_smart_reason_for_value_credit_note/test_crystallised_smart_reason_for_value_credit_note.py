@@ -5,5 +5,5 @@
 from frappe.tests.utils import FrappeTestCase
 
 
-class TestCrystallisedSmartReasonForvalueCreditNote(FrappeTestCase):
+class TestCrystallisedSmartReasonForValueCreditNote(FrappeTestCase):
 	pass

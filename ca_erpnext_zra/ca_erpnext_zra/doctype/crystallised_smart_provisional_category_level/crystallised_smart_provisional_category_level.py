@@ -5,5 +5,5 @@
 from frappe.model.document import Document
 
 
-class CrystallisedSmartReasonForValueCreditNote(Document):
+class CrystallisedSmartProvisionalCategoryLevel(Document):
 	pass

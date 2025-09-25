@@ -1,6 +1,7 @@
 {
  "actions": [],
  "allow_rename": 1,
+ "autoname": "field:code",
  "creation": "2025-09-24 14:46:25.693439",
  "doctype": "DocType",
  "engine": "InnoDB",
@@ -21,7 +22,8 @@
   {
    "fieldname": "code",
    "fieldtype": "Data",
-   "label": "Code"
+   "label": "Code",
+   "unique": 1
   },
   {
    "fieldname": "code_name",
@@ -46,10 +48,11 @@
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-09-24 14:47:59.267487",
+ "modified": "2025-09-24 23:00:25.858319",
  "modified_by": "Administrator",
  "module": "Ca Erpnext Zra",
  "name": "Crystallised Smart Branch Status",
+ "naming_rule": "By fieldname",
  "owner": "Administrator",
  "permissions": [
   {

@@ -11,6 +11,7 @@ def update_documents(
     parenttype: str = None,
     parentfield: str = None,
     return_docs: bool = False,
+    ignore_if_duplicate: bool = False,
 ) -> List[Document] | None:
     """
     Generic helper to insert or update documents from API responses.
@@ -44,40 +45,36 @@ def update_documents(
         else:
             existing_doc_name = None
 
-        doc: Document = (
-            frappe.get_doc(doctype, existing_doc_name)
-            if existing_doc_name
-            else frappe.new_doc(doctype)
-        )
+        if existing_doc_name:
+            if ignore_if_duplicate:
+                # Skip updating and move to next entry
+                continue
+            else:
+                # Load existing doc for update
+                doc: Document = frappe.get_doc(doctype, existing_doc_name)
+        else:
+            # Create new doc
+            doc: Document = frappe.new_doc(doctype)
 
         # Map fields
         for api_field, mapping in field_mapping.items():
-            if isinstance(mapping, str):
-        # direct mapping
-                try:
-                    raw_val = entry.get(api_field)
-                    doc.set(mapping, raw_val)
-                except Exception as e:
+            try:
+                if isinstance(mapping, str):
+                    # direct mapping
+                    doc.set(mapping, entry.get(api_field))
+                elif isinstance(mapping, tuple) and callable(mapping[1]):
+                    target_field, fn = mapping
+                    doc.set(target_field, fn(entry))
+                else:
                     frappe.log_error(
-                        f"Error applying function mapping for field {api_field}: {e}\nEntry: {entry}",
-                        "update_documents lambda error"
+                        f"Invalid mapping for field {api_field}: {mapping}",
+                        "update_documents field_mapping error",
                     )
-
-            elif isinstance(mapping, tuple) and callable(mapping[1]):
-                target_field, fn = mapping
-                try:
-                    doc.set(target_field, fn(entry.get(api_field)))
-                except Exception as e:
-                    frappe.log_error(
-                        f"Error applying function mapping for field {api_field}: {e}\nEntry: {entry}",
-                        "update_documents lambda error"
-                    )
-            else:
+            except Exception as e:
                 frappe.log_error(
-                    f"Invalid mapping for field {api_field}: {mapping}",
-                    "update_documents field_mapping error",
+                    f"Error mapping field {api_field}: {e}\nEntry: {entry}",
+                    "update_documents error"
                 )
-
 
         # Handle parent linkage for child tables
         if parent and parenttype and parentfield:
@@ -85,8 +82,13 @@ def update_documents(
             doc.parenttype = parenttype
             doc.parentfield = parentfield
 
-        doc.save(ignore_permissions=True)
-        saved_docs.append(doc)
+        # Save — will update if doc exists, insert if new
+        try:
+            doc.save(ignore_permissions=True)
+            saved_docs.append(doc)
+        except frappe.DuplicateEntryError:
+            if not ignore_if_duplicate:
+                raise  # re-raise if we’re not ignoring
 
     frappe.db.commit()
     return saved_docs if return_docs else None

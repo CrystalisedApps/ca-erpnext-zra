@@ -1,16 +1,15 @@
 {
  "actions": [],
  "allow_rename": 1,
+ "autoname": "field:code",
  "creation": "2025-09-24 14:36:49.597785",
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
   "sale_category_details_section",
-  "class_code",
   "code",
   "code_name",
   "column_break_ysvb",
-  "user_defined_name_1",
   "user_defined_code_1"
  ],
  "fields": [
@@ -20,14 +19,10 @@
    "label": "Sale Category Details"
   },
   {
-   "fieldname": "class_code",
-   "fieldtype": "Data",
-   "label": "Class Code"
-  },
-  {
    "fieldname": "code",
    "fieldtype": "Data",
-   "label": "Code"
+   "label": "Code",
+   "unique": 1
   },
   {
    "fieldname": "code_name",
@@ -42,20 +37,16 @@
    "fieldname": "user_defined_code_1",
    "fieldtype": "Data",
    "label": "User Defined Code 1"
-  },
-  {
-   "fieldname": "user_defined_name_1",
-   "fieldtype": "Data",
-   "label": "User Defined Name 1"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-09-24 14:41:10.292177",
+ "modified": "2025-09-25 00:15:05.533887",
  "modified_by": "Administrator",
  "module": "Ca Erpnext Zra",
  "name": "Crystallised Smart Sale Category",
+ "naming_rule": "By fieldname",
  "owner": "Administrator",
  "permissions": [
   {

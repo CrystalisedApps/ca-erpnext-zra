@@ -2,14 +2,14 @@
  "actions": [],
  "allow_rename": 1,
  "autoname": "field:code",
- "creation": "2025-09-24 14:49:28.091742",
+ "creation": "2025-09-24 22:26:10.159307",
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
   "class_code",
   "code",
   "code_name",
-  "column_break_fefp",
+  "column_break_rvkf",
   "user_defined_name_1",
   "user_defined_code_1"
  ],
@@ -31,7 +31,7 @@
    "label": "Code Name"
   },
   {
-   "fieldname": "column_break_fefp",
+   "fieldname": "column_break_rvkf",
    "fieldtype": "Column Break"
   },
   {
@@ -48,10 +48,10 @@
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-09-25 00:59:27.724917",
+ "modified": "2025-09-24 22:27:24.920448",
  "modified_by": "Administrator",
  "module": "Ca Erpnext Zra",
- "name": "Crystallised Smart Quantity Unit",
+ "name": "Crystallised Smart Invoice Type",
  "naming_rule": "By fieldname",
  "owner": "Administrator",
  "permissions": [

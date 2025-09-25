@@ -2,23 +2,16 @@
  "actions": [],
  "allow_rename": 1,
  "autoname": "field:code",
- "creation": "2025-09-24 14:49:28.091742",
+ "creation": "2025-09-25 00:44:36.950673",
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
-  "class_code",
   "code",
   "code_name",
-  "column_break_fefp",
-  "user_defined_name_1",
+  "column_break_upyz",
   "user_defined_code_1"
  ],
  "fields": [
-  {
-   "fieldname": "class_code",
-   "fieldtype": "Data",
-   "label": "Class Code"
-  },
   {
    "fieldname": "code",
    "fieldtype": "Data",
@@ -31,13 +24,8 @@
    "label": "Code Name"
   },
   {
-   "fieldname": "column_break_fefp",
+   "fieldname": "column_break_upyz",
    "fieldtype": "Column Break"
-  },
-  {
-   "fieldname": "user_defined_name_1",
-   "fieldtype": "Data",
-   "label": "User Defined Name 1"
   },
   {
    "fieldname": "user_defined_code_1",
@@ -48,10 +36,10 @@
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-09-25 00:59:27.724917",
+ "modified": "2025-09-25 00:45:35.659646",
  "modified_by": "Administrator",
  "module": "Ca Erpnext Zra",
- "name": "Crystallised Smart Quantity Unit",
+ "name": "Crystallised Smart Provisional Category Level",
  "naming_rule": "By fieldname",
  "owner": "Administrator",
  "permissions": [

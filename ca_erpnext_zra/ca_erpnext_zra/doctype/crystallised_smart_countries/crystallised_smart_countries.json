@@ -1,16 +1,15 @@
 {
  "actions": [],
  "allow_rename": 1,
+ "autoname": "field:code",
  "creation": "2025-09-24 14:30:36.326225",
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
   "country_details_section",
-  "class_code",
   "code",
   "code_name",
   "column_break_ohqq",
-  "user_defined_class_name_1",
   "user_defined_code_1"
  ],
  "fields": [
@@ -22,7 +21,8 @@
   {
    "fieldname": "code",
    "fieldtype": "Data",
-   "label": "Code"
+   "label": "Code",
+   "unique": 1
   },
   {
    "fieldname": "code_name",
@@ -35,27 +35,18 @@
    "label": "User Defined Code 1"
   },
   {
-   "fieldname": "class_code",
-   "fieldtype": "Data",
-   "label": "Class Code"
-  },
-  {
    "fieldname": "column_break_ohqq",
    "fieldtype": "Column Break"
-  },
-  {
-   "fieldname": "user_defined_class_name_1",
-   "fieldtype": "Data",
-   "label": "User Defined Name 1"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-09-24 14:41:29.424623",
+ "modified": "2025-09-24 23:58:42.597636",
  "modified_by": "Administrator",
  "module": "Ca Erpnext Zra",
  "name": "Crystallised Smart Countries",
+ "naming_rule": "By fieldname",
  "owner": "Administrator",
  "permissions": [
   {

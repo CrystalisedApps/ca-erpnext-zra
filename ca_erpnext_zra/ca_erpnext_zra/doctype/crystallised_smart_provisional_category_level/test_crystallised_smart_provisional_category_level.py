@@ -5,5 +5,5 @@
 from frappe.tests.utils import FrappeTestCase
 
 
-class TestCrystallisedSmartCommercialInvoiceStatus(FrappeTestCase):
+class TestCrystallisedSmartProvisionalCategoryLevel(FrappeTestCase):
 	pass

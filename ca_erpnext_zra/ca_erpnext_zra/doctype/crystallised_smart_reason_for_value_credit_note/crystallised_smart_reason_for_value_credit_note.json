@@ -6,19 +6,12 @@
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
-  "class_code",
   "code",
   "code_name",
   "column_break_wcri",
-  "user_defined_name_1",
   "user_defined_code_1"
  ],
  "fields": [
-  {
-   "fieldname": "class_code",
-   "fieldtype": "Data",
-   "label": "Class Code "
-  },
   {
    "fieldname": "code",
    "fieldtype": "Data",
@@ -35,11 +28,6 @@
    "fieldtype": "Column Break"
   },
   {
-   "fieldname": "user_defined_name_1",
-   "fieldtype": "Data",
-   "label": "User Defined Name 1"
-  },
-  {
    "fieldname": "user_defined_code_1",
    "fieldtype": "Data",
    "label": "User Defined Code 1"
@@ -48,10 +36,10 @@
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-09-24 16:00:44.540213",
+ "modified": "2025-09-25 00:47:42.242811",
  "modified_by": "Administrator",
  "module": "Ca Erpnext Zra",
- "name": "Crystallised Smart Reason For value Credit Note",
+ "name": "Crystallised Smart Reason For Value Credit Note",
  "naming_rule": "By fieldname",
  "owner": "Administrator",
  "permissions": [
