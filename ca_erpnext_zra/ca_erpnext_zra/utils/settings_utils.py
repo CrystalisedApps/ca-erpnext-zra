@@ -6,42 +6,38 @@ SETTINGS_DOCTYPE_NAME = "Crystal ZRA Smart Invoice Settings"
 def get_settings(settings_name: str = None) -> dict | None:
     """Fetch Crystal ZRA Smart Invoice integration settings.
 
-    Args:
-        settings_name (str, optional): The name of the Crystal ZRA Smart Invoice Settings document.
-            If not provided, will return the first active settings record.
-
-    Returns:
-        dict | None: The settings if found, otherwise None.
+    - If settings_name is given and valid → return that doc
+    - Otherwise, return the first active settings
     """
-    # If a specific settings document is given
-    if settings_name:
-        if frappe.db.exists(SETTINGS_DOCTYPE_NAME, {"name": settings_name}):
-            return frappe.get_doc(SETTINGS_DOCTYPE_NAME, settings_name).as_dict()
-        return None
 
-    # Otherwise, fetch the active ZRA Settings
-    if frappe.db.exists(SETTINGS_DOCTYPE_NAME, {"is_active": 1}):
-        return frappe.get_value(
-            SETTINGS_DOCTYPE_NAME,
-            {"is_active": 1},
-            "*",
-            as_dict=True,
-        )
+    # If a specific settings doc is requested
+    if settings_name:
+        try:
+            if frappe.db.exists(SETTINGS_DOCTYPE_NAME, settings_name):
+                return frappe.get_doc(SETTINGS_DOCTYPE_NAME, settings_name).as_dict()
+        except Exception:
+            pass  # fall through to fallback
+
+    # Otherwise → fallback to first active settings
+    settings = frappe.get_all(
+        SETTINGS_DOCTYPE_NAME,
+        filters={"is_active": 1},
+        fields=["name", "company_name", "tpin", "server_url"],
+        limit=1,
+    )
+
+    if settings:
+        return settings[0]
 
     return None
 
-
-def get_server_url(company_name: str = None, branch_id: str = "00", settings_name: str = None) -> str | None:
+def get_server_url(
+    company_name: str = None,
+    branch_id: str = "00",
+    settings_name: str = None,
+) -> str | None:
     """
     Fetch the Crystal VSDC server URL from ZRA Settings.
-
-    Args:
-        company_name (str, optional): Company linked to the ZRA Settings.
-        branch_id (str, optional): Branch identifier (default "00").
-        settings_name (str, optional): Specific Crystal ZRA Smart Invoice Settings document to use.
-
-    Returns:
-        str | None: The base server URL if available, otherwise None.
     """
     settings = get_settings(settings_name)
 

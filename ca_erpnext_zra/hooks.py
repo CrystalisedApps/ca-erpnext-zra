@@ -22,7 +22,9 @@ fixtures = [
     }
 ]
 
-
+doctype_js = {
+    "Item": "public/js/item.js"
+}
 # Apps
 # ------------------
 
