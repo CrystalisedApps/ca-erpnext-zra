@@ -50,38 +50,574 @@ def handle_codes_response(response: dict | str, settings_name: str = None, **kwa
 
     cls_list = response["Result"]["data"].get("clsList", [])
 
+      # Mapping Crystal code classes -> ERPNext Doctypes + field mapping
+    doctype_map = {
+        "04": {  # Taxation Types
+            "doctype": "Crystallised ZRA Smart Taxation Type",
+            "field_mapping": {
+                "cd": "code",
+                "cdNm": "code_name",
+                "userDfnCd1": "user_defined_code_1"
+            },
+            "unique_key": "c",
+            "parent_fields": {
+            "cdCls": "class_code",
+            
+        }
+        },
+         "05": {  
+            "doctype": "Crystallised Smart Countries",
+            "field_mapping": {
+                "cd": "code",
+                "cdNm": "code_name",
+                "userDfnCd1": "user_defined_code_1",
+            },
+            "unique_key": "code",
+            "parent_fields": {
+            "cdCls": "class_code",
+            
+        }
+        },
+        "06": {  
+            "doctype": "Crystallised Smart Sale Category",
+            "field_mapping": {
+                "cd":"code",
+                "cdNm": "code_name",
+                "userDfnCd1": "user_defined_code_1",
+            },
+            "unique_key": "code",
+            "parent_fields": {
+            "cdCls": "class_code",
+            "userDfnCd1": "user_defined_name_1"
+        }
+        },
+           "07": {  
+            "doctype": "Crystallised Smart Payment Type",
+            "field_mapping": {
+                "cd": "code",
+                "cdNm": "code_name",
+                "userDfnCd1": "user_defined_code_1",
+            },
+            "unique_key": "code",
+            "parent_fields": {
+            "cdCls": "class_code",
+            "userDfnCd1": "user_defined_name_1"
+        }
+        },
+           "09": {  
+            "doctype": "Crystallised Smart Branch Status",
+            "field_mapping": {
+                "cd": "code",
+                "cdNm": "code_name",
+                "userDfnCd1": "user_defined_code_1",
+            },
+            "unique_key": "code",
+            "parent_fields": {
+            "cdCls": "class_code",
+            "userDfnCd1": "user_defined_name_1"
+        }
+        },
+           "10": {  
+            "doctype": "Crystallised Smart Quantity Unit",
+            "field_mapping": {
+                "cd": "code",
+                "cdNm": "code_name",
+                "userDfnCd1": "user_defined_code_1",
+            },
+            "unique_key": "code",
+     
+        },
+           "11": {  
+            "doctype": "Crystallised Smart Sale Status",
+            "field_mapping": {
+                "cd": "code",
+                "cdNm": "code_name",
+                "userDfnCd1": "user_defined_code_1",
+            },
+            "unique_key": "code",
+            "parent_fields": {
+            "cdCls": "class_code",
+            "userDfnCd1": "user_defined_name_1"
+        }
+        },
+           "12": {  
+            "doctype": "Crystallised Smart Stock IO Type",
+            "field_mapping": {
+                "cd":"code",
+                "cdNm": "code_name",
+                "userDfnCd1": "user_defined_code_1",
+            },
+            "unique_key": "code",
+            "parent_fields": {
+            "cdCls": "class_code",
+            "userDfnCd1": "user_defined_name_1"
+        }
+        },
+             "13": {  
+            "doctype": "Crystallised Smart Default Information",
+            "field_mapping": {
+                "cd": "code",
+                "cdNm": "code_name",
+                "userDfnCd1": "user_defined_code_1",
+            },
+            "unique_key": "code",
+            "parent_fields": {
+            "cdCls": "class_code",
+            "userDfnCd1": "user_defined_name_1"
+        }
+        },
+             "14": {  
+            "doctype": "Crystallised Smart Transaction Type",
+            "field_mapping": {
+                "cd": "code",
+                "cdNm": "code_name",
+                "userDfnCd1": "user_defined_code_1",
+            },
+            "unique_key": "code",
+            "parent_fields": {
+            "cdCls": "class_code",
+            "userDfnCd1": "user_defined_name_1"
+        }
+        },
+        "17": {  # Packaging Units
+            "doctype": "Crystallised Smart Packing Unit",
+            "field_mapping": {
+                "cd": "code",
+                "cdNm": "code_name",
+            },
+            "unique_key": "code",
+            "parent_fields": {
+            "cdCls": "class_code",
+            "userDfnCd1": "user_defined_name_1"
+        }
+        },
+             "20": {  
+            "doctype": "Crystallised Smart Customer Type",
+            "field_mapping": {
+                "cd": "code",
+                "cdNm": "code_name",
+                "userDfnCd1": "user_defined_code_1",
+            },
+            "unique_key": "code",
+            "parent_fields": {
+            "cdCls": "class_code",
+            "userDfnCd1": "user_defined_name_1"
+        }
+        },
+        "21": {  
+            "doctype": "Crystallised Smart Detail Information Type",
+            "field_mapping": {
+                "cd": "code",
+                "cdNm": "code_name",
+            },
+            "unique_key": "code",
+            "parent_fields": {
+            "cdCls": "class_code",
+            "userDfnCd1": "user_defined_name_1"
+        }
+        },
+         "22": {  
+            "doctype": "Crystallised Smart Travel Purpose",
+            "field_mapping": {
+                "cd": "code",
+                "cdNm": "code_name",
+            },
+            "unique_key": "code",
+            "parent_fields": {
+            "cdCls": "class_code",
+            "userDfnCd1": "user_defined_name_1"
+        }
+        },
+         "23": {  
+            "doctype": "Crystallised Smart Commercial Invoice Status",
+            "field_mapping": {
+                "cd": "code",
+                "cdNm": "code_name",
+            },
+            "unique_key": "code",
+            "parent_fields": {
+            "cdCls": "class_code",
+            "userDfnCd1": "user_defined_name_1"
+        }
+        },
+          "24": {  
+            "doctype": "Crystallised Smart Item Type",
+            "field_mapping": {
+                "cd": "code",
+                "cdNm": "code_name",
+            },
+            "unique_key": "code",
+            "parent_fields": {
+            "cdCls": "class_code",
+            "userDfnCd1": "user_defined_name_1"
+        }
+        },
+          "26": {  
+            "doctype": "Crystallised Smart Import Item Status",
+            "field_mapping": {
+                "cd":"code",
+                "cdNm": "code_name",
+            },
+            "unique_key": "code",
+            "parent_fields": {
+            "cdCls": "class_code",
+            "userDfnCd1": "user_defined_name_1"
+        }
+        },
+              "27": {  
+            "doctype": "Crystallised Smart Departure Incoterm",
+            "field_mapping": {
+                "cd": "code",
+                "cdNm": "code_name",
+            },
+            "unique_key": "code",
+            "parent_fields": {
+            "cdCls": "class_code",
+            "userDfnCd1": "user_defined_name_1"
+        }
+        },
+         "28": {  
+            "doctype": "Crystallised Smart Destination Incoterm",
+            "field_mapping": {
+                "cd": "code",
+                "cdNm": "code_name",
+            },
+            "unique_key": "code",
+            "parent_fields": {
+            "cdCls": "class_code",
+            "userDfnCd1": "user_defined_name_1"
+        }
+        },
+         "29": {  
+            "doctype": "Crystallised Smart Export Charges",
+            "field_mapping": {
+                "cd": "code",
+                "cdNm": "code_name",
+            },
+            "unique_key": "code",
+            "parent_fields": {
+            "cdCls": "class_code",
+            "userDfnCd1": "user_defined_name_1"
+        }
+        },
+        
+    
+            "30": {  
+            "doctype": "Crystallised Smart Zambia Ports",
+            "field_mapping": {
+                "cd": "code",
+                "cdNm": "code_name",
+            },
+            "unique_key": "code",
+            "parent_fields": {
+            "cdCls": "class_code",
+            "userDfnCd1": "user_defined_name_1"
+        }
+        },
+            "32": {  
+            "doctype": "Crystallised Smart Credit Note Reason",
+            "field_mapping": {
+                "cd": "code",
+                "cdNm": "code_name",
+            },
+            "unique_key": "code",
+            "parent_fields": {
+            "cdCls": "class_code",
+            "userDfnCd1": "user_defined_name_1"
+        }
+        },
+           "33": {  # Currency Codes
+            "doctype": "Crystallised Smart Currency",
+            "field_mapping": {
+                "cd": "code",
+                "cdNm": "code_name",
+                "userDfnCd1": "user_defined_code_1",
+            },
+            "unique_key": "code",
+            "parent_fields": {
+            "cdCls": "class_code",
+            "userDfnCd1": "user_defined_name_1"
+        }
+        },
+        "34": {  
+            "doctype": "Crystallised Smart Purchase Status",
+            "field_mapping": {
+                "cd": "code",
+                "cdNm": "code_name",
+            },
+            "unique_key": "code",
+            "parent_fields": {
+            "cdCls": "class_code",
+            "userDfnCd1": "user_defined_name_1"
+        }
+        },
+            "35": {  
+            "doctype": "Crystallised Smart Reason of Inventory Adjustment",
+            "field_mapping": {
+                "cd": "code",
+                "cdNm": "code_name",
+            },
+            "unique_key": "code",
+            "parent_fields": {
+            "cdCls": "class_code",
+            "userDfnCd1": "user_defined_name_1"
+        }
+        },
+          "36": {  
+            "doctype": "Crystallised Smart Bank",
+            "field_mapping": {
+                "cd": "code",
+                "cdNm": "code_name",
+            },
+            "unique_key": "code",
+            "parent_fields": {
+            "cdCls": "class_code",
+            "userDfnCd1": "user_defined_name_1"
+        }
+        },
+          "37": {  
+            "doctype": "Crystallised Smart Sales Receipt Type",
+            "field_mapping": {
+                "cd": "code",
+                "cdNm": "code_name",
+            },
+            "unique_key": "code",
+            "parent_fields": {
+            "cdCls": "class_code",
+            "userDfnCd1": "user_defined_name_1"
+        }
+        },
+          "38": {  
+            "doctype": "Crystallised Smart Purchase Receipt Type",
+            "field_mapping": {
+                "cd": "code",
+                "cdNm": "code_name",
+            },
+            "unique_key": "code",
+            "parent_fields": {
+            "cdCls": "class_code",
+            "userDfnCd1": "user_defined_name_1"
+        }
+        },
+            "42": {  
+            "doctype": "Crystallised Smart Invoice Type",
+            "field_mapping": {
+                "cd": "code",
+                "cdNm": "code_name",
+            },
+            "unique_key": "code",
+            "parent_fields": {
+            "cdCls": "class_code",
+            "userDfnCd1": "user_defined_name_1"
+        }
+        },
+          "44": {  
+            "doctype": "Crystallised Smart Provisional Invoice Finalization Type",
+            "field_mapping": {
+                "cd": "code",
+                "cdNm": "code_name",
+            },
+            "unique_key": "code",
+            "parent_fields": {
+            "cdCls": "class_code",
+            "userDfnCd1": "user_defined_name_1"
+        }
+        },
+               "56": {  
+            "doctype": "Crystallised Smart Value Credit Note Type",
+            "field_mapping": {
+                "cd": "code",
+                "cdNm": "code_name",
+            },
+            "unique_key": "code",
+            "parent_fields": {
+            "cdCls": "class_code",
+            "userDfnCd1": "user_defined_name_1"
+        }
+        },
+            "48": {  
+            "doctype": "Crystallised Smart Locale",
+            "field_mapping": {
+                "cd": "code",
+                "cdNm": "code_name",
+            },
+            "unique_key": "code",
+            "parent_fields": {
+            "cdCls": "class_code",
+            "userDfnCd1": "user_defined_name_1"
+        }
+        },
+          "49": {  
+            "doctype": "Crystallised Smart Provisional Category Level",
+            "field_mapping": {
+                "cd": "code",
+                "cdNm": "code_name",
+            },
+            "unique_key": "code",
+            "parent_fields": {
+            "cdCls": "class_code",
+            "userDfnCd1": "user_defined_name_1"
+        }
+        },
+                      "55": {  
+            "doctype": "Crystallised Smart VAT Type",
+            "field_mapping": {
+                "cd": "code",
+                "cdNm": "code_name",
+            },
+            "unique_key": "code",
+            "parent_fields": {
+            "cdCls": "class_code",
+            "userDfnCd1": "user_defined_name_1"
+        }
+        },
+            "58": {  
+            "doctype": "Crystallised Smart Reason For Value Credit Note",
+            "field_mapping": {
+                "cd": "code",
+                "cdNm": "code_name",
+            },
+            "unique_key": "code",
+            "parent_fields": {
+            "cdCls": "class_code",
+            "userDfnCd1": "user_defined_name_1"
+        }
+        },
+          "60": {  
+            "doctype": "Crystallised Smart Excise Duties",
+            "field_mapping": {
+                "cd": "code",
+                "cdNm": "code_name",
+            },
+            "unique_key": "code",
+            "parent_fields": {
+            "cdCls": "class_code",
+            "userDfnCd1": "user_defined_name_1"
+        }
+        },
+                          "61": {  
+            "doctype": "Crystallised Smart Insurance Premium Levy",
+            "field_mapping": {
+                "cd": "code",
+                "cdNm": "code_name",
+            },
+            "unique_key": "code",
+            "parent_fields": {
+            "cdCls": "class_code",
+            "userDfnCd1": "user_defined_name_1"
+        }
+        },
+            "62": {  
+            "doctype": "Crystallised Smart Tourism Levy",
+            "field_mapping": {
+                "cd": "code",
+                "cdNm": "code_name",
+            },
+            "unique_key": "code",
+            "parent_fields": {
+            "cdCls": "class_code",
+            "userDfnCd1": "user_defined_name_1"
+        }
+        },
+          "64": {  
+            "doctype": "Crystallised Smart Excise Tax Registration Status",
+            "field_mapping": {
+                "cd": "code",
+                "cdNm": "code_name",
+            },
+            "unique_key": "code",
+            "parent_fields": {
+            "cdCls": "class_code",
+            
+        }
+        },
+     "65": {  
+            "doctype": "Crystallised Smart IPL Registration Status",
+            "field_mapping": {
+                "cd": "code",
+                "cdNm": "code_name",
+            },
+            "unique_key": "code",
+            "parent_fields": {
+            "cdCls": "class_code",
+            "userDfnCd1": "user_defined_name_1"
+        }
+        },
+          "66": {  
+            "doctype": "Crystallised Smart Tourism Levy Registration Status",
+            "field_mapping": {
+                "cd": "code",
+                "cdNm": "code_name",
+            },
+            "unique_key": "code",
+            "parent_fields": {
+            "cdCls": "class_code",
+            "userDfnCd1": "user_defined_name_1"
+        }
+        },
+          "67": {  
+            "doctype": "Crystallised Smart Reason For Debit Note",
+            "field_mapping": {
+                "cd": "code",
+                "cdNm": "code_name",
+            },
+            "unique_key": "code",
+            "parent_fields": {
+            "cdCls": "class_code",
+            "userDfnCd1": "user_defined_name_1"
+        }
+        },
+          "68": {  
+            "doctype": "Crystallised Smart Rental Income Status",
+            "field_mapping": {
+                "cd": "code",
+                "cdNm": "code_name",
+            },
+            "unique_key": "code",
+            "parent_fields": {
+            "cdCls": "class_code",
+            
+        }
+        },
+
+
+
+    }
+
+
     for cls in cls_list:
-        # Parent mapping
-        field_mapping = {
-            "cdCls": "code_class",
-            "cdClsNm": "code_class_name",
-        }
+        cd_cls = cls.get("cdCls")
+        if cd_cls not in doctype_map:
+            frappe.log_error(
+                f"Unknown code class received: {cd_cls}",
+                "VSDC Sync - Unmapped Code Class"
+            )
+            continue
 
-        parent_doc = update_documents(
-            [cls],
-            CRYSTAL_CODES_DOCTYPE_NAME,
-            field_mapping,
-            unique_key="cdCls",
-            return_docs=True,
-        )[0]
+        config = doctype_map[cd_cls]
+        doctype = config["doctype"]
+        field_mapping = config["field_mapping"]
+        unique_key = config["unique_key"]
+        parent_fields = config.get("parent_fields", {})
 
-        # Child mapping
-        child_mapping = {
-            "cd": "code",
-            "cdNm": "code_name",
-            "userDfnCd1": "user_def_cd1",
-       
-        }
+        # Save parent info (ensures class metadata is captured)
+        # parent_doc = update_documents(
+        #     [cls],  # use class-level dict
+        #     doctype,
+        #     parent_fields,
+        #     unique_key="cdCls",   # use class code as unique identifier
+        #     return_docs=True
+        # )[0]
 
+        # Save child list into same doctype
         update_documents(
             cls.get("dtlList", []),
-            CRYSTAL_CODES_CHILD_TABLE,
-            child_mapping,
-            unique_key="cd",
-            parent=parent_doc.name,
-            parenttype=CRYSTAL_CODES_DOCTYPE_NAME,
-            parentfield="codes",
+            doctype,
+            field_mapping,
+            unique_key=unique_key,
+             ignore_if_duplicate=True
         )
+
 
 
 

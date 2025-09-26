@@ -1,14 +1,15 @@
 {
  "actions": [],
  "allow_rename": 1,
+ "autoname": "field:item_cls_cd",
  "creation": "2025-09-17 09:37:48.805339",
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
   "item_cls_cd",
+  "item_cls_nm",
   "item_cls_lvl",
   "column_break_gzaz",
-  "item_cls_nm",
   "tax_ty_cd",
   "is_used",
   "is_major_target"
@@ -56,10 +57,11 @@
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-09-23 13:33:03.379781",
+ "modified": "2025-09-24 10:53:46.481765",
  "modified_by": "Administrator",
  "module": "Ca Erpnext Zra",
  "name": "Crystal ZRA Smart Invoice Item Classification",
+ "naming_rule": "By fieldname",
  "owner": "Administrator",
  "permissions": [
   {
