@@ -4,7 +4,7 @@ from ..doctype.doctype_names_mapping import SETTINGS_DOCTYPE_NAME
 
 
 @frappe.whitelist()
-def initialize_device(request_data: str | dict, settings_name: str = None) -> dict:
+def initialize_device(settings_name: str = None) -> dict:
     """
     Initialize a device with Crystal VSDC servers.
 
@@ -21,9 +21,18 @@ def initialize_device(request_data: str | dict, settings_name: str = None) -> di
     Returns:
         dict: Response from Crystal VSDC.
     """
+    request_data={
+        "tpin":"1002152970",
+        "bhfId":"000",
+        "dvcSrlNo":"1002152970_VSDC",
+        
+        
+    }
+    if not request_data:
+        frappe.throw("Request data required for device initialization")
     return process_request(
         request_data=request_data,
-        route_key="InitializationInfo/SelectInitInfo",
+        route_key="selectInformation",
         handler_function=initialize_device_on_success,
         request_method="POST",
         doctype=SETTINGS_DOCTYPE_NAME,
