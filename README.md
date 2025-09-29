@@ -1,6 +1,6 @@
 ### Ca Erpnext Zra
 
-# Zambia Revenue Authority (ZRA) VSDC API Integration for Frappe/ERPNext
+# Zambia Revenue Authority (ZRA) VSDC Smart Invoice API Integration for Frappe/ERPNext
 
 A Frappe custom application that integrates with the Zambia Revenue Authority (ZRA) Virtual Sales Data Controller (VSDC) API to enable seamless tax compliance, e-invoicing, and reporting directly within your ERP system.
 
@@ -46,7 +46,7 @@ This ensures your ERPNext installation is linked with **ZRA’s secure VSDC serv
 - **Endpoint**: `InitializeDevice`  
 - **ERPNext DocType**: `Crystal ZRA Smart Invoice Settings`  
 
-![alt text](image.png) 
+
 
 ---
 
@@ -62,7 +62,7 @@ To correctly classify items, ZRA requires standard codes such as:
 
 These codes are retrieved from the **Smart API** and stored in **custom ERPNext doctypes** for reuse.  
 
-![alt text](image-1.png) 
+
 
 ---
 
@@ -78,11 +78,11 @@ For example:
 - `custom_smart_packaging_unit_code` → `pkgUnitCd`  
 - `custom_smart_quantity_unit_code` → `qtyUnitCd`  
 
-![alt text](image-2.png) 
+
 
 ---
 
-### 4️⃣ Saving Items (Item Management)  
+### 4. Saving Items (Item Management)  
 
 Once Items are properly configured, they can be **registered with Smart Zambia**.  
 
