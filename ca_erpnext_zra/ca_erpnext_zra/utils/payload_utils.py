@@ -2,7 +2,7 @@ from datetime import datetime
 import frappe
 from frappe.model.document import Document
 
-
+from frappe.utils.password import get_decrypted_password
 # from .id_utils import get_vsdc_id
 
 
@@ -22,39 +22,75 @@ def generate_vsdc_item_payload(item_name: str) -> dict:
     item = frappe.get_doc("Item", item_name)
 
     def get_code(fieldname: str) -> str | None:
-        """Fetch the .code from linked Crystallised Smart doctype"""
+        """Fetch correct code field from linked Crystallised Smart doctypes."""
         if not item.get(fieldname):
             return None
-        return frappe.db.get_value(item.meta.get_field(fieldname).options, item.get(fieldname), "code")
+
+        link_doctype = item.meta.get_field(fieldname).options
+        link_value = item.get(fieldname)
+
+        # map Item field → correct code field in linked Doctype
+        field_map = {
+            "custom_smart_item_classification_code": "item_cls_cd",
+            "custom_smart_item_type": "class_code",
+            "custom_smart_country_of_origin": "class_code",
+            "custom_smart_packaging_unit_code": "class_code",
+            "custom_smart_quantity_unit_code": "class_code",
+            "custom_vat_category_code": "code",
+            "ipl_category_code": "class_code",
+            "trade_levy_category": "class_code",
+            "excise_tax_category": "class_code",
+            "rental_income_status": "class_code",
+            "insurance_applicable": "class_code",
+        }
+
+        code_field = field_map.get(fieldname, "code")  # fallback to `code` if unsure
+
+        return frappe.db.get_value(link_doctype, link_value, code_field)
+
+        # Fetch first settings record
+    settings = frappe.get_all(
+        "Crystal ZRA Smart Invoice Settings",
+        fields=["name"]
+    )
+
+    tpin = ""
+    if settings:
+        settings_name = settings[0]["name"]
+        tpin = get_decrypted_password(
+            "Crystal ZRA Smart Invoice Settings",
+            settings_name,        # positional docname
+            "tpin",               # fieldname
+            raise_exception=False
+        ) or ""
+    # --- Get BhfId from Settings ---
+    # bhf_id = frappe.db.get_single_value("Crystal ZRA Smart Invoice Settings", "branch_id") or "000"
 
     payload = {
-        "tpin": frappe.db.get_single_value(" Settings", "tpin") or "",
-        "bhfId": "000",  # branch ID - may need dynamic if multi-branch
-
+        "tpin": tpin,
+        "bhfid":"000",
         "itemCd": item.item_code,
         "itemClsCd": get_code("custom_smart_item_classification_code"),   # Link → Crystallised Smart Item Type
-        "itemTyCd": get_code("custom_smart_item_type"),              # Link → Crystallised Smart Item Type
+        "itemTyCd": item.custom_smart_item_type,              # Link → Crystallised Smart Item Type
         "itemNm": item.item_name,
         "itemStdNm": item.item_name,  # assuming same as itemNm
-        "orgnNatCd": get_code("custom_smart_country_of_origin"),          # Link → Crystallised Smart Countries
-        "pkgUnitCd": get_code("custom_smart_packaging_unit_code"),        # Link → Crystallised Smart Packing Unit
-        "qtyUnitCd": get_code("custom_smart_quantity_unit_code"),         # Link → Crystallised Smart Quantity Unit
-        "vatCatCd": get_code("vat_category_code"),           # Link → Crystallised Smart VAT Type
-        "iplCatCd": get_code("ipl_category_code"),           # Link → Crystallised Smart IPL Registration Status
-        "tlCatCd": get_code("trade_levy_category"),          # Link → Crystallised Smart Tourism Levy
-        "exciseTxCatCd": get_code("excise_tax_category"),    # Link → Crystallised Smart Excise Duties
+        "orgnNatCd": get_code("custom_smart_country_of_origin_"),          # Link → Crystallised Smart Countries
+        "pkgUnitCd": get_code("custom_smart_packaging_unit"),        # Link → Crystallised Smart Packing Unit
+        "qtyUnitCd": get_code("custom_smart_quantity_unit"),         # Link → Crystallised Smart Quantity Unit
+        "vatCatCd": get_code("custom_vat_category_code"),           # Link → Crystallised Smart VAT Type
+        "iplCatCd": get_code("custom_smart_insurance_premium_levy"),           # Link → Crystallised Smart IPL Registration Status
+        "tlCatCd": get_code("custom_smart_tourism_levy"),          # Link → Crystallised Smart Tourism Levy
+        "exciseTxCatCd": get_code("custom_smart_excise_duties_"),    # Link → Crystallised Smart Excise Duties
         "btchNo": item.get("batch_number") or None,
         "bcd": item.get("barcode") or None,
-        "dftPrc": float(item.recommended_retail_price) if item.recommended_retail_price else 0,
-        "manufacturerTpin": item.get("manufacturer_tpin") or None,
-        "manufacturerItemCd": item.get("manufacturer_item_code") or None,
-        "rrp": float(item.get("recommended_retail_price") or 0),
+        "dftPrc": float(item.custom_recommended_retail_price) if item.custom_recommended_retail_price else 0,
+        "manufacturerTpin": item.get("custom_manufacture_tpin") or None,
+        "manufacturerItemCd": item.get("custom_manufacturer_item_code") or None,
+        "rrp": float(item.get("custom_recommended_retail_price") or 0),
         "svcChargeYn": "Y" if item.get("is_service_charge_applicable") else "N",
-        "rentalYn": get_code("rental_income_status"),        # Link → Crystallised Smart Rental Income Status
-        "addInfo": item.get("additional_info") or None,
-        "sftyQty": float(item.get("safety_stock") or 0),
-        "isrcAplcbYn": get_code("insurance_applicable"),     # Link → Crystallised Smart Insurance Premium Levy
-        "useYn": "Y" if item.disabled == 0 else "N",
+        "rentalYn": "Y" if item.get("custom_smart_rental_income_applicable") else "N",        "addInfo": item.get("additional_info") or None,
+        "sftyQty": float(item.get("custom_smartsafety_stock") or 0),
+        "isrcAplcbYn": "Y" if item.get("custom_smart_insurance_applicable") else "N",        "useYn": "Y" if item.disabled == 0 else "N",
         "regrNm": frappe.session.user,
         "regrId": frappe.session.user,
         "modrNm": frappe.session.user,

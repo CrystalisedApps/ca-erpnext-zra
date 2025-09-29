@@ -8,6 +8,9 @@ from typing import Any, Dict, List, Union
 def get_smart_action_data(doctype: str, docname: str = None) -> dict[str, Any]:
     """Return Smart Zambia settings and item registration status (single setup only)."""
     active_settings = get_active_smart_settings()
+    # frappe.throw(str(docname))
+    # frappe.throw(str(active_settings))
+
 
     # No specific doc → just return available settings
     if not docname:
