@@ -23,7 +23,8 @@ fixtures = [
 ]
 
 doctype_js = {
-    "Item": "public/js/item.js"
+    "Item": "public/js/item.js",
+    "Sales Invoice": "public/js/sales_invoice.js"
 }
 # Apps
 # ------------------
