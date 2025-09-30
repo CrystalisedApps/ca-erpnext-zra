@@ -221,9 +221,10 @@
   },
   {
    "fieldname": "company_name",
-   "fieldtype": "Data",
+   "fieldtype": "Link",
    "in_list_view": 1,
    "label": "Company",
+   "options": "Company",
    "reqd": 1
   },
   {
@@ -235,7 +236,7 @@
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-09-22 15:50:42.339289",
+ "modified": "2025-09-26 19:38:49.922947",
  "modified_by": "Administrator",
  "module": "Ca Erpnext Zra",
  "name": "Crystal ZRA Smart Invoice Settings",

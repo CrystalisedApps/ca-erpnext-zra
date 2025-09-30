@@ -32,9 +32,16 @@ def process_request(
     Handles preparation of headers, server URL, and route path,
     then delegates to `execute_request` for remote API interaction.
     """
-    # Ensure we have active Crystal ZRA Smart Invoice settings
-    if not settings_name and not frappe.db.exists(SETTINGS_DOCTYPE_NAME, {"is_active": 1}):
-        return
+
+    # frappe.throw(str(settings_name))
+    # --- NEW fallback handling ---
+    settings = get_settings(settings_name)
+    
+    if not settings:
+        frappe.throw("No active Smart API Settings found. Please configure one in Crystal ZRA Smart Invoice Settings.")
+
+    # Normalized settings_name (always resolved now)
+    settings_name = settings.get("name")
 
     # Normalize and parse incoming request data
     data = parse_request_data(request_data)
