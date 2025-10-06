@@ -1,14 +1,18 @@
+
 from datetime import datetime
 import frappe
-from frappe.model.document import Document
 
 from frappe.utils.password import get_decrypted_password
+from frappe.utils.data import flt
+from datetime import datetime
+
+from frappe import _dict, get_doc, get_value
+from datetime import datetime
+from frappe.utils import now_datetime, nowdate
+from frappe.model.document import Document
+from .tax_utils import calculate_tax
+
 # from .id_utils import get_vsdc_id
-
-
-
-
-
 
 
 
@@ -100,70 +104,236 @@ def generate_vsdc_item_payload(item_name: str) -> dict:
     return payload
 
 
-def build_invoice_payload(invoice: Document, settings_name: str) -> dict:
-    """
-    Build a Crystal VSDC-compatible Sales Invoice payload from ERPNext Sales Invoice.
 
-    Args:
-        invoice (Document): ERPNext Sales Invoice or POS Invoice.
-        settings_name (str): Crystal VSDC settings doc.
 
-    Returns:
-        dict: Payload for /SalesInvoiceSaveReq endpoint.
-    """
 
-    # Format datetime
-    date_str = f"{invoice.posting_date} {invoice.posting_time or '00:00:00'}"
-    fmt = "%Y-%m-%d %H:%M:%S.%f" if "." in date_str else "%Y-%m-%d %H:%M:%S"
-    sales_dt = datetime.strptime(date_str, fmt).strftime("%Y-%m-%dT%H:%M:%SZ")
+def fmt4(value):
+    """Format to 4 decimal places as float."""
+    try:
+        return float(round(float(value or 0), 4))
+    except Exception:
+        return 0.0
 
-    reference_number = get_invoice_reference_number(invoice)
 
-    # Company + customer info
-    company = frappe.get_doc("Company", invoice.company)
+
+def build_invoice_payload(invoice: "Document", settings_name: str) -> dict:
+    settings = frappe.get_doc("Crystal ZRA Smart Invoice Settings", settings_name)
+    tpin = get_decrypted_password("Crystal ZRA Smart Invoice Settings", settings_name, "tpin") or ""
+    bhf_id = settings.get("branch_id") or "000"
+
+    # Dates
+    sales_dt = datetime.strptime(str(invoice.posting_date), "%Y-%m-%d").strftime("%Y%m%d")
+    now_str = datetime.now().strftime("%Y%m%d%H%M%S")
+
+    reference_number = invoice.name
     customer = frappe.get_doc("Customer", invoice.customer)
 
+    tax_field_map = {
+        "A": ("taxblAmtA", "taxAmtA", "taxRtA"),
+        "B": ("taxblAmtB", "taxAmtB", "taxRtB"),
+        "C1": ("taxblAmtC1", "taxAmtC1", "taxRtC1"),
+        "C2": ("taxblAmtC2", "taxAmtC2", "taxRtC2"),
+        "C3": ("taxblAmtC3", "taxAmtC3", "taxRtC3"),
+        "F": ("taxblAmtF", "taxAmtF", "taxRtF"),
+        "IPL1": ("taxblAmtIpl1", "taxAmtIpl1", "taxRtIpl1"),
+        "IPL2": ("taxblAmtIpl2", "taxAmtIpl2", "taxRtIpl2"),
+        "TL": ("taxblAmtTl", "taxAmtTl", "taxRtTl"),
+    }
+
     payload = {
-        "tpin": company.tax_id,  # ZRA Taxpayer PIN
-        "bhfId": company.custom_branch_id,  # branch id mapped in Crystal
+        "tpin": tpin,
+        "bhfId": bhf_id,
         "cisInvcNo": reference_number,
         "salesDt": sales_dt,
         "custTpin": customer.tax_id,
         "custNm": customer.customer_name,
         "currencyTyCd": invoice.currency,
         "totItemCnt": len(invoice.items),
-        "totAmt": invoice.grand_total,
-        "totTaxAmt": invoice.total_taxes_and_charges,
-        "totTaxblAmt": invoice.net_total,
+        "totAmt": fmt4(0),
+        "totTaxAmt": fmt4(0),
+        "totTaxblAmt": fmt4(0),
         "remark": invoice.remarks or "",
+        "cfmDt": now_str,
+        "regrId": "admin",
+        "regrNm": "admin",
+        "modrId": "admin",
+        "modrNm": "admin",
+        "pmtTyCd": "01",
+        "rcptTyCd": "S",
+        "salesTyCd": "N",
+        "salesSttsCd": "02",
+        "saleCtyCd": "1",
+        "prchrAcptcYn": "N",
+        "orgInvcNo": 0,
+        "exchangeRt": 1,
         "itemList": [],
     }
 
-    # Build item list
+    # Initialize tax category fields
+    for _, (taxbl, taxamt, taxrt) in tax_field_map.items():
+        payload[taxbl] = fmt4(0)
+        payload[taxamt] = fmt4(0)
+        payload[taxrt] = 0
+
+    # Line items
     for idx, item in enumerate(invoice.items, start=1):
+        # Fetch custom codes
+        pkg_code = frappe.db.get_value("Item", item.item_code, "custom_smart_packaging_unit") or "EA"
+        class_code = frappe.db.get_value("Item", item.item_code, "custom_smart_item_classification_code") or "00000000"
+        uom_code = frappe.db.get_value("Item", item.item_code, "custom_smart_quantity_unit") or "EA"
+
+        qty = fmt4(item.qty)
+        rate = fmt4(item.rate)
+
+        # Supply amount = net amount before tax
+        sply_amt = fmt4(item.net_amount)
+
+        # Discount
+        dc_amt = fmt4(item.get("discount_amount") or 0)
+        dc_rt = fmt4(item.get("discount_percentage") or 0)
+
+        # Tax rate
+        tax_rate = float(item.get("custom_tax_rate") or 0)
+        vat_amt = item.get("custom_vat_amount")
+
+        # Totals
+        
+        tot_amt = fmt4(sply_amt + vat_amt) 
+        tl_amt = tot_amt 
+        # tl_amt = fmt4(sply_amt + vat_amt)   # line total including VAT
+        # tot_amt = fmt4(sply_amt - dc_amt + vat_amt)  # supply - discount + taxes
+
+        # Update tax category totals
+        vat_cat = item.get("custom_taxation_type") or "A"
+        if vat_cat in tax_field_map:
+            taxbl, taxamt, taxrt = tax_field_map[vat_cat]
+            
+            payload[taxbl] = fmt4(payload[taxbl] + sply_amt)
+            payload[taxamt] = fmt4(payload[taxamt] + vat_amt)
+            payload[taxrt] = int(round(tax_rate))
+
+        # Item block
         payload["itemList"].append({
             "itemSeq": idx,
             "itemCd": item.item_code,
             "itemNm": item.item_name,
-            "itemClsCd": item.custom_classification_code or "",
-            "qty": item.qty,
-            "qtyUnitCd": item.uom,
-            "prc": item.rate,
-            "splyAmt": item.amount,
-            "tlAmt": item.net_amount,
-            "vatAmt": item.tax_amount or 0,
-            "vatTaxblAmt": item.net_amount,
+            "itemClsCd": class_code,
+            "qty": qty,
+            "qtyUnitCd": uom_code,
+            "prc": tl_amt,
+            "splyAmt": tot_amt,
+            "vatAmt": vat_amt,
+            "tlAmt": 0,
+            "totAmt": tot_amt,
+            "vatTaxblAmt": sply_amt,
+            "tlTaxblAmt": sply_amt, 
             "pkg": item.get("package_qty") or 1,
-            "pkgUnitCd": item.get("package_unit") or "EA",  # default to Each
-            # placeholders for Crystal fields
-            "dcAmt": 0,
-            "dcRt": 0,
-            "tlTaxblAmt": item.net_amount,
-            "totAmt": item.amount,
+            "pkgUnitCd": pkg_code,
+            "dcAmt": dc_amt,
+            "dcRt": dc_rt,
             "bcd": item.barcode or "",
+            "vatCatCd": vat_cat, 
         })
 
+    # Update global totals AFTER items
+    payload["totAmt"] = sum(item["totAmt"] for item in payload["itemList"])
+    payload["totTaxAmt"] = sum(item["vatAmt"] for item in payload["itemList"])
+    payload["totTaxblAmt"] = sum(item["vatTaxblAmt"] for item in payload["itemList"])
+
+
     return payload
+
+
+
+
+
+
+TAX_CATEGORY_MAP = {
+    "A": {"tax_rate": 16, "taxbl_key": "taxblAmtA", "tax_key": "taxAmtA", "rate_key": "taxRtA"},
+    "B": {"tax_rate": 16, "taxbl_key": "taxblAmtB", "tax_key": "taxAmtB", "rate_key": "taxRtB"},
+    "IPL2": {"tax_rate": 5, "taxbl_key": "taxblAmtIpl2", "tax_key": "taxAmtIpl2", "rate_key": "taxRtIpl2"},
+    # 👉 Add more mappings for C1, C2, F, etc. as needed
+}
+
+
+# def build_invoice_payload(doc):
+#     """
+#     Convert ERPNext Sales Invoice doc into ZRA Smart Invoice payload.
+#     """
+
+#     payload = {
+#         "tpin": "",
+#         "bhfId": "000",
+#         "orgInvcNo": 0,
+#         "cisInvcNo": doc.name,
+#         "custTpin": doc.tax_id or "2000000000",
+#         "custNm": doc.customer_name,
+#         "salesTyCd": "N",
+#         "rcptTyCd": "S",
+#         "pmtTyCd": "01",   # Cash (default)
+#         "salesSttsCd": "02",
+#         "cfmDt": now_datetime().strftime("%Y%m%d%H%M%S"),
+#         "salesDt": nowdate().replace("-", ""),
+#         "totItemCnt": len(doc.items),
+#         # init totals
+#         "totTaxblAmt": 0,
+#         "totTaxAmt": 0,
+#         "totAmt": 0,
+#         # init category fields
+#     }
+
+#     # Init tax category fields
+#     for key in ["A", "B", "C1", "C2", "C3", "D", "Rvat", "E", "F", "Ipl1", "Ipl2", "Tl", "Ecm", "Exeeg"]:
+#         payload[f"taxblAmt{key}"] = 0
+#         payload[f"taxRt{key}"] = 0
+#         payload[f"taxAmt{key}"] = 0
+
+#     item_list = []
+
+#     # Process items
+#     for idx, item in enumerate(doc.items, start=1):
+#         cat_code = getattr(item, "taxation_type_code", None)
+#         mapping = TAX_CATEGORY_MAP.get(cat_code)
+
+#         vat_amount = 0
+#         if mapping:
+#             tax_rate = mapping["tax_rate"]
+#             vat_amount = (item.base_net_amount * tax_rate) / 100
+
+#             payload[mapping["taxbl_key"]] += item.base_net_amount
+#             payload[mapping["tax_key"]] += vat_amount
+#             payload[mapping["rate_key"]] = tax_rate
+
+#         # Add to invoice totals
+#         payload["totTaxblAmt"] += item.base_net_amount
+#         payload["totTaxAmt"] += vat_amount
+
+#         item_list.append({
+#             "itemSeq": idx,
+#             "itemCd": item.item_code,
+#             "itemClsCd": getattr(item, "custom_class_code", "50102518"),
+#             "itemNm": item.item_name,
+#             "qty": item.qty,
+#             "prc": item.rate,
+#             "splyAmt": item.base_net_amount,
+#             "dcRt": item.discount_percentage or 0,
+#             "dcAmt": item.discount_amount or 0,
+#             "vatCatCd": cat_code if cat_code in ["A", "B", "C1"] else None,
+#             "iplCatCd": cat_code if "IPL" in (cat_code or "") else None,
+#             "vatTaxblAmt": item.base_net_amount if cat_code in ["A", "B", "C1"] else 0,
+#             "vatAmt": vat_amount if cat_code in ["A", "B", "C1"] else 0,
+#             "iplTaxblAmt": item.base_net_amount if "IPL" in (cat_code or "") else 0,
+#             "iplAmt": vat_amount if "IPL" in (cat_code or "") else 0,
+#             "totAmt": item.base_net_amount + vat_amount - (item.discount_amount or 0),
+#         })
+
+#     # Grand totals
+#     payload["totAmt"] = payload["totTaxblAmt"] + payload["totTaxAmt"] - (doc.discount_amount or 0)
+#     payload["cashDcAmt"] = doc.discount_amount or 0
+#     payload["itemList"] = item_list
+
+#     return payload
+
 
 def get_invoice_reference_number(invoice: Document) -> str:
     """
@@ -188,4 +358,31 @@ def get_invoice_reference_number(invoice: Document) -> str:
 
 
 
+def build_return_invoice_payload(doc, settings_name: str) -> dict:
+    """
+    Build payload for return (credit note) invoices to Crystal VSDC.
+    Adapt fields as required by API spec.
+    """
+    return {
+        "tpin": doc.company_tax_id,
+        "bhfId": "000",
+        "orgInvcNo": doc.return_against or "",
+        "cisInvcNo": doc.name,
+        "custTpin": doc.customer_tax_id,
+        "salesTyCd": "R",  # return
+        "salesDt": doc.posting_date.strftime("%Y%m%d"),
+        "totAmt": doc.rounded_total or doc.grand_total,
+        "remark": f"Credit Note for {doc.return_against}",
+        "itemList": [
+            {
+                "itemSeq": i.idx,
+                "itemCd": i.item_code,
+                "itemNm": i.item_name,
+                "qty": i.qty,
+                "prc": i.rate,
+                "totAmt": i.amount,
+            }
+            for i in doc.items
+        ],
+    }
 

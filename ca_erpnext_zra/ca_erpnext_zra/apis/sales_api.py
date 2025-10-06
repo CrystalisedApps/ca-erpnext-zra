@@ -2,7 +2,7 @@
 import frappe
 from ..services.sales_service import (
 
-    submit_credit_note
+    submit_credit_note_service
 )
 
 @frappe.whitelist()

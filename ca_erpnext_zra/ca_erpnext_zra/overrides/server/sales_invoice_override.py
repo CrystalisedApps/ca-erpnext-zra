@@ -1,7 +1,7 @@
 import frappe
 from frappe.model.document import Document
 
-from ...services.sales_service import generic_invoices_on_submit_override
+from .shared_override import generic_invoices_on_submit_override
 from ...utils.settings_utils import  get_settings
 from ...utils.tax_utils import calculate_tax
 
@@ -10,18 +10,18 @@ def on_submit(doc: Document, method: str = None) -> None:
     Pushes the invoice details to Crystal VSDC if auto-submission is enabled.
     """
     company_name = doc.company
-    settings_doc = get_settings(company_name=company_name)
+    settings_doc = get_settings()
 
     if not settings_doc:
         return
 
     # Compute tax breakdown before sending
-    calculate_tax(doc)
+    # calculate_tax(doc)
 
     # Only push to VSDC if certain conditions are met
     if (
         doc.custom_successfully_submitted == 0
-        and doc.prevent_vsdc_submission == 0
+        and doc.custom_prevent_smart_submission == 0
         and doc.is_opening == "No"
         and settings_doc.sales_auto_submission_enabled
     ):

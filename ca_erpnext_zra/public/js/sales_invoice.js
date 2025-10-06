@@ -37,7 +37,7 @@ frappe.ui.form.on(parentDoctype, {
         __("Send Invoice"),
         function () {
           executeVSDCAction("Send Invoice", activeSetting, (settings_name) => ({
-            method: "crystal_vsdc_integration.overrides.server.sales_invoice.send_invoice_details",
+            method: "ca_erpnext_zra.ca_erpnext_zra.overrides.server.sales_invoice_override.send_invoice_details",
             args: { name: frm.doc.name, settings_name: settings_name },
             success_msg: "Invoice submission queued",
           }));
@@ -136,13 +136,22 @@ function executeVSDCAction(title, settings, getCallArgs) {
 // === Child Doctype: Sales Invoice Item ===
 frappe.ui.form.on(childDoctype, {
   item_code: function (frm, cdt, cdn) {
-    const item = locals[cdt][cdn].item_code;
-    const taxationType = locals[cdt][cdn].custom_taxation_type;
+    const row = locals[cdt][cdn];
 
-    if (!taxationType) {
-      frappe.db.get_value("Item", { item_code: item }, ["custom_taxation_type"], (r) => {
-        locals[cdt][cdn].custom_taxation_type = r.custom_taxation_type;
-        locals[cdt][cdn].custom_taxation_type_code = r.custom_taxation_type;
+    if (!row.custom_taxation_type && row.item_code) {
+      frappe.call({
+        method: "frappe.client.get",
+        args: {
+          doctype: "Item",
+          name: row.item_code,
+        },
+        callback: function (r) {
+          if (r.message) {
+            row.custom_taxation_type = r.message.custom_taxation_type;
+            row.custom_taxation_type_code = r.message.custom_taxation_type;
+            frm.refresh_field("items");
+          }
+        },
       });
     }
   },

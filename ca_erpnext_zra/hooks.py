@@ -166,7 +166,7 @@ doc_events = {
 	# 	"on_trash": "method"
 	
      "Sales Invoice": {
-  
+  "before_save": ["ca_erpnext_zra.ca_erpnext_zra.overrides.server.shared_override.before_save","ca_erpnext_zra.ca_erpnext_zra.utils.tax_utils._recalculate_zra_amounts"],
         "on_submit": [
             "ca_erpnext_zra.ca_erpnext_zra.overrides.server.sales_invoice_override.on_submit"
         ],

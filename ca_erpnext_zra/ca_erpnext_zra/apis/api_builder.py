@@ -4,7 +4,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Callable, Literal, Optional, Union
 from urllib import parse
-
+from ca_erpnext_zra.ca_erpnext_zra.utils.tax_utils import _recalculate_zra_amounts
 import requests
 import frappe
 from frappe.integrations.utils import create_request_log
@@ -21,28 +21,22 @@ class BaseEndpointsBuilder:
         self.doctype: str | Document | None = None
         self.document_name: str | None = None
 
-    def attach(self, observer: ErrorObserver) -> None:
+    def attach(self, observer: "ErrorObserver") -> None:
         self._observers.append(observer)
 
     def notify(self) -> None:
         for observer in self._observers:
             try:
                 observer.update(self)
-            except Exception as e:
-                # Always catch observer failures to avoid cascading worker failures
+            except Exception:
                 frappe.log_error(title="Observer update failed", message=frappe.get_traceback())
 
 
 class ErrorObserver:
     """Error observer for failed integrations."""
     def update(self, notifier: BaseEndpointsBuilder) -> None:
-        """
-        Called when notifier.error is set. Log error and update Integration Request record.
-        This must not call frappe.throw (UI only) — use frappe.log_error and raise Exception if needed.
-        """
         try:
             if notifier.error and notifier.integration_request:
-                # update integration request status in a safe way
                 try:
                     update_integration_request(
                         notifier.integration_request.name,
@@ -51,7 +45,6 @@ class ErrorObserver:
                         error=str(notifier.error),
                     )
                 except Exception:
-                    # Best effort: if Integration Request update fails, just log it
                     frappe.log_error(
                         title="Failed to update Integration Request after error",
                         message=frappe.get_traceback(),
@@ -59,7 +52,6 @@ class ErrorObserver:
                         reference_name=notifier.document_name,
                     )
 
-                # Log full traceback to Error Log (so we have traceability)
                 frappe.log_error(
                     title="Smart API Fatal Error",
                     message=str(notifier.error),
@@ -67,7 +59,6 @@ class ErrorObserver:
                     reference_name=notifier.document_name,
                 )
         except Exception:
-            # Ensure observer itself never throws uncontrolled frappe.throw
             frappe.log_error(title="ErrorObserver.update unexpected error", message=frappe.get_traceback())
 
 
@@ -149,7 +140,9 @@ class EndpointsBuilder(BaseEndpointsBuilder):
         document_name: str | None = None,
         retrying: bool = False,
     ) -> Optional[Union[dict, str, bytes]]:
-        # Validate required pieces — background-safe handling
+        
+       
+        # Validate required pieces
         missing = []
         if not self._url:
             missing.append("url")
@@ -157,15 +150,11 @@ class EndpointsBuilder(BaseEndpointsBuilder):
             missing.append("headers")
         if not self._method:
             missing.append("method")
-        # success_callback is optional now; only warn if you rely on it
         if missing:
-            msg = f"Remote call missing required parameters: {', '.join(missing)}"
-            # Log and raise a plain exception so RQ marks job as failed
-            safe_raise(msg)
+            safe_raise(f"Remote call missing required parameters: {', '.join(missing)}")
 
         # settings must be active
         if not self._settings or not getattr(self._settings, "is_active", False):
-            # Log and return None (no remote call)
             frappe.log_error(
                 title="Inactive Crystal ZRA Smart Invoice Settings",
                 message=f"Settings missing or inactive: {getattr(self._settings, 'name', None)}",
@@ -178,34 +167,25 @@ class EndpointsBuilder(BaseEndpointsBuilder):
         parsed_url = parse.urlparse(self._url)
         route_path = f"/{parsed_url.path.split('/')[-1]}"
 
-        # Create Integration Request log once (best-effort)
+        # ✅ Create Integration Request log once (best-effort)
         if not retrying:
             try:
-                self.integration_request = create_request_log(
+                kwargs = dict(
                     data=self._payload,
                     request_description=self._request_description,
                     is_remote_request=True,
                     service_name="Crystal VSDC",
                     request_headers=self._headers,
                     url=self._url,
-                    reference_docname=document_name,
                     reference_doctype=doctype,
                 )
+                if document_name:  # ✅ only pass if not None
+                    kwargs["reference_docname"] = document_name
+
+                self.integration_request = create_request_log(**kwargs)
+
             except Exception:
-                # fallback: try without reference_docname
-                try:
-                    self.integration_request = create_request_log(
-                        data=self._payload,
-                        request_description=self._request_description,
-                        is_remote_request=True,
-                        service_name="Crystal VSDC",
-                        request_headers=self._headers,
-                        url=self._url,
-                        reference_doctype=doctype,
-                    )
-                except Exception:
-                    # If logging fails, still proceed with request but warn
-                    frappe.log_error(title="Failed to create Integration Request", message=frappe.get_traceback())
+                frappe.log_error(title="Failed to create Integration Request", message=frappe.get_traceback())
 
         try:
             # Perform request
@@ -223,13 +203,11 @@ class EndpointsBuilder(BaseEndpointsBuilder):
             response_data = get_response_data(response)
 
             if response.status_code in {200, 201}:
-                # mark integration request completed
                 try:
                     frappe.db.set_value("Integration Request", self.integration_request.name, "status", "Completed")
                 except Exception:
                     frappe.log_error(title="Failed to update Integration Request status to Completed", message=frappe.get_traceback())
 
-                # Call success callback if provided
                 if self._success_callback:
                     try:
                         self._success_callback(
@@ -240,10 +218,8 @@ class EndpointsBuilder(BaseEndpointsBuilder):
                             settings_name=self._settings.name if self._settings else None,
                         )
                     except Exception:
-                        # log but don't crash the worker here
                         frappe.log_error(title="Success callback error", message=frappe.get_traceback())
 
-                # Update integration request output
                 try:
                     update_integration_request(
                         self.integration_request.name,
@@ -255,7 +231,6 @@ class EndpointsBuilder(BaseEndpointsBuilder):
 
             else:
                 error_msg = extract_error(response_data)
-                # update integration request as failed
                 try:
                     update_integration_request(
                         self.integration_request.name,
@@ -265,7 +240,6 @@ class EndpointsBuilder(BaseEndpointsBuilder):
                 except Exception:
                     frappe.log_error(title="Failed to update integration request on error", message=frappe.get_traceback())
 
-                # call error callback if provided
                 if self._error_callback:
                     try:
                         self._error_callback(
@@ -282,15 +256,13 @@ class EndpointsBuilder(BaseEndpointsBuilder):
             return response_data
 
         except Exception as e:
-            # store error and notify observers (observer will mark integration req failed and log)
             self.error = e
             try:
                 self.notify()
             except Exception:
-                # Ensure notify never hides the original exception
                 frappe.log_error(title="notify() failed", message=frappe.get_traceback())
-            # re-raise so RQ marks job as failed and you can see it in Background Jobs
             raise
+
 
 # ---------- Helpers ---------- #
 def get_response_data(response: requests.Response) -> Optional[Union[dict, str, bytes]]:
