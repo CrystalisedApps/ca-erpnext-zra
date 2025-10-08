@@ -22,7 +22,7 @@ def get_settings(settings_name: str = None) -> dict | None:
     settings = frappe.get_all(
         SETTINGS_DOCTYPE_NAME,
         filters={"is_active": 1},
-        fields=["name", "company_name", "tpin", "server_url"],
+        fields=["name", "company_name", "tpin", "server_url", "sales_auto_submission_enabled"],
         limit=1,
     )
 

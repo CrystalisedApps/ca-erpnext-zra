@@ -158,15 +158,14 @@ doctype_js = {
 # ---------------
 # Hook on document methods and events
 
-
 doc_events = {
 	# "*": {
 	# 	"on_update": "method",
 	# 	"on_cancel": "method",
 	# 	"on_trash": "method"
 	
-     "Sales Invoice": {
-  "before_save": ["ca_erpnext_zra.ca_erpnext_zra.overrides.server.shared_override.before_save","ca_erpnext_zra.ca_erpnext_zra.utils.tax_utils._recalculate_zra_amounts"],
+    "Sales Invoice": {
+        "before_save": ["ca_erpnext_zra.ca_erpnext_zra.overrides.server.shared_override.before_save"],
         "on_submit": [
             "ca_erpnext_zra.ca_erpnext_zra.overrides.server.sales_invoice_override.on_submit"
         ],

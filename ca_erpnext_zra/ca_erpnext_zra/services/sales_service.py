@@ -1,6 +1,7 @@
 import frappe
+from frappe.model.document import Document
 from ..apis.api_processor import process_request
-from ..utils.payload_utils import build_return_invoice_payload
+from ..utils.payload_utils import build_credit_note_payload
 
 
 
@@ -18,15 +19,15 @@ def sales_information_submission_on_success(
     """
     updates = {
         "custom_successfully_submitted": 1,
-        "vsdc_invoice_number": response.get("cisInvcNo"),  # Crystal VSDC returns this unique invoice number
-        "vsdc_confirmation_date": response.get("cfmDt"),   # Confirmation date if available
+        "custom_scu_invoice_number": response.get("cisInvcNo"),  # Crystal VSDC returns this unique invoice number
+        "custom_control_unit_date_time": response.get("cfmDt"),   # Confirmation date if available
     }
 
     frappe.db.set_value(doctype, document_name, updates)
 
     # Enqueue background fetch of invoice details for consistency check
     frappe.enqueue(
-        "ca_erpnext_zra.ca_erpnext_zra.services.sales_service.get_invoice_details",
+        "ca_erpnext_zra.ca_erpnext_zra.apis.invoice_processor.get_vsdc_invoice_details",
         document_name=document_name,
         invoice_type=doctype,
         settings_name=settings_name,
@@ -51,8 +52,7 @@ def sales_information_submission_on_error(
                 f"Response: {response}"
     )
 
-import frappe
-from frappe.model.document import Document
+
 
 
 
@@ -77,7 +77,7 @@ def submit_credit_note_service(
     doc: Document = frappe.get_doc(doctype, document_name)
 
     # Prepare payload for Crystal VSDC's Credit Note endpoint
-    payload = build_return_invoice_payload(doc, response)
+    payload = build_credit_note_payload(doc, response)
 
     # Enqueue request to VSDC
     frappe.enqueue(

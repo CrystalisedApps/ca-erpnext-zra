@@ -25,6 +25,7 @@ def process_request(
     error_callback: Callable = None,
     settings_name: str = None,
     company: str = None,
+    document_name: str= None
 ) -> str | dict | None:
     """
     Core request processor for Crystal Smart Invoice servers.

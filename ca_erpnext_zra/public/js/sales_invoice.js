@@ -52,7 +52,7 @@ frappe.ui.form.on(parentDoctype, {
         __("Sync Invoice Details"),
         function () {
           executeVSDCAction("Sync Invoice", activeSetting, (settings_name) => ({
-            method: "crystal_vsdc_integration.apis.apis.get_invoice_details",
+            method: "ca_erpnext_zra.ca_erpnext_zra.apis.invoice_processor.get_vsdc_invoice_details",
             args: {
               document_name: frm.doc.name,
               invoice_type: "Sales Invoice",

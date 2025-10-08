@@ -2,13 +2,16 @@
 from datetime import datetime
 import frappe
 
+from frappe.utils import now_datetime, getdate, cint, flt
 from frappe.utils.password import get_decrypted_password
+
 from frappe.utils.data import flt
 from datetime import datetime
+from frappe.utils import cint
 
 from frappe import _dict, get_doc, get_value
 from datetime import datetime
-from frappe.utils import now_datetime, nowdate
+
 from frappe.model.document import Document
 from .tax_utils import calculate_tax
 
@@ -119,7 +122,7 @@ def fmt4(value):
 def build_invoice_payload(invoice: "Document", settings_name: str) -> dict:
     settings = frappe.get_doc("Crystal ZRA Smart Invoice Settings", settings_name)
     tpin = get_decrypted_password("Crystal ZRA Smart Invoice Settings", settings_name, "tpin") or ""
-    bhf_id = settings.get("branch_id") or "000"
+    bhf_id = "000"
 
     # Dates
     sales_dt = datetime.strptime(str(invoice.posting_date), "%Y-%m-%d").strftime("%Y%m%d")
@@ -186,7 +189,9 @@ def build_invoice_payload(invoice: "Document", settings_name: str) -> dict:
         rate = fmt4(item.rate)
 
         # Supply amount = net amount before tax
-        sply_amt = fmt4(item.net_amount)
+        # sply_amt = fmt4(item.net_amount)
+
+        sply_amt = fmt4(rate * qty)
 
         # Discount
         dc_amt = fmt4(item.get("discount_amount") or 0)
@@ -194,11 +199,10 @@ def build_invoice_payload(invoice: "Document", settings_name: str) -> dict:
 
         # Tax rate
         tax_rate = float(item.get("custom_tax_rate") or 0)
-        vat_amt = item.get("custom_vat_amount")
+        vat_amt = fmt4(sply_amt * tax_rate / 100)
 
         # Totals
-        
-        tot_amt = fmt4(sply_amt + vat_amt) 
+        tot_amt = fmt4(sply_amt - dc_amt + vat_amt) 
         tl_amt = tot_amt 
         # tl_amt = fmt4(sply_amt + vat_amt)   # line total including VAT
         # tot_amt = fmt4(sply_amt - dc_amt + vat_amt)  # supply - discount + taxes
@@ -221,7 +225,7 @@ def build_invoice_payload(invoice: "Document", settings_name: str) -> dict:
             "qty": qty,
             "qtyUnitCd": uom_code,
             "prc": tl_amt,
-            "splyAmt": tot_amt,
+            "splyAmt": tl_amt,
             "vatAmt": vat_amt,
             "tlAmt": 0,
             "totAmt": tot_amt,
@@ -256,83 +260,7 @@ TAX_CATEGORY_MAP = {
 }
 
 
-# def build_invoice_payload(doc):
-#     """
-#     Convert ERPNext Sales Invoice doc into ZRA Smart Invoice payload.
-#     """
 
-#     payload = {
-#         "tpin": "",
-#         "bhfId": "000",
-#         "orgInvcNo": 0,
-#         "cisInvcNo": doc.name,
-#         "custTpin": doc.tax_id or "2000000000",
-#         "custNm": doc.customer_name,
-#         "salesTyCd": "N",
-#         "rcptTyCd": "S",
-#         "pmtTyCd": "01",   # Cash (default)
-#         "salesSttsCd": "02",
-#         "cfmDt": now_datetime().strftime("%Y%m%d%H%M%S"),
-#         "salesDt": nowdate().replace("-", ""),
-#         "totItemCnt": len(doc.items),
-#         # init totals
-#         "totTaxblAmt": 0,
-#         "totTaxAmt": 0,
-#         "totAmt": 0,
-#         # init category fields
-#     }
-
-#     # Init tax category fields
-#     for key in ["A", "B", "C1", "C2", "C3", "D", "Rvat", "E", "F", "Ipl1", "Ipl2", "Tl", "Ecm", "Exeeg"]:
-#         payload[f"taxblAmt{key}"] = 0
-#         payload[f"taxRt{key}"] = 0
-#         payload[f"taxAmt{key}"] = 0
-
-#     item_list = []
-
-#     # Process items
-#     for idx, item in enumerate(doc.items, start=1):
-#         cat_code = getattr(item, "taxation_type_code", None)
-#         mapping = TAX_CATEGORY_MAP.get(cat_code)
-
-#         vat_amount = 0
-#         if mapping:
-#             tax_rate = mapping["tax_rate"]
-#             vat_amount = (item.base_net_amount * tax_rate) / 100
-
-#             payload[mapping["taxbl_key"]] += item.base_net_amount
-#             payload[mapping["tax_key"]] += vat_amount
-#             payload[mapping["rate_key"]] = tax_rate
-
-#         # Add to invoice totals
-#         payload["totTaxblAmt"] += item.base_net_amount
-#         payload["totTaxAmt"] += vat_amount
-
-#         item_list.append({
-#             "itemSeq": idx,
-#             "itemCd": item.item_code,
-#             "itemClsCd": getattr(item, "custom_class_code", "50102518"),
-#             "itemNm": item.item_name,
-#             "qty": item.qty,
-#             "prc": item.rate,
-#             "splyAmt": item.base_net_amount,
-#             "dcRt": item.discount_percentage or 0,
-#             "dcAmt": item.discount_amount or 0,
-#             "vatCatCd": cat_code if cat_code in ["A", "B", "C1"] else None,
-#             "iplCatCd": cat_code if "IPL" in (cat_code or "") else None,
-#             "vatTaxblAmt": item.base_net_amount if cat_code in ["A", "B", "C1"] else 0,
-#             "vatAmt": vat_amount if cat_code in ["A", "B", "C1"] else 0,
-#             "iplTaxblAmt": item.base_net_amount if "IPL" in (cat_code or "") else 0,
-#             "iplAmt": vat_amount if "IPL" in (cat_code or "") else 0,
-#             "totAmt": item.base_net_amount + vat_amount - (item.discount_amount or 0),
-#         })
-
-#     # Grand totals
-#     payload["totAmt"] = payload["totTaxblAmt"] + payload["totTaxAmt"] - (doc.discount_amount or 0)
-#     payload["cashDcAmt"] = doc.discount_amount or 0
-#     payload["itemList"] = item_list
-
-#     return payload
 
 
 def get_invoice_reference_number(invoice: Document) -> str:
@@ -358,31 +286,243 @@ def get_invoice_reference_number(invoice: Document) -> str:
 
 
 
-def build_return_invoice_payload(doc, settings_name: str) -> dict:
-    """
-    Build payload for return (credit note) invoices to Crystal VSDC.
-    Adapt fields as required by API spec.
-    """
-    return {
-        "tpin": doc.company_tax_id,
-        "bhfId": "000",
-        "orgInvcNo": doc.return_against or "",
-        "cisInvcNo": doc.name,
-        "custTpin": doc.customer_tax_id,
-        "salesTyCd": "R",  # return
-        "salesDt": doc.posting_date.strftime("%Y%m%d"),
-        "totAmt": doc.rounded_total or doc.grand_total,
-        "remark": f"Credit Note for {doc.return_against}",
-        "itemList": [
-            {
-                "itemSeq": i.idx,
-                "itemCd": i.item_code,
-                "itemNm": i.item_name,
-                "qty": i.qty,
-                "prc": i.rate,
-                "totAmt": i.amount,
-            }
-            for i in doc.items
-        ],
+def build_credit_note_payload(doc, settings_name):
+    """Build payload for Credit Note (Return Invoice) matching invoice payload structure."""
+
+    settings = frappe.get_doc("Crystal ZRA Smart Invoice Settings", settings_name)
+    original_invoice = frappe.get_doc("Sales Invoice", doc.return_against)
+    customer = frappe.get_doc("Customer", doc.customer)
+
+    tpin = get_decrypted_password(
+        "Crystal ZRA Smart Invoice Settings",
+        settings.name,
+        "tpin",
+        raise_exception=False
+    ) or ""
+
+    bhf_id = settings.get("branch_id") or "000"
+
+    sales_dt = getdate(doc.posting_date).strftime("%Y%m%d")
+    now_str = now_datetime().strftime("%Y%m%d%H%M%S")
+
+    # === Tax category mapping ===
+    tax_field_map = {
+        "A": ("taxblAmtA", "taxAmtA", "taxRtA"),
+        "B": ("taxblAmtB", "taxAmtB", "taxRtB"),
+        "C1": ("taxblAmtC1", "taxAmtC1", "taxRtC1"),
+        "C2": ("taxblAmtC2", "taxAmtC2", "taxRtC2"),
+        "C3": ("taxblAmtC3", "taxAmtC3", "taxRtC3"),
+        "F": ("taxblAmtF", "taxAmtF", "taxRtF"),
+        "IPL1": ("taxblAmtIpl1", "taxAmtIpl1", "taxRtIpl1"),
+        "IPL2": ("taxblAmtIpl2", "taxAmtIpl2", "taxRtIpl2"),
+        "TL": ("taxblAmtTl", "taxAmtTl", "taxRtTl"),
     }
 
+    # === Base payload ===
+    payload = {
+        "tpin": tpin,
+        "bhfId": bhf_id,
+        "orgInvcNo": cint(original_invoice.name.split('-')[-1]),
+        "cisInvcNo": doc.name,
+        "custTpin": customer.tax_id or "",
+        "custNm": doc.customer_name or "",
+        "salesTyCd": "N",
+        "rcptTyCd": "R",  # R = Credit Note
+        "pmtTyCd": get_payment_type_code(doc),
+        "salesSttsCd": "02",  # Return
+        "cfmDt": now_str,
+        "salesDt": sales_dt,
+        "rfdRsnCd": "01",
+        "invcAdjustReason": doc.get("return_reason") or "Return Credit",
+        "totItemCnt": len(doc.items),
+        "cashDcRt": 0,
+        "cashDcAmt": 0,
+        "totAmt": 0,
+        "totTaxAmt": 0,
+        "totTaxblAmt": 0,
+        "prchrAcptcYn": "N",
+        "remark": doc.remarks or "",
+        "regrId": frappe.session.user,
+        "regrNm": frappe.utils.get_fullname(frappe.session.user),
+        "modrId": frappe.session.user,
+        "modrNm": frappe.utils.get_fullname(frappe.session.user),
+        "saleCtyCd": "1",
+        "currencyTyCd": doc.currency or "ZMW",
+        "exchangeRt": "1",
+        "itemList": [],
+    }
+
+    # Initialize all tax fields to 0 (ZRA requires presence)
+    for _, (taxbl, taxamt, taxrt) in tax_field_map.items():
+        payload[taxbl] = 0
+        payload[taxamt] = 0
+        payload[taxrt] = 0
+
+    # === Build line items ===
+    for idx, item in enumerate(doc.items, start=1):
+        pkg_code = frappe.db.get_value("Item", item.item_code, "custom_smart_packaging_unit") or "EA"
+        class_code = frappe.db.get_value("Item", item.item_code, "custom_smart_item_classification_code") or "00000000"
+        uom_code = frappe.db.get_value("Item", item.item_code, "custom_smart_quantity_unit") or "EA"
+
+        qty = fmt4(item.qty)
+        rate = fmt4(item.rate)
+        sply_amt = fmt4(rate * qty)
+
+        dc_amt = fmt4(item.discount_amount or 0)
+        dc_rt = fmt4(item.discount_percentage or 0)
+
+        tax_rate = float(item.get("custom_tax_rate") or 0)
+        vat_amt = fmt4(sply_amt * tax_rate / 100)
+        tot_amt = fmt4(sply_amt - dc_amt + vat_amt)
+        tl_amt = tot_amt 
+
+        vat_cat = get_vat_category(item)
+
+        # update tax fields by category
+        if vat_cat in tax_field_map:
+            taxbl, taxamt, taxrt = tax_field_map[vat_cat]
+            payload[taxbl] = fmt4(payload[taxbl] + sply_amt)
+            payload[taxamt] = fmt4(payload[taxamt] + vat_amt)
+            payload[taxrt] = int(round(tax_rate))
+
+        payload["itemList"].append({
+            "itemSeq": idx,
+            "itemCd": item.item_code,
+            "itemNm": item.item_name,
+            "itemClsCd": class_code,
+            "bcd": item.barcode or "",
+            "pkgUnitCd": pkg_code,
+            "pkg": 1,
+            "qtyUnitCd": uom_code,
+            "qty": qty,
+            "prc": tl_amt,
+            "splyAmt": sply_amt,
+            "dcRt": dc_rt,
+            "dcAmt": dc_amt,
+            "vatCatCd": vat_cat,
+            "vatTaxblAmt": sply_amt,
+            "vatAmt": vat_amt,
+            "totAmt": tot_amt,
+            "tlAmt": 0,
+            "tlTaxblAmt": sply_amt,
+        })
+
+    # === Totals after all items ===
+    payload["totAmt"] = fmt4(sum(i["totAmt"] for i in payload["itemList"]))
+    payload["totTaxAmt"] = fmt4(sum(i["vatAmt"] for i in payload["itemList"]))
+    payload["totTaxblAmt"] = fmt4(sum(i["vatTaxblAmt"] for i in payload["itemList"]))
+
+    return payload
+
+
+def build_credit_note_items(doc):
+    """Map return items to ZRA credit note item format."""
+   
+    items = []
+    for idx, item in enumerate(doc.items, start=1):
+        class_code = frappe.db.get_value("Item", item.item_code, "custom_smart_item_classification_code") or "00000000"
+        pkg_code = frappe.db.get_value("Item", item.item_code, "custom_smart_packaging_unit") or "EA"
+        uom_code = frappe.db.get_value("Item", item.item_code, "custom_smart_quantity_unit") or "EA"
+
+        items.append({
+            "itemSeq": idx,
+            "itemCd": item.item_code,
+            "itemClsCd": class_code,
+            "itemNm": item.item_name,
+            "bcd": item.barcode or "",
+            "pkgUnitCd": pkg_code,
+            "pkg": 0,
+            "qtyUnitCd": uom_code,
+            "qty": flt(item.qty),
+            "prc": flt(item.rate),
+            "splyAmt": flt(item.amount),
+            "dcRt": item.discount_percentage or 0,
+            "dcAmt": item.discount_amount or 0,
+            "vatCatCd": get_vat_category(item),
+            "vatTaxblAmt": flt(item.net_amount),
+            "vatAmt": flt(item.custom_vat_amount or 0),
+            "totAmt": flt(item.base_amount),
+        })
+    return items
+
+
+def get_vat_category(item):
+    """
+    Map ERPNext item tax or tax template to ZRA VAT category code.
+    Categories (ZRA standard):
+        A = Standard-rated (16%)
+        B = Zero-rated
+        C = Exempt
+        D = Non-taxable
+    """
+    # If you store VAT category in a custom field, just return it
+    if getattr(item, "vat_category", None):
+        return item.vat_category
+
+    # Try to infer from tax rate or tax template
+    tax_rate = 0
+    try:
+        if hasattr(item, "item_tax_rate") and isinstance(item.item_tax_rate, dict):
+            # ERPNext stores tax rates as JSON
+            tax_rate = list(item.item_tax_rate.values())[0]
+    except Exception:
+        pass
+
+    #  Fallbacks
+    if tax_rate >= 16:
+        return "A"  # Standard-rated
+    elif tax_rate == 0:
+        return "B"  # Zero-rated
+    elif tax_rate is None:
+        return "C"  # Exempt
+    else:
+        return "D"  # Non-taxable
+
+def get_payment_type_code(doc):
+    """
+    Map ERPNext payment method(s) to ZRA payment type codes.
+
+    ZRA Codes:
+      01 = Cash
+      02 = Credit
+      03 = Cheque
+      04 = Electronic Payment (Card, Bank Transfer, Mobile Money)
+      05 = Other
+    """
+
+    # Default to "01" = Cash
+    payment_code = "01"
+
+    try:
+        # POS Invoice usually has payment references
+        if hasattr(doc, "payments") and doc.payments:
+            for payment in doc.payments:
+                mode = (payment.mode_of_payment or "").lower()
+                if "cash" in mode:
+                    payment_code = "01"
+                elif "credit" in mode:
+                    payment_code = "02"
+                elif "cheque" in mode:
+                    payment_code = "03"
+                elif any(x in mode for x in ["bank", "transfer", "mobile", "card", "visa", "master"]):
+                    payment_code = "04"
+                else:
+                    payment_code = "05"
+        else:
+            # For Sales Invoice, check the `mode_of_payment` field or payment schedule
+            if hasattr(doc, "mode_of_payment") and doc.mode_of_payment:
+                mode = doc.mode_of_payment.lower()
+                if "cash" in mode:
+                    payment_code = "01"
+                elif "credit" in mode:
+                    payment_code = "02"
+                elif "cheque" in mode:
+                    payment_code = "03"
+                elif any(x in mode for x in ["bank", "transfer", "mobile", "card"]):
+                    payment_code = "04"
+                else:
+                    payment_code = "05"
+    except Exception:
+        pass
+
+    return payment_code

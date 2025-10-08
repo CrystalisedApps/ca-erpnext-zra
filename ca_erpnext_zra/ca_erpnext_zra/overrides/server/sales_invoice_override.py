@@ -7,32 +7,53 @@ from ...utils.tax_utils import calculate_tax
 
 def on_submit(doc: Document, method: str = None) -> None:
     """Triggered when a Sales Invoice is submitted in ERPNext.
-    Pushes the invoice details to Crystal VSDC if auto-submission is enabled.
+    Pushes invoice or return details to Crystal VSDC if auto-submission is enabled.
     """
-    company_name = doc.company
-    settings_doc = get_settings()
 
-    if not settings_doc:
+    settings_doc = get_settings()
+    if not settings_doc or not settings_doc.sales_auto_submission_enabled:
         return
 
-    # Compute tax breakdown before sending
-    # calculate_tax(doc)
+    # Always compute tax
+    calculate_tax(doc)
 
-    # Only push to VSDC if certain conditions are met
-    if (
-        doc.custom_successfully_submitted == 0
-        and doc.custom_prevent_smart_submission == 0
-        and doc.is_opening == "No"
-        and settings_doc.sales_auto_submission_enabled
-    ):
+    #  Skip only if explicitly prevented
+    if doc.custom_prevent_smart_submission:
+        return
+
+    # 🧾 Handle NORMAL invoice submission
+    if not doc.is_return and doc.is_opening == "No":
+        if doc.custom_successfully_submitted:
+            # Already submitted previously, skip
+            return
         try:
             generic_invoices_on_submit_override(doc, "Sales Invoice")
-        except frappe.ValidationError as e:
-            frappe.log_error(
-                "Crystal VSDC Submission Error",
-                f"Error submitting Sales Invoice {doc.name} to Crystal VSDC: {str(e)}",
-            )
+        except Exception as e:
+            frappe.log_error(frappe.get_traceback(), f"Crystal VSDC Sales Submission Failed for {doc.name}")
+            frappe.throw(f"Failed to auto-submit invoice to Crystal VSDC: {e}")
+        return
 
+    #  Handle RETURN (Credit Note)
+    if doc.is_return:
+        try:
+            if not doc.return_against:
+                frappe.throw("Return invoice is missing the 'Return Against' reference.")
+
+            return_invoice = frappe.get_doc("Sales Invoice", doc.return_against)
+
+            # Only allow returns for invoices that were successfully submitted to ZRA
+            if not getattr(return_invoice, "custom_successfully_submitted", False):
+                frappe.msgprint(
+                    f"Return against invoice {doc.return_against} was not successfully submitted. Cannot process return."
+                )
+                return
+
+            # Proceed with return submission
+            generic_invoices_on_submit_override(doc, "Sales Invoice")
+
+        except Exception as e:
+            frappe.log_error(frappe.get_traceback(), f"Crystal VSDC Return Submission Failed for {doc.name}")
+            frappe.throw(f"Failed to auto-submit credit note to Crystal VSDC: {e}")
 
 def before_cancel(doc: Document, method: str = None) -> None:
     """Prevent cancellation of invoices already submitted to Crystal VSDC."""
