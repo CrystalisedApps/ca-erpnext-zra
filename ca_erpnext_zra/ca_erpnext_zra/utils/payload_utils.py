@@ -1,7 +1,4 @@
-
-from datetime import datetime
 import frappe
-
 from frappe.utils import now_datetime, getdate, cint, flt
 from frappe.utils.password import get_decrypted_password
 
@@ -285,13 +282,13 @@ def get_invoice_reference_number(invoice: Document) -> str:
     return reference_number
 
 
-
 def build_credit_note_payload(doc, settings_name):
     """Build payload for Credit Note (Return Invoice) matching invoice payload structure."""
 
     settings = frappe.get_doc("Crystal ZRA Smart Invoice Settings", settings_name)
     original_invoice = frappe.get_doc("Sales Invoice", doc.return_against)
     customer = frappe.get_doc("Customer", doc.customer)
+    org_invc_no = original_invoice.get("custom_scu_invoice_number")
 
     tpin = get_decrypted_password(
         "Crystal ZRA Smart Invoice Settings",
@@ -300,7 +297,7 @@ def build_credit_note_payload(doc, settings_name):
         raise_exception=False
     ) or ""
 
-    bhf_id = settings.get("branch_id") or "000"
+    bhf_id =  "000"
 
     sales_dt = getdate(doc.posting_date).strftime("%Y%m%d")
     now_str = now_datetime().strftime("%Y%m%d%H%M%S")
@@ -322,7 +319,7 @@ def build_credit_note_payload(doc, settings_name):
     payload = {
         "tpin": tpin,
         "bhfId": bhf_id,
-        "orgInvcNo": cint(original_invoice.name.split('-')[-1]),
+        "orgInvcNo": int(original_invoice.custom_current_receipt_number),
         "cisInvcNo": doc.name,
         "custTpin": customer.tax_id or "",
         "custNm": doc.customer_name or "",
@@ -352,7 +349,7 @@ def build_credit_note_payload(doc, settings_name):
         "itemList": [],
     }
 
-    # Initialize all tax fields to 0 (ZRA requires presence)
+    # Initialize all tax fields to 0
     for _, (taxbl, taxamt, taxrt) in tax_field_map.items():
         payload[taxbl] = 0
         payload[taxamt] = 0
@@ -364,21 +361,22 @@ def build_credit_note_payload(doc, settings_name):
         class_code = frappe.db.get_value("Item", item.item_code, "custom_smart_item_classification_code") or "00000000"
         uom_code = frappe.db.get_value("Item", item.item_code, "custom_smart_quantity_unit") or "EA"
 
-        qty = fmt4(item.qty)
-        rate = fmt4(item.rate)
-        sply_amt = fmt4(rate * qty)
+        qty = abs(fmt4(item.qty))
+        rate = abs(fmt4(item.rate))
+        sply_amt = abs(fmt4(rate * qty))
 
-        dc_amt = fmt4(item.discount_amount or 0)
-        dc_rt = fmt4(item.discount_percentage or 0)
+        dc_amt = abs(fmt4(item.discount_amount))
+        dc_rt = abs(fmt4(item.discount_percentage))
 
-        tax_rate = float(item.get("custom_tax_rate") or 0)
-        vat_amt = fmt4(sply_amt * tax_rate / 100)
-        tot_amt = fmt4(sply_amt - dc_amt + vat_amt)
-        tl_amt = tot_amt 
+        tax_rate = abs(float(item.get("custom_tax_rate") or 0))
+        vat_amt = abs(fmt4(sply_amt * tax_rate / 100))
+        tot_amt = abs(fmt4(sply_amt - dc_amt + vat_amt))
+        tl_amt = tot_amt
 
+        rrp = abs(max(tot_amt, flt(item.get("custom_recommended_retail_price") or 0)))
         vat_cat = get_vat_category(item)
 
-        # update tax fields by category
+        # Update tax fields by category
         if vat_cat in tax_field_map:
             taxbl, taxamt, taxrt = tax_field_map[vat_cat]
             payload[taxbl] = fmt4(payload[taxbl] + sply_amt)
@@ -390,24 +388,25 @@ def build_credit_note_payload(doc, settings_name):
             "itemCd": item.item_code,
             "itemNm": item.item_name,
             "itemClsCd": class_code,
-            "bcd": item.barcode or "",
-            "pkgUnitCd": pkg_code,
-            "pkg": 1,
-            "qtyUnitCd": uom_code,
             "qty": qty,
+            "qtyUnitCd": uom_code,
             "prc": tl_amt,
-            "splyAmt": sply_amt,
-            "dcRt": dc_rt,
-            "dcAmt": dc_amt,
-            "vatCatCd": vat_cat,
-            "vatTaxblAmt": sply_amt,
+            "splyAmt": tl_amt,
             "vatAmt": vat_amt,
-            "totAmt": tot_amt,
             "tlAmt": 0,
+            "totAmt": tot_amt,
+            "vatTaxblAmt": sply_amt,
             "tlTaxblAmt": sply_amt,
+            "pkg": abs(item.get("package_qty") or 1),
+            "pkgUnitCd": pkg_code,
+            "dcAmt": dc_amt,
+            "dcRt": dc_rt,
+            "bcd": item.barcode or "",
+            "vatCatCd": vat_cat,
+            "rrp": 0,
         })
 
-    # === Totals after all items ===
+    # === Totals ===
     payload["totAmt"] = fmt4(sum(i["totAmt"] for i in payload["itemList"]))
     payload["totTaxAmt"] = fmt4(sum(i["vatAmt"] for i in payload["itemList"]))
     payload["totTaxblAmt"] = fmt4(sum(i["vatTaxblAmt"] for i in payload["itemList"]))
@@ -415,35 +414,36 @@ def build_credit_note_payload(doc, settings_name):
     return payload
 
 
-def build_credit_note_items(doc):
-    """Map return items to ZRA credit note item format."""
-   
-    items = []
-    for idx, item in enumerate(doc.items, start=1):
-        class_code = frappe.db.get_value("Item", item.item_code, "custom_smart_item_classification_code") or "00000000"
-        pkg_code = frappe.db.get_value("Item", item.item_code, "custom_smart_packaging_unit") or "EA"
-        uom_code = frappe.db.get_value("Item", item.item_code, "custom_smart_quantity_unit") or "EA"
 
-        items.append({
-            "itemSeq": idx,
-            "itemCd": item.item_code,
-            "itemClsCd": class_code,
-            "itemNm": item.item_name,
-            "bcd": item.barcode or "",
-            "pkgUnitCd": pkg_code,
-            "pkg": 0,
-            "qtyUnitCd": uom_code,
-            "qty": flt(item.qty),
-            "prc": flt(item.rate),
-            "splyAmt": flt(item.amount),
-            "dcRt": item.discount_percentage or 0,
-            "dcAmt": item.discount_amount or 0,
-            "vatCatCd": get_vat_category(item),
-            "vatTaxblAmt": flt(item.net_amount),
-            "vatAmt": flt(item.custom_vat_amount or 0),
-            "totAmt": flt(item.base_amount),
-        })
-    return items
+# def build_credit_note_items(doc):
+#     """Map return items to ZRA credit note item format."""
+   
+#     items = []
+#     for idx, item in enumerate(doc.items, start=1):
+#         class_code = frappe.db.get_value("Item", item.item_code, "custom_smart_item_classification_code") or "00000000"
+#         pkg_code = frappe.db.get_value("Item", item.item_code, "custom_smart_packaging_unit") or "EA"
+#         uom_code = frappe.db.get_value("Item", item.item_code, "custom_smart_quantity_unit") or "EA"
+
+#         items.append({
+#             "itemSeq": idx,
+#             "itemCd": item.item_code,
+#             "itemClsCd": class_code,
+#             "itemNm": item.item_name,
+#             "bcd": item.barcode or "",
+#             "pkgUnitCd": pkg_code,
+#             "pkg": 0,
+#             "qtyUnitCd": uom_code,
+#             "qty": flt(item.qty),
+#             "prc": flt(item.rate),
+#             "splyAmt": flt(item.amount),
+#             "dcRt": item.discount_percentage or 0,
+#             "dcAmt": item.discount_amount or 0,
+#             "vatCatCd": get_vat_category(item),
+#             "vatTaxblAmt": flt(item.net_amount),
+#             "vatAmt": flt(item.custom_vat_amount or 0),
+#             "totAmt": flt(item.base_amount),
+#         })
+#     return items
 
 
 def get_vat_category(item):
@@ -456,15 +456,15 @@ def get_vat_category(item):
         D = Non-taxable
     """
     # If you store VAT category in a custom field, just return it
-    if getattr(item, "vat_category", None):
-        return item.vat_category
+    if getattr(item, "custom_taxation_type", None):
+        return item.custom_taxation_type
 
     # Try to infer from tax rate or tax template
     tax_rate = 0
     try:
-        if hasattr(item, "item_tax_rate") and isinstance(item.item_tax_rate, dict):
+        if hasattr(item, "custom_tax_rate") and isinstance(item.custom_tax_rate, dict):
             # ERPNext stores tax rates as JSON
-            tax_rate = list(item.item_tax_rate.values())[0]
+            tax_rate = list(item.custom_tax_rate.values())[0]
     except Exception:
         pass
 
@@ -526,3 +526,108 @@ def get_payment_type_code(doc):
         pass
 
     return payment_code
+
+
+
+
+# def build_stock_items_payload(doc, settings_name, for_return=False):
+#     """
+#     Build payload for SaveStockItems (stock movement after invoice or return)
+#     """
+
+#     settings = frappe.get_doc("Crystal ZRA Smart Invoice Settings", settings_name)
+#     tpin = get_decrypted_password("Crystal ZRA Smart Invoice Settings", settings.name, "tpin", raise_exception=False) or ""
+#     bhf = getattr(settings, "branch_id", "000") or "000"
+
+#     ocrn_dt = getdate(doc.posting_date).strftime("%Y%m%d")
+
+#     total_taxable = total_vat = total_amount = 0
+#     items = []
+
+#     for idx, row in enumerate(doc.items, start=1):
+#         qty = flt(row.qty)
+#         if not for_return:  # Sales (stock out)
+#             qty *= -1
+
+#         taxable = flt(row.net_amount)
+#         vat = flt(getattr(row, "custom_vat_amount", 0))
+#         total = taxable + vat
+
+#         total_taxable += taxable
+#         total_vat += vat
+#         total_amount += total
+
+#         items.append({
+#             "itemSeq": idx,
+#             "itemCd": row.item_code,
+#             "itemClsCd": frappe.db.get_value("Item", row.item_code, "custom_smart_item_classification_code") or "00000000",
+#             "itemNm": row.item_name,
+#             "pkgUnitCd": frappe.db.get_value("Item", row.item_code, "custom_smart_packaging_unit") or "EA",
+#             "qtyUnitCd": frappe.db.get_value("Item", row.item_code, "custom_smart_quantity_unit") or "EA",
+#             "qty": qty,
+#             "prc": flt(row.rate, 2),
+#             "splyAmt": flt(row.amount, 2),
+#             "taxblAmt": flt(taxable, 2),
+#             "vatCatCd": getattr(row, "custom_taxation_type", "A"),
+#             "taxAmt": flt(vat, 2),
+#             "totAmt": flt(total, 2)
+#         })
+
+#     payload = {
+#         "tpin": tpin,
+#         "bhfId": bhf,
+#         "sarNo": cint(doc.name.split('-')[-1]) if '-' in doc.name else 1,
+#         "orgSarNo": 0,
+#         "regTyCd": "M",
+#         "custTpin": getattr(doc, "customer_tax_id", None),
+#         "custNm": getattr(doc, "customer_name", None),
+#         "custBhfId": None,
+#         "sarTyCd": "02",  # Transaction type code
+#         "ocrnDt": ocrn_dt,
+#         "totItemCnt": len(items),
+#         "totTaxblAmt": round(total_taxable, 5),
+#         "totTaxAmt": round(total_vat, 5),
+#         "totAmt": round(total_amount, 2),
+#         "remark": getattr(doc, "remarks", None),
+#         "regrId": frappe.session.user,
+#         "regrNm": frappe.utils.get_fullname(frappe.session.user),
+#         "modrNm": frappe.utils.get_fullname(frappe.session.user),
+#         "modrId": frappe.session.user,
+#         "itemList": items
+#     }
+
+#     return payload
+
+
+# def build_stock_master_payload(settings_name, item_codes, warehouse=None):
+#     """
+#     Build payload for SaveStockMaster (stock balance sync)
+#     """
+#     settings = frappe.get_doc("Crystal ZRA Smart Invoice Settings", settings_name)
+#     tpin = get_decrypted_password("Crystal ZRA Smart Invoice Settings", settings.name, "tpin", raise_exception=False) or ""
+#     bhf = getattr(settings, "branch_id", "000") or "000"
+
+#     stock_list = []
+#     for code in item_codes:
+#         qty = 0
+#         if warehouse:
+#             qty = flt(frappe.db.get_value("Bin", {"item_code": code, "warehouse": warehouse}, "actual_qty") or 0)
+#         else:
+#             qty = flt(frappe.db.sql("""SELECT SUM(actual_qty) FROM `tabBin` WHERE item_code=%s""", code)[0][0] or 0)
+
+#         stock_list.append({
+#             "itemCd": code,
+#             "rsdQty": qty
+#         })
+
+#     payload = {
+#         "tpin": tpin,
+#         "bhfId": bhf,
+#         "regrId": frappe.session.user,
+#         "regrNm": frappe.utils.get_fullname(frappe.session.user),
+#         "modrNm": frappe.utils.get_fullname(frappe.session.user),
+#         "modrId": frappe.session.user,
+#         "stockItemList": stock_list
+#     }
+
+#     return payload

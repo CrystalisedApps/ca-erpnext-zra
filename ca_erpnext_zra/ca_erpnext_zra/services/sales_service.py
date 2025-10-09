@@ -1,7 +1,11 @@
 import frappe
 from frappe.model.document import Document
 from ..apis.api_processor import process_request
-from ..utils.payload_utils import build_credit_note_payload
+from ..utils.payload_utils import (
+    # build_stock_items_payload,
+    # build_stock_master_payload,
+    build_credit_note_payload
+)
 
 
 
@@ -17,6 +21,36 @@ def sales_information_submission_on_success(
     to Crystal VSDC. Marks the document as submitted and triggers
     background fetch of invoice details from VSDC for reconciliation.
     """
+
+#     invoice = frappe.get_doc(doctype, document_name)
+#     is_return = bool(getattr(invoice, "is_return", 0))
+
+#  # Build and send stock items payload
+#     stock_payload = build_stock_items_payload(invoice, settings_name, for_return=is_return)
+#     process_request(
+#         request_data=stock_payload,
+#         route_key="SaveStockItems",
+#         handler_function=None,
+#         request_method="POST",
+#         doctype="Sales Invoice",
+#         settings_name=settings_name,
+#         company=invoice.company
+#     )
+
+#     # Build and send stock master payload (sync quantities)
+#     item_codes = [i.item_code for i in invoice.items]
+#     master_payload = build_stock_master_payload(settings_name, item_codes)
+#     process_request(
+#         request_data=master_payload,
+#         route_key="SaveStockMaster",
+#         handler_function=None,
+#         request_method="POST",
+#         doctype="Sales Invoice",
+#         settings_name=settings_name,
+#         company=invoice.company
+#     )
+
+
     updates = {
         "custom_successfully_submitted": 1,
         "custom_scu_invoice_number": response.get("cisInvcNo"),  # Crystal VSDC returns this unique invoice number

@@ -167,19 +167,19 @@ class EndpointsBuilder(BaseEndpointsBuilder):
         parsed_url = parse.urlparse(self._url)
         route_path = f"/{parsed_url.path.split('/')[-1]}"
 
-        # ✅ Create Integration Request log once (best-effort)
+        # Create Integration Request log once (best-effort)
         if not retrying:
             try:
                 kwargs = dict(
                     data=self._payload,
                     request_description=self._request_description,
                     is_remote_request=True,
-                    service_name="Crystal VSDC",
+                    service_name=self._request_description,
                     request_headers=self._headers,
                     url=self._url,
                     reference_doctype=doctype,
                 )
-                if document_name:  # ✅ only pass if not None
+                if document_name:  # only pass if not None
                     kwargs["reference_docname"] = document_name
 
                 self.integration_request = create_request_log(**kwargs)
