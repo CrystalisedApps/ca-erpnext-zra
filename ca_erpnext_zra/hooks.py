@@ -1,8 +1,8 @@
 app_name = "ca_erpnext_zra"
-app_title = "Ca Erpnext Zra"
-app_publisher = "Brian Mwambia"
+app_title = "CA ERPNext ZRA"
+app_publisher = "Crystalised Apps"
 app_description = "A Frappe custom app that integrates with ZRA VSDC API."
-app_email = "mwambia@navari.co.ke"
+app_email = "support@crystalisedapps.com"
 app_license = "agpl-3.0"
 
 
