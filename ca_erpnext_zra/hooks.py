@@ -23,7 +23,8 @@ fixtures = [
 ]
 
 doctype_js = {
-    "Item": "public/js/item.js"
+    "Item": "public/js/item.js",
+    "Sales Invoice": "public/js/sales_invoice.js"
 }
 # Apps
 # ------------------
@@ -157,15 +158,14 @@ doctype_js = {
 # ---------------
 # Hook on document methods and events
 
-
 doc_events = {
 	# "*": {
 	# 	"on_update": "method",
 	# 	"on_cancel": "method",
 	# 	"on_trash": "method"
 	
-     "Sales Invoice": {
-  
+    "Sales Invoice": {
+        "before_save": ["ca_erpnext_zra.ca_erpnext_zra.overrides.server.shared_override.before_save"],
         "on_submit": [
             "ca_erpnext_zra.ca_erpnext_zra.overrides.server.sales_invoice_override.on_submit"
         ],

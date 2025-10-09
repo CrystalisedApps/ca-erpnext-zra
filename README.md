@@ -46,7 +46,7 @@ This ensures your ERPNext installation is linked with **ZRA’s secure VSDC serv
 - **Endpoint**: `InitializeDevice`  
 - **ERPNext DocType**: `Crystal ZRA Smart Invoice Settings`  
 
-
+![alt text](image-3.png)
 
 ---
 
@@ -62,7 +62,7 @@ To correctly classify items, ZRA requires standard codes such as:
 
 These codes are retrieved from the **Smart API** and stored in **custom ERPNext doctypes** for reuse.  
 
-
+![alt text](image-4.png)
 
 ---
 
@@ -81,7 +81,7 @@ For example:
 
 
 ---
-
+![alt text](image-1.png)
 ### 4. Saving Items (Item Management)  
 
 Once Items are properly configured, they can be **registered with Smart Zambia**.  

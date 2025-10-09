@@ -50,7 +50,7 @@ def get_smart_action_data(doctype: str, docname: str = None) -> dict[str, Any]:
     }
 
 
-
+@frappe.whitelist()
 def get_active_smart_settings() -> list[dict]:
     """Return the single active Smart Zambia settings record using get_all."""
     # Just fetch the first record since this is a single-setup
