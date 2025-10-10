@@ -3,7 +3,7 @@ import frappe
 from frappe import _
 
 from .settings_utils import get_settings
-from ..apis.auth import authenticate  # refreshes token and updates settings
+ # refreshes token and updates settings
 
 
 def build_headers(settings_name: str = None) -> dict[str, str] | None:
@@ -20,34 +20,37 @@ def build_headers(settings_name: str = None) -> dict[str, str] | None:
         dict[str, str] | None: The headers including Authorization, Device ID, etc.
     """
     settings = get_settings(settings_name)
-
+    
     if not settings:
         return None
 
     jwt = settings.get("jwt")
-    token_expiry = settings.get("token_expiry")
+    token_expiry = settings.get("expiry_time")
 
     # Check if token is missing or expired
-    # if (
-    #     not jwt
-    #     or not token_expiry
-    #     or (
-    #         datetime.strptime(str(token_expiry).split(".")[0], "%Y-%m-%d %H:%M:%S")
-    #         < datetime.now()
-    #     )
-    # ):
-    #     # Call authenticate → refresh token and update settings
-    #     auth_response = authenticate(settings.name)
+    if (
+        not jwt
+        or not token_expiry
+        or (
+            datetime.strptime(str(token_expiry).split(".")[0], "%Y-%m-%d %H:%M:%S")
+            < datetime.now()
+        )
+    ):
+        # Call authenticate → refresh token and update settings
+        from ..apis.auth import authenticate 
+        new_settings = authenticate(settings.get("name"))
 
-    #     if not auth_response or not auth_response.get("access_token"):
-    #         frappe.throw(
-    #             _("Failed to refresh Crystal VSDC token. Please check your ZRA Settings."),
-    #             frappe.AuthenticationError,
-    #         )
+        if not new_settings:
+                frappe.throw(
+                    "Failed to refresh token. Please check your Crystal VSDC integration settings.",
+                    frappe.AuthenticationError,
+                )
 
-    #     # Use new token directly from updated settings
-    #     settings.reload()
-    #     jwt = settings.get("jwt")
+        
+
+        # Use new token directly from updated settings
+        # settings.reload()
+        jwt = new_settings.get("jwt")
 
     # Build base headers
     headers = {

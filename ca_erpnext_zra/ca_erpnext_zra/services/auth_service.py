@@ -1,14 +1,27 @@
 import requests
 import frappe
+import json
 from datetime import datetime, timedelta
+from urllib.parse import urlencode
+
+from frappe.integrations.utils import create_request_log
+
+from ..doctype.doctype_names_mapping import SETTINGS_DOCTYPE_NAME
+
 
 class ZRAAuthService:
     """Handles authentication with ZRA/Crystal VSDC"""
 
-    AUTH_URL = ""  #  endpoint
+    
 
     @staticmethod
-    def authenticate(settings_name: str) -> str:
+    def authenticate(
+       
+        auth_server_url: str,
+        username: str,
+        password: str,
+        docname: str = None,
+        ) -> dict:
         """Authenticate with Crystal VSDC using username & password.
         
         Args:
@@ -17,37 +30,52 @@ class ZRAAuthService:
         Returns:
             str: The new jwt token.
         """
-        settings = frappe.get_doc("Crystal ZRA Smart Invoice Settings", settings_name)
+        AUTH_URL = f"{auth_server_url}/api/v1/Users/GetToken"
+      
 
         payload = {
-            "username": settings.username,
-            "password": settings.get_password("password"),  # stored securely in Frappe
+            "username": username,
+            "password": password
         }
+        headers = {
+                "Accept": "application/json",
+                "Content-Type": "application/x-www-form-urlencoded",
+            }
 
-        try:
-            response = requests.post(ZRAAuthService.AUTH_URL, json=payload)
-            response.raise_for_status()
-
-            data = response.json()
-            jwt = data.get("jwt")
-            expires_in = data.get("expires_in", 3600)  # seconds, default 1hr
-
-            if not jwt:
-                frappe.throw("Authentication failed: No access token in response")
-
-            # Save token + expiry back into settings
-            settings.db_set("jwt", jwt)
-            expiry_time = datetime.now() + timedelta(seconds=expires_in)
-            settings.db_set("token_expiry", expiry_time)
-
-            return jwt
-
-        except requests.RequestException as e:
-            frappe.log_error(
-                title="Crystal VSDC Authentication Error",
-                message=str(e),
-                reference_doctype="Crystal ZRA Smart Invoice Settings",
-                reference_name=settings_name,
+        integration_request = create_request_log(
+                data=json.dumps(payload),
+                request_description="Crystal VSDC Authentication",
+                is_remote_request=True,
+                service_name="Crystal VSDC Authentication",
+                request_headers=json.dumps(headers),
+                url=AUTH_URL,
+                reference_doctype=SETTINGS_DOCTYPE_NAME,
+                reference_docname=docname,
             )
-            frappe.throw(f"Failed to authenticate with Crystal VSDC: {e}")
+        try:
+            response = requests.post(AUTH_URL, json=payload)
+            frappe.db.set_value("Integration Request", integration_request.name, "output", response.text, update_modified=False)
+            
+            response.raise_for_status()
+            if response.ok:
+                data = response.json()
+                frappe.db.set_value("Integration Request", integration_request.name, "status", "Completed", update_modified=False)
+                expires_in = (data.get("expires_in") or 3600)
+                expiry_time = datetime.now() + timedelta(seconds=int(expires_in))
+                return {
+                "jwt": data.get("token"),
+                    "expires_in": int(expires_in),
+                    "expiry_time": expiry_time.strftime("%Y-%m-%d %H:%M:%S"),            }
+            error = response.json().get("error", "Unknown error") if response.headers.get("content-type", "").startswith("application/json") else "Invalid response"
+            frappe.db.set_value("Integration Request", integration_request.name, "status", "Failed", update_modified=False)
+            frappe.db.set_value("Integration Request", integration_request.name, "error", error, update_modified=False)
+            frappe.throw(f"Authentication failed: <b>{error}</b>")
+
+        except Exception as e:
+            frappe.db.set_value("Integration Request", integration_request.name, {
+                "status": "Failed",
+                "error": str(e)
+            }, update_modified=False)
+            frappe.throw(f"Authentication request failed: <b>{e}</b>")
+
 

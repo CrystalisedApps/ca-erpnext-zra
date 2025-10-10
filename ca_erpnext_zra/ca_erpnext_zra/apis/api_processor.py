@@ -19,7 +19,7 @@ endpoints_builder = EndpointsBuilder()
 def process_request(
     request_data: str | dict,
     route_key: str,
-    handler_function: Callable,
+    handler_function: Callable = None,
     request_method: str = "GET",
     doctype: str = SETTINGS_DOCTYPE_NAME,
     error_callback: Callable = None,
