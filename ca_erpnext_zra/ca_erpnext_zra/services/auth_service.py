@@ -62,8 +62,15 @@ class ZRAAuthService:
                 frappe.db.set_value("Integration Request", integration_request.name, "status", "Completed", update_modified=False)
                 expires_in = (data.get("expires_in") or 3600)
                 expiry_time = datetime.now() + timedelta(seconds=int(expires_in))
+                #Extract token correctly from "Result"
+                result = data.get("Result", {}) or {}
+                jwt = result.get("token")
+
+                if not jwt:
+                    frappe.throw("Authentication failed: No token found in response under 'Result'")
+
                 return {
-                "jwt": data.get("token"),
+                "jwt": jwt,
                     "expires_in": int(expires_in),
                     "expiry_time": expiry_time.strftime("%Y-%m-%d %H:%M:%S"),            }
             error = response.json().get("error", "Unknown error") if response.headers.get("content-type", "").startswith("application/json") else "Invalid response"

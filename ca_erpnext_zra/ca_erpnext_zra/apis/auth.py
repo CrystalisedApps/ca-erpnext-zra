@@ -21,7 +21,7 @@ def authenticate(settings_name: str):
        
 
         token_details = ZRAAuthService.authenticate(
-            auth_server_url, username, password, settings_name
+            auth_server_url, username, password,
         )
         if not token_details:
             return None
