@@ -196,7 +196,7 @@
   },
   {
    "fieldname": "jwt",
-   "fieldtype": "Data",
+   "fieldtype": "Small Text",
    "label": "JWT"
   },
   {
@@ -249,7 +249,7 @@
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-10-01 12:57:39.813575",
+ "modified": "2025-10-10 09:10:00.692082",
  "modified_by": "Administrator",
  "module": "Ca Erpnext Zra",
  "name": "Crystal ZRA Smart Invoice Settings",
