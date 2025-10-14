@@ -1,7 +1,7 @@
 import frappe
 from frappe.utils import now_datetime, getdate, cint, flt
 from frappe.utils.password import get_decrypted_password
-
+import re
 from frappe.utils.data import flt
 from datetime import datetime
 from frappe.utils import cint
@@ -102,9 +102,6 @@ def generate_vsdc_item_payload(item_name: str) -> dict:
     }
 
     return payload
-
-
-
 
 
 def fmt4(value):
@@ -243,21 +240,6 @@ def build_invoice_payload(invoice: "Document", settings_name: str) -> dict:
 
 
     return payload
-
-
-
-
-
-
-TAX_CATEGORY_MAP = {
-    "A": {"tax_rate": 16, "taxbl_key": "taxblAmtA", "tax_key": "taxAmtA", "rate_key": "taxRtA"},
-    "B": {"tax_rate": 16, "taxbl_key": "taxblAmtB", "tax_key": "taxAmtB", "rate_key": "taxRtB"},
-    "IPL2": {"tax_rate": 5, "taxbl_key": "taxblAmtIpl2", "tax_key": "taxAmtIpl2", "rate_key": "taxRtIpl2"},
-    # 👉 Add more mappings for C1, C2, F, etc. as needed
-}
-
-
-
 
 
 def get_invoice_reference_number(invoice: Document) -> str:
@@ -414,38 +396,6 @@ def build_credit_note_payload(doc, settings_name):
     return payload
 
 
-
-# def build_credit_note_items(doc):
-#     """Map return items to ZRA credit note item format."""
-   
-#     items = []
-#     for idx, item in enumerate(doc.items, start=1):
-#         class_code = frappe.db.get_value("Item", item.item_code, "custom_smart_item_classification_code") or "00000000"
-#         pkg_code = frappe.db.get_value("Item", item.item_code, "custom_smart_packaging_unit") or "EA"
-#         uom_code = frappe.db.get_value("Item", item.item_code, "custom_smart_quantity_unit") or "EA"
-
-#         items.append({
-#             "itemSeq": idx,
-#             "itemCd": item.item_code,
-#             "itemClsCd": class_code,
-#             "itemNm": item.item_name,
-#             "bcd": item.barcode or "",
-#             "pkgUnitCd": pkg_code,
-#             "pkg": 0,
-#             "qtyUnitCd": uom_code,
-#             "qty": flt(item.qty),
-#             "prc": flt(item.rate),
-#             "splyAmt": flt(item.amount),
-#             "dcRt": item.discount_percentage or 0,
-#             "dcAmt": item.discount_amount or 0,
-#             "vatCatCd": get_vat_category(item),
-#             "vatTaxblAmt": flt(item.net_amount),
-#             "vatAmt": flt(item.custom_vat_amount or 0),
-#             "totAmt": flt(item.base_amount),
-#         })
-#     return items
-
-
 def get_vat_category(item):
     """
     Map ERPNext item tax or tax template to ZRA VAT category code.
@@ -526,6 +476,66 @@ def get_payment_type_code(doc):
         pass
 
     return payment_code
+
+
+def build_sales_payload(sales_invoice_name, company_tpin, user="Admin"):
+    """Builds ZRA Smart Invoice payload from Sales Invoice."""
+    inv = frappe.get_doc("Sales Invoice", sales_invoice_name)
+    item_list = []
+
+    for i, item in enumerate(inv.items, start=1):
+        # ✅ Get class code from Item master
+        item_doc = frappe.get_doc("Item", item.item_code)
+        class_code = getattr(item_doc, "custom_class_code", None) or "50102517"
+
+        # ✅ Use the actual tax rate stored in Sales Invoice Item (default to 16%)
+        tax_rate = float(getattr(item, "tax_rate", 16.0)) / 100
+
+        # ✅ Compute tax and taxable amounts
+        tax_amt = item.amount - (item.amount / (1 + tax_rate))
+        taxable_amt = item.amount - tax_amt
+
+        item_list.append({
+            "itemSeq": i,
+            "itemCd": item.item_code,
+            "itemClsCd": class_code,
+            "itemNm": item.item_name,
+            "pkgUnitCd": "BA",
+            "qtyUnitCd": "BE",
+            "qty": float(item.qty),
+            "prc": float(item.rate),
+            "splyAmt": float(item.amount),
+            "taxblAmt": round(taxable_amt, 2),
+            "vatCatCd": "A",  # You can map VAT category dynamically later
+            "taxAmt": round(tax_amt, 2),
+            "totAmt": float(item.amount),
+        })
+    sar_no = int(re.sub(r"\D", "", inv.name)[-5:]) or 1
+    payload = {
+        "request": "SalesInvoice",
+        "tpin": company_tpin,
+        "bhfId": "000",
+        "sarNo": sar_no,
+        "orgSarNo": 0,
+        "regTyCd": "M",
+        "custTpin": getattr(inv, "customer_tpin", None),
+        "custNm": inv.customer_name,
+        "custBhfId": None,
+        "sarTyCd": "02",  # 02 = Normal Sale
+        "ocrnDt": inv.posting_date.strftime("%Y%m%d"),
+        "totItemCnt": len(inv.items),
+        "totTaxblAmt": round(sum(i["taxblAmt"] for i in item_list), 2),
+        "totTaxAmt": round(sum(i["taxAmt"] for i in item_list), 2),
+        "totAmt": float(inv.grand_total),
+        "remark": inv.remarks or "",
+        "regrId": user,
+        "regrNm": user,
+        "modrNm": user,
+        "modrId": user,
+        "itemList": item_list,
+    }
+
+    return payload
 
 
 

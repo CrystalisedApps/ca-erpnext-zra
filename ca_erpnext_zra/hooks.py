@@ -10,16 +10,7 @@ app_license = "agpl-3.0"
 
 
 fixtures = [
-    {
-        "doctype": "Custom Field",
-        "filters": [
-            [
-                "module",
-                "=",
-                "Ca Erpnext Zra"
-            ]
-        ],
-    }
+
 ]
 
 doctype_js = {
@@ -167,7 +158,8 @@ doc_events = {
     "Sales Invoice": {
         "before_save": ["ca_erpnext_zra.ca_erpnext_zra.overrides.server.shared_override.before_save"],
         "on_submit": [
-            "ca_erpnext_zra.ca_erpnext_zra.overrides.server.sales_invoice_override.on_submit"
+            "ca_erpnext_zra.ca_erpnext_zra.overrides.server.sales_invoice_override.on_submit",
+            "ca_erpnext_zra.ca_erpnext_zra.apis.stock_api.send_sales_to_zra"
         ],
     }
 }
