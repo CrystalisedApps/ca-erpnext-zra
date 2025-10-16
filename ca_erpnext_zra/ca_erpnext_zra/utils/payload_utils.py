@@ -90,7 +90,7 @@ def generate_vsdc_item_payload(item_name: str) -> dict:
         "dftPrc": float(item.custom_recommended_retail_price) if item.custom_recommended_retail_price else 0,
         "manufacturerTpin": item.get("custom_manufacture_tpin") or None,
         "manufacturerItemCd": item.get("custom_manufacturer_item_code") or None,
-        "rrp": float(item.get("custom_recommended_retail_price") or 0),
+        "rrp": float(item.get("standard_rate") or 0),
         "svcChargeYn": "Y" if item.get("is_service_charge_applicable") else "N",
         "rentalYn": "Y" if item.get("custom_smart_rental_income_applicable") else "N",        "addInfo": item.get("additional_info") or None,
         "sftyQty": float(item.get("custom_smartsafety_stock") or 0),
@@ -484,17 +484,11 @@ def build_sales_payload(sales_invoice_name, company_tpin, user="Admin"):
     item_list = []
 
     for i, item in enumerate(inv.items, start=1):
-        # ✅ Get class code from Item master
         item_doc = frappe.get_doc("Item", item.item_code)
         class_code = getattr(item_doc, "custom_class_code", None) or "50102517"
-
-        # ✅ Use the actual tax rate stored in Sales Invoice Item (default to 16%)
         tax_rate = float(getattr(item, "tax_rate", 16.0)) / 100
-
-        # ✅ Compute tax and taxable amounts
         tax_amt = item.amount - (item.amount / (1 + tax_rate))
         taxable_amt = item.amount - tax_amt
-
         item_list.append({
             "itemSeq": i,
             "itemCd": item.item_code,
@@ -511,6 +505,7 @@ def build_sales_payload(sales_invoice_name, company_tpin, user="Admin"):
             "totAmt": float(item.amount),
         })
     sar_no = int(re.sub(r"\D", "", inv.name)[-5:]) or 1
+    
     payload = {
         "request": "SalesInvoice",
         "tpin": company_tpin,

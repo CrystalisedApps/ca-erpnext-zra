@@ -135,7 +135,7 @@ def submit_inventory(item_name: str) -> dict | None:
         queue="default",
         is_async=True,
         request_data=request_payload,
-        route_key="InventorySubmitReq",
+        route_key="",
         handler_function=handle_inventory_response,
         request_method="POST",
         doctype="Item",

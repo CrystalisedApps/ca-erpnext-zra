@@ -161,6 +161,12 @@ doc_events = {
             "ca_erpnext_zra.ca_erpnext_zra.overrides.server.sales_invoice_override.on_submit",
             "ca_erpnext_zra.ca_erpnext_zra.apis.stock_api.send_sales_to_zra"
         ],
+    },
+    "Item": {
+        "on_update": [
+            "ca_erpnext_zra.ca_erpnext_zra.overrides.server.item_overrides.on_item_update",
+            
+        ],
     }
 }
 # Scheduled Tasks
