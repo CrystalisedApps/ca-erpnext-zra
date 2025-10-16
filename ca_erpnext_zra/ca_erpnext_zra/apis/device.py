@@ -32,7 +32,7 @@ def initialize_device(settings_name: str = None) -> dict:
         frappe.throw("Request data required for device initialization")
     return process_request(
         request_data=request_data,
-        route_key="selectInformation",
+        route_key="selectInitInfo",
         handler_function=initialize_device_on_success,
         request_method="POST",
         doctype=SETTINGS_DOCTYPE_NAME,
