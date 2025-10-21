@@ -1,2 +1,5 @@
-qrcode[pil]
+aiohttp==3.9.1
+deprecation==2.1.0
+qrcode[pil]==7.4.2
 Pillow
+bs4
