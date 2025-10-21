@@ -45,10 +45,17 @@ def initialize_device_on_success(response: dict, **kwargs) -> dict:
     Handle a successful device initialization response from Crystal VSDC.
     Stores API keys if returned.
     """
-    if response.get("message") == "Device already installed":
-        frappe.msgprint("ℹ️ Device already initialized with Crystal VSDC.")
+    # Extract the result code from the nested Result structure
+    result_cd = response.get("Result", {}).get("resultCd")
+    
+    # Handle different result codes with specific messages
+    if result_cd == "902":
+        frappe.msgprint("ℹ️ Device already initialized with Crystal VSDC")
+    elif result_cd == "000":
+        frappe.msgprint("✅ Successfully initialized device with Crystal VSDC")
     else:
-        frappe.msgprint("✅ Device initialization successful with Crystal VSDC.")
+        # Fallback for other success cases or unknown result codes
+        frappe.msgprint("✅ Device initialization successful with Crystal VSDC")
 
     # Save API keys to settings if available
     # api_key = response.get("apiKey")
