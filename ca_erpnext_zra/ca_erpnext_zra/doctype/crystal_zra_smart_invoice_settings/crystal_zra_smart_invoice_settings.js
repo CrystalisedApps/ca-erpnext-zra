@@ -99,6 +99,7 @@ frappe.ui.form.on("Crystal ZRA Smart Invoice Settings", {
 					method: "ca_erpnext_zra.ca_erpnext_zra.apis.device.initialize_device",
 					args: {
 						settings_name: frm.doc.name,
+						
 					},
 					callback: function (r) {
 						frappe.dom.unfreeze();

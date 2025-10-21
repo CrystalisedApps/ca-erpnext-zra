@@ -13,7 +13,7 @@ def map_vsdc_fields(data: dict, docname: str, doctype: str) -> dict:
 
     qr_url =  data.get("qrCodeUrl")
     
-    # image_url = generate_and_attach_qr_code(qr_url, docname, doctype) if qr_url else None
+    image_url = generate_and_attach_qr_code(qr_url, docname, doctype) if qr_url else None
 
     return {
         "custom_scu_invoice_number": data.get("cisInvcNo"),
@@ -24,6 +24,6 @@ def map_vsdc_fields(data: dict, docname: str, doctype: str) -> dict:
         "custom_scu_id": data.get("sdcId"),
         "custom_scu_mrc_no": data.get("mrcNo"),
         "custom_qr_code_url": data.get("qrCodeUrl"),
-        # "custom_qr_code": image_url,
+         "custom_qr_code": image_url,
        
     }

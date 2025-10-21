@@ -118,7 +118,7 @@ def get_vsdc_invoice_details(
     # Use process_request to send the request
     process_request(
         request_data=payload,
-        route_key="SelectInvoice",  # or endpoint name as defined in your API builder
+        route_key="SelectInvoice",  
         handler_function=on_success,
         request_method="POST",
         doctype=invoice_type,

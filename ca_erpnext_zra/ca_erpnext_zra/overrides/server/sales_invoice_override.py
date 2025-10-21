@@ -21,7 +21,7 @@ def on_submit(doc: Document, method: str = None) -> None:
     if doc.custom_prevent_smart_submission:
         return
 
-    # 🧾 Handle NORMAL invoice submission
+    #  Handle NORMAL invoice submission
     if not doc.is_return and doc.is_opening == "No":
         if doc.custom_successfully_submitted:
             # Already submitted previously, skip

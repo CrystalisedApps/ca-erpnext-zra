@@ -28,7 +28,7 @@ def calculate_tax(doc: "Document") -> None:
         _apply_default_tax_from_settings(doc)
 
     _set_taxation_type_codes(doc)
-    _recalculate_zra_amounts(doc)   # 🔑 ensures amounts match ZRA rules
+    # _recalculate_zra_amounts(doc)   # ensures amounts match ZRA rules
 
 
 def _calculate_item_level_taxes(doc: "Document") -> None:
