@@ -350,11 +350,13 @@ def build_credit_note_payload(doc, settings_name):
         qty = abs(fmt4(item.qty))
         rate = abs(fmt4(item.rate))
         sply_amt = abs(fmt4(rate * qty))
-
+      
         dc_amt = abs(fmt4(item.discount_amount))
         dc_rt = abs(fmt4(item.discount_percentage))
 
         tax_rate = abs(float(item.get("custom_tax_rate") or 0))
+        vat_rate = fmt4(rate * tax_rate / 100)
+        sply_rate = fmt4(rate + vat_rate)
         vat_amt = abs(fmt4(sply_amt * tax_rate / 100))
         tot_amt = abs(fmt4(sply_amt - dc_amt + vat_amt))
         tl_amt = tot_amt
@@ -376,7 +378,7 @@ def build_credit_note_payload(doc, settings_name):
             "itemClsCd": class_code,
             "qty": qty,
             "qtyUnitCd": uom_code,
-            "prc": tl_amt,
+            "prc": sply_rate,
             "splyAmt": tl_amt,
             "vatAmt": vat_amt,
             "tlAmt": 0,
