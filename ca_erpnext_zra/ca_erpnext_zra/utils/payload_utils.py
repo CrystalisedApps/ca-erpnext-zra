@@ -186,6 +186,7 @@ def build_invoice_payload(invoice: "Document", settings_name: str) -> dict:
         # sply_amt = fmt4(item.net_amount)
 
         sply_amt = fmt4(rate * qty)
+        
 
         # Discount
         dc_amt = fmt4(item.get("discount_amount") or 0)
@@ -193,11 +194,14 @@ def build_invoice_payload(invoice: "Document", settings_name: str) -> dict:
 
         # Tax rate
         tax_rate = float(item.get("custom_tax_rate") or 0)
+        vat_rate = fmt4(rate * tax_rate / 100)
         vat_amt = fmt4(sply_amt * tax_rate / 100)
 
         # Totals
         tot_amt = fmt4(sply_amt - dc_amt + vat_amt) 
         tl_amt = tot_amt 
+
+        sply_rate = fmt4(rate + vat_rate)
         # tl_amt = fmt4(sply_amt + vat_amt)   # line total including VAT
         # tot_amt = fmt4(sply_amt - dc_amt + vat_amt)  # supply - discount + taxes
 
@@ -218,7 +222,7 @@ def build_invoice_payload(invoice: "Document", settings_name: str) -> dict:
             "itemClsCd": class_code,
             "qty": qty,
             "qtyUnitCd": uom_code,
-            "prc": tl_amt,
+            "prc": sply_rate,
             "splyAmt": tl_amt,
             "vatAmt": vat_amt,
             "tlAmt": 0,
