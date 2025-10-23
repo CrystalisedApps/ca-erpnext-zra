@@ -18,6 +18,12 @@
   "column_break_xogn",
   "is_active",
   "auto_create_branch_accounting_dimension",
+  "section_break_uzrw",
+  "default_warehouse",
+  "department",
+  "bhfid",
+  "section_break_dpqw",
+  "table_txyc",
   "submission_frequency_settings_tab",
   "frequency_of_communication_with_zra_section",
   "notices_refresh_frequency",
@@ -244,12 +250,47 @@
    "fieldname": "default_tax_rate",
    "fieldtype": "Float",
    "label": "Default Tax Rate"
+  },
+  {
+   "fieldname": "section_break_uzrw",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "default_warehouse",
+   "fieldtype": "Link",
+   "hidden": 1,
+   "label": "Default Warehouse",
+   "options": "Warehouse"
+  },
+  {
+   "fieldname": "department",
+   "fieldtype": "Link",
+   "hidden": 1,
+   "label": "Department",
+   "options": "Department"
+  },
+  {
+   "fieldname": "bhfid",
+   "fieldtype": "Link",
+   "hidden": 1,
+   "label": "Branch Id",
+   "options": "Branch"
+  },
+  {
+   "fieldname": "section_break_dpqw",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "table_txyc",
+   "fieldtype": "Table",
+   "label": "Organisation Mapping",
+   "options": "Smart Settings Organisation Mapping"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-10-10 09:10:00.692082",
+ "modified": "2025-10-22 14:08:58.413541",
  "modified_by": "Administrator",
  "module": "Ca Erpnext Zra",
  "name": "Crystal ZRA Smart Invoice Settings",
