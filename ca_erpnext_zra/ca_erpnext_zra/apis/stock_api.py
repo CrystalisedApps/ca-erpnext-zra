@@ -139,7 +139,7 @@ def sync_stock_from_sle(doc, method=None):
             raise_exception=False
         ) or ""
 
-        bhf_id = settings.get("branch_id") or "000"
+        bhf_id = settings.get("bhfid") or "000"
         user = frappe.session.user or "Admin"
 
         # Choose the correct route

@@ -1,4 +1,6 @@
 import frappe
+from frappe.utils import now
+
 from frappe.utils import now_datetime, getdate, cint, flt
 from frappe.utils.password import get_decrypted_password
 import re
