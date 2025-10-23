@@ -159,14 +159,18 @@ doc_events = {
         "before_save": ["ca_erpnext_zra.ca_erpnext_zra.overrides.server.shared_override.before_save"],
         "on_submit": [
             "ca_erpnext_zra.ca_erpnext_zra.overrides.server.sales_invoice_override.on_submit",
-            "ca_erpnext_zra.ca_erpnext_zra.apis.stock_api.send_sales_to_zra"
+            
         ],
     },
     "Item": {
-        "on_update": [
+        "on_save": [
             "ca_erpnext_zra.ca_erpnext_zra.overrides.server.item_overrides.on_item_update",
             
         ],
+    },
+
+    "Stock Ledger Entry": {
+        "after_insert": "ca_erpnext_zra.ca_erpnext_zra.apis.stock_api.sync_stock_from_sle"
     }
 }
 # Scheduled Tasks

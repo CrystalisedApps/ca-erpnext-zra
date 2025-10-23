@@ -7,7 +7,13 @@
  "field_order": [
   "is_active",
   "company",
-  "branch"
+  "branch",
+  "cluster",
+  "column_break_zlrk",
+  "organisation",
+  "cluster_name",
+  "department",
+  "warehouse"
  ],
  "fields": [
   {
@@ -27,30 +33,49 @@
    "fieldtype": "Link",
    "label": "Branch",
    "options": "Branch"
+  },
+  {
+   "fieldname": "cluster",
+   "fieldtype": "Data",
+   "label": "Cluster"
+  },
+  {
+   "fieldname": "column_break_zlrk",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "organisation",
+   "fieldtype": "Data",
+   "label": "Organisation"
+  },
+  {
+   "fieldname": "cluster_name",
+   "fieldtype": "Data",
+   "label": "Cluster Name"
+  },
+  {
+   "fieldname": "department",
+   "fieldtype": "Link",
+   "label": "Department",
+   "options": "Department"
+  },
+  {
+   "fieldname": "warehouse",
+   "fieldtype": "Link",
+   "label": "Warehouse",
+   "options": "Warehouse"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
+ "istable": 1,
  "links": [],
- "modified": "2025-10-21 14:03:21.374704",
+ "modified": "2025-10-22 14:07:38.783858",
  "modified_by": "Administrator",
  "module": "Ca Erpnext Zra",
  "name": "Smart Settings Organisation Mapping",
  "owner": "Administrator",
- "permissions": [
-  {
-   "create": 1,
-   "delete": 1,
-   "email": 1,
-   "export": 1,
-   "print": 1,
-   "read": 1,
-   "report": 1,
-   "role": "System Manager",
-   "share": 1,
-   "write": 1
-  }
- ],
+ "permissions": [],
  "row_format": "Dynamic",
  "sort_field": "modified",
  "sort_order": "DESC",

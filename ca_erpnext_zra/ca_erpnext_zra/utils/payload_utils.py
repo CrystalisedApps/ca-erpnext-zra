@@ -87,13 +87,13 @@ def generate_vsdc_item_payload(item_name: str) -> dict:
         "exciseTxCatCd": get_code("custom_smart_excise_duties_"),    # Link → Crystallised Smart Excise Duties
         "btchNo": item.get("batch_number") or None,
         "bcd": item.get("barcode") or None,
-        "dftPrc": float(item.custom_recommended_retail_price) if item.custom_recommended_retail_price else 0,
+        "dftPrc": float(item.standard_rate),
         "manufacturerTpin": item.get("custom_manufacture_tpin") or None,
         "manufacturerItemCd": item.get("custom_manufacturer_item_code") or None,
         "rrp": float(item.get("standard_rate") or 0),
         "svcChargeYn": "Y" if item.get("is_service_charge_applicable") else "N",
         "rentalYn": "Y" if item.get("custom_smart_rental_income_applicable") else "N",        "addInfo": item.get("additional_info") or None,
-        "sftyQty": float(item.get("custom_smartsafety_stock") or 0),
+        "sftyQty": float(item.get("safety_stock") or 0),
         "isrcAplcbYn": "Y" if item.get("custom_smart_insurance_applicable") else "N",        "useYn": "Y" if item.disabled == 0 else "N",
         "regrNm": frappe.session.user,
         "regrId": frappe.session.user,
@@ -484,6 +484,166 @@ def get_payment_type_code(doc):
     return payment_code
 
 
+
+
+
+
+def build_stock_payload(tpin, bhf_id, user, stock_items, route_key=None):
+    """Builds payload for SaveStockItems or SaveStockMaster depending on route_key."""
+
+    if not isinstance(stock_items, list):
+        raise ValueError("stock_items must be a list of dicts")
+
+    user = user or "Admin"
+
+    # SaveStockItems — detailed stock movement
+    if route_key and route_key.lower() == "savestockitems":
+        item_list = []
+        for i, item in enumerate(stock_items, start=1):
+            item_code = item.get("itemCd")
+            item_doc = frappe.db.get_value(
+                "Item",
+                item_code,
+                ["item_name", "custom_smart_item_classification_code", "valuation_rate"],
+                as_dict=True
+            ) or {}
+
+            class_code = item_doc.get("custom_smart_item_classification_code") 
+            item_name = item.get("itemNm") 
+            price = float(item.get("prc"))
+            qty = float(item.get("qty") or 1)
+            tax_rate = 0.16
+            tax_amt = round(price * qty * tax_rate / (1 + tax_rate), 2)
+            taxable_amt = round(price * qty - tax_amt, 2)
+            # frappe.throw(str(item))
+            item_list.append({
+                "itemSeq": i,
+                "itemCd": item_code,
+                "itemClsCd": class_code,
+                "itemNm": item_name,
+                "pkgUnitCd": "BA",
+                "qtyUnitCd": "BE",
+                "qty": qty,
+                "prc": price,
+                "splyAmt": price * qty,
+                "taxblAmt": taxable_amt,
+                "vatCatCd": "A",
+                "taxAmt": tax_amt,
+                "totAmt": price * qty,
+            })
+
+        payload = {
+            "tpin": tpin,
+            "bhfId": bhf_id,
+            "sarNo": 1,
+            "orgSarNo": 0,
+            "regTyCd": "M",
+            "custTpin": None,
+            "custNm": None,
+            "custBhfId": None,
+            "sarTyCd": "02",
+            "ocrnDt": now().split(" ")[0].replace("-", ""),
+            "totItemCnt": len(item_list),
+            "totTaxblAmt": round(sum(i["taxblAmt"] for i in item_list), 2),
+            "totTaxAmt": round(sum(i["taxAmt"] for i in item_list), 2),
+            "totAmt": round(sum(i["totAmt"] for i in item_list), 2),
+            "remark": None,
+            "regrId": user,
+            "regrNm": user,
+            "modrNm": user,
+            "modrId": user,
+            "itemList": item_list,
+        }
+        # frappe.throw(str(payload))
+    # SaveStockMaster — stock update
+    else:
+        payload = {
+            "tpin": tpin,
+            "bhfId": bhf_id,
+            "regrId": user,
+            "regrNm": user,
+            "modrNm": user,
+            "modrId": user,
+            "stockItemList": [
+                {
+                    "itemCd": i.get("itemCd"),
+                    "rsdQty": float(i.get("rsdQty") or i.get("qty") or 0)
+                }
+                for i in stock_items if i.get("itemCd")
+            ],
+        }
+
+    return payload
+
+
+
+def build_stock_item_payload(doc):
+    """
+    Builds payload for /api/v1/StockItemInformation/SaveStockItems
+    from stock movement documents (Sales Invoice, Purchase Receipt, Stock Entry, etc.)
+    """
+    if isinstance(doc, str):
+        doc = frappe.get_doc(doc)
+
+    company_tpin = frappe.db.get_value("Crystal ZRA Smart Invoice Settings", {"company": doc.company}, "tpin") or ""
+    user = frappe.session.user or "Admin"
+    sar_no = int(re.sub(r"\D", "", doc.name)[-5:]) or 1
+
+    # Get all stock-impacting items
+    items = getattr(doc, "items", [])
+    item_list = []
+    for i, item in enumerate(items, start=1):
+        item_doc = frappe.get_doc("Item", item.item_code)
+        class_code = getattr(item_doc, "custom_class_code", None) or "50102517"
+
+        qty = float(item.qty)
+        price = float(item.rate)
+        tax_rate = float(getattr(item, "tax_rate", 16.0)) / 100
+        tax_amt = price * qty * (tax_rate / (1 + tax_rate))
+        taxable_amt = (price * qty) - tax_amt
+
+        item_list.append({
+            "itemSeq": i,
+            "itemCd": item.item_code,
+            "itemClsCd": class_code,
+            "itemNm": item.item_name,
+            "pkgUnitCd": "BA",
+            "qtyUnitCd": "BE",
+            "qty": qty,
+            "prc": price,
+            "splyAmt": float(item.amount),
+            "taxblAmt": round(taxable_amt, 2),
+            "vatCatCd": "A",
+            "taxAmt": round(tax_amt, 2),
+            "totAmt": float(item.amount),
+        })
+
+    payload = {
+        "tpin": company_tpin,
+        "bhfId": "000",
+        "sarNo": sar_no,
+        "orgSarNo": 0,
+        "regTyCd": "M",
+        "custTpin": None,
+        "custNm": None,
+        "custBhfId": None,
+        "sarTyCd": "02",  # "02" = stock out (e.g. sale)
+        "ocrnDt": doc.posting_date.strftime("%Y%m%d") if getattr(doc, "posting_date", None) else now().split(" ")[0],
+        "totItemCnt": len(item_list),
+        "totTaxblAmt": round(sum(i["taxblAmt"] for i in item_list), 2),
+        "totTaxAmt": round(sum(i["taxAmt"] for i in item_list), 2),
+        "totAmt": round(sum(i["totAmt"] for i in item_list), 2),
+        "remark": getattr(doc, "remarks", None),
+        "regrId": user,
+        "regrNm": user,
+        "modrNm": user,
+        "modrId": user,
+        "itemList": item_list,
+    }
+
+    return payload
+
+
 def build_sales_payload(sales_invoice_name, company_tpin, user="Admin"):
     """Builds ZRA Smart Invoice payload from Sales Invoice."""
     inv = frappe.get_doc("Sales Invoice", sales_invoice_name)
@@ -491,7 +651,7 @@ def build_sales_payload(sales_invoice_name, company_tpin, user="Admin"):
 
     for i, item in enumerate(inv.items, start=1):
         item_doc = frappe.get_doc("Item", item.item_code)
-        class_code = getattr(item_doc, "custom_class_code", None) or "50102517"
+        class_code = getattr(item_doc, "custom_class_code", None) 
         tax_rate = float(getattr(item, "tax_rate", 16.0)) / 100
         tax_amt = item.amount - (item.amount / (1 + tax_rate))
         taxable_amt = item.amount - tax_amt
@@ -541,73 +701,7 @@ def build_sales_payload(sales_invoice_name, company_tpin, user="Admin"):
 
 
 
-# def build_stock_items_payload(doc, settings_name, for_return=False):
-#     """
-#     Build payload for SaveStockItems (stock movement after invoice or return)
-#     """
 
-#     settings = frappe.get_doc("Crystal ZRA Smart Invoice Settings", settings_name)
-#     tpin = get_decrypted_password("Crystal ZRA Smart Invoice Settings", settings.name, "tpin", raise_exception=False) or ""
-#     bhf = getattr(settings, "branch_id", "000") or "000"
-
-#     ocrn_dt = getdate(doc.posting_date).strftime("%Y%m%d")
-
-#     total_taxable = total_vat = total_amount = 0
-#     items = []
-
-#     for idx, row in enumerate(doc.items, start=1):
-#         qty = flt(row.qty)
-#         if not for_return:  # Sales (stock out)
-#             qty *= -1
-
-#         taxable = flt(row.net_amount)
-#         vat = flt(getattr(row, "custom_vat_amount", 0))
-#         total = taxable + vat
-
-#         total_taxable += taxable
-#         total_vat += vat
-#         total_amount += total
-
-#         items.append({
-#             "itemSeq": idx,
-#             "itemCd": row.item_code,
-#             "itemClsCd": frappe.db.get_value("Item", row.item_code, "custom_smart_item_classification_code") or "00000000",
-#             "itemNm": row.item_name,
-#             "pkgUnitCd": frappe.db.get_value("Item", row.item_code, "custom_smart_packaging_unit") or "EA",
-#             "qtyUnitCd": frappe.db.get_value("Item", row.item_code, "custom_smart_quantity_unit") or "EA",
-#             "qty": qty,
-#             "prc": flt(row.rate, 2),
-#             "splyAmt": flt(row.amount, 2),
-#             "taxblAmt": flt(taxable, 2),
-#             "vatCatCd": getattr(row, "custom_taxation_type", "A"),
-#             "taxAmt": flt(vat, 2),
-#             "totAmt": flt(total, 2)
-#         })
-
-#     payload = {
-#         "tpin": tpin,
-#         "bhfId": bhf,
-#         "sarNo": cint(doc.name.split('-')[-1]) if '-' in doc.name else 1,
-#         "orgSarNo": 0,
-#         "regTyCd": "M",
-#         "custTpin": getattr(doc, "customer_tax_id", None),
-#         "custNm": getattr(doc, "customer_name", None),
-#         "custBhfId": None,
-#         "sarTyCd": "02",  # Transaction type code
-#         "ocrnDt": ocrn_dt,
-#         "totItemCnt": len(items),
-#         "totTaxblAmt": round(total_taxable, 5),
-#         "totTaxAmt": round(total_vat, 5),
-#         "totAmt": round(total_amount, 2),
-#         "remark": getattr(doc, "remarks", None),
-#         "regrId": frappe.session.user,
-#         "regrNm": frappe.utils.get_fullname(frappe.session.user),
-#         "modrNm": frappe.utils.get_fullname(frappe.session.user),
-#         "modrId": frappe.session.user,
-#         "itemList": items
-#     }
-
-#     return payload
 
 
 # def build_stock_master_payload(settings_name, item_codes, warehouse=None):
@@ -616,7 +710,7 @@ def build_sales_payload(sales_invoice_name, company_tpin, user="Admin"):
 #     """
 #     settings = frappe.get_doc("Crystal ZRA Smart Invoice Settings", settings_name)
 #     tpin = get_decrypted_password("Crystal ZRA Smart Invoice Settings", settings.name, "tpin", raise_exception=False) or ""
-#     bhf = getattr(settings, "branch_id", "000") or "000"
+#     bhf = getattr(settings, "bhfid", "000") or "000"
 
 #     stock_list = []
 #     for code in item_codes:
@@ -642,3 +736,16 @@ def build_sales_payload(sales_invoice_name, company_tpin, user="Admin"):
 #     }
 
 #     return payload
+# def build_stock_payload(tpin: str, bhf_id: str, user: str, stock_items: list):
+#     return {
+#         "tpin": tpin,
+#         "bhfId": bhf_id,
+#         "regrId": user,
+#         "regrNm": user,
+#         "modrNm": user,
+#         "modrId": user,
+#         "stockItemList": [
+#             {"itemCd": d.get("item_code"), "rsdQty": float(d.get("qty", 0))}
+#             for d in stock_items
+#         ],
+#     }
