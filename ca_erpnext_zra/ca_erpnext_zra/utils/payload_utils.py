@@ -15,6 +15,124 @@ from frappe.model.document import Document
 from .tax_utils import calculate_tax
 
 # from .id_utils import get_vsdc_id
+import frappe
+from frappe.utils import now_datetime
+from typing import Dict, Any
+
+
+@frappe.whitelist()
+def build_purchase_payload(docname: str, settings_name: str) -> dict:
+    """
+    Dynamically build a valid Purchase payload for ZRA Smart Invoice (VSDC).
+
+    Args:
+        docname (str): Purchase Invoice document name
+        settings_name (str): Crystal ZRA Smart Invoice Settings record name
+
+    Returns:
+        dict: Formatted payload ready for submission to ZRA API
+    """
+    import frappe
+    from frappe.utils import now_datetime
+
+    # Fetch documents
+    doc = frappe.get_doc("Purchase Invoice", docname)
+            # Fetch first settings record
+    settings = frappe.get_all(
+        "Crystal ZRA Smart Invoice Settings",
+        fields=["name"]
+    )
+
+  
+
+    tpin = ""
+    if settings:
+        settings_name = settings[0]["name"]
+        tpin = get_decrypted_password(
+            "Crystal ZRA Smart Invoice Settings",
+            settings_name,        # positional docname
+            "tpin",               # fieldname
+            raise_exception=False
+        ) or ""
+
+    # --- Helper: safely get numeric supplier invoice number ---
+    def get_supplier_invoice_number(value):
+        try:
+            # If doc.name ends like "ACC-PINV-2025-00002" → returns 2
+            return int(str(value).split("-")[-1])
+        except Exception:
+            return 0
+
+    payload = {
+        "tpin":tpin,
+        "bhfId": getattr(settings, "branch_id", "000"),
+        "cisInvcNo": f"cis_{doc.name}",
+        "orgInvcNo": 0,
+        "spplrTpin": getattr(doc, "supplier_tpin", None),
+        "spplrBhfId": getattr(doc, "supplier_branch_id", "000"),
+        "spplrNm": doc.supplier_name,
+        "spplrInvcNo": get_supplier_invoice_number(doc.name),
+        "regTyCd": "M",       # M = Manual
+        "pchsTyCd": "N",      # N = Normal Purchase
+        "rcptTyCd": "P",      # P = Purchase
+        "pmtTyCd": "01",      # 01 = Cash
+        "pchsSttsCd": "02",   # 02 = Confirmed
+        "cfmDt": now_datetime().strftime("%Y%m%d%H%M%S"),
+        "pchsDt": now_datetime().strftime("%Y%m%d"),
+        "cnclReqDt": "",
+        "cnclDt": "",
+        "totItemCnt": len(doc.items),
+        "totTaxblAmt": round(sum(float(i.base_net_amount) for i in doc.items), 4),
+        "totTaxAmt": round(sum(float(getattr(i, "item_tax_amount", 0)) for i in doc.items), 4),
+        "totAmt": round(float(doc.base_grand_total), 2),
+        "remark": doc.remarks or "No Remarks",
+        "regrNm": frappe.session.user,
+        "regrId": frappe.session.user,
+        "modrNm": frappe.session.user,
+        "modrId": frappe.session.user,
+        "itemList": [],
+    }
+
+    # --- Build item list ---
+    for idx, item in enumerate(doc.items, start=1):
+   # Fetch custom codes
+        pkg_code = frappe.db.get_value("Item", item.item_code, "custom_smart_packaging_unit") or "EA"
+        class_code = frappe.db.get_value("Item", item.item_code, "custom_smart_item_classification_code") or "00000000"
+        uom_code = frappe.db.get_value("Item", item.item_code, "custom_smart_quantity_unit") or "EA"
+
+        item_data = {
+            "itemSeq": idx,
+            "itemCd": getattr(item, "item_code", None),
+            "itemClsCd": class_code,
+            "itemNm": item.item_name,
+            "bcd": getattr(item, "barcode", None),
+            "pkgUnitCd": pkg_code,
+            "pkg": float(getattr(item, "package_qty", 0)),
+            "qtyUnitCd": uom_code,
+            "qty": float(item.qty),
+            "prc": float(item.base_rate),
+            "splyAmt": float(item.base_net_amount),
+            "dcRt": float(getattr(item, "discount_percentage", 0)),
+            "dcAmt": float(getattr(item, "discount_amount", 0)),
+            "taxTyCd": getattr(item, "custom_tax_type", "A"),
+            "taxblAmt": round(float(item.base_net_amount), 2),
+            "vatCatCd": "A",
+            "taxAmt": round(float(getattr(item, "item_tax_amount", 0)), 2),
+            "totAmt": round(float(item.base_amount), 2),
+            "iplCatCd": None,
+            "tlCatCd": None,
+            "exciseCatCd": None,
+            "iplTaxblAmt": None,
+            "tlTaxblAmt": None,
+            "exciseTaxblAmt": None,
+            "iplAmt": None,
+            "tlAmt": None,
+            "exciseTxAmt": None,
+        }
+        payload["itemList"].append(item_data)
+
+    return payload
+
 
 
 
@@ -484,8 +602,6 @@ def get_payment_type_code(doc):
         pass
 
     return payment_code
-
-
 
 
 

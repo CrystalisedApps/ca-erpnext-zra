@@ -15,7 +15,8 @@ fixtures = [
 
 doctype_js = {
     "Item": "public/js/item.js",
-    "Sales Invoice": "public/js/sales_invoice.js"
+    "Sales Invoice": "public/js/sales_invoice.js",
+    "Purchase Invoice": "public/js/purchase_invoice.js"
 }
 # Apps
 # ------------------
@@ -158,8 +159,7 @@ doc_events = {
     "Sales Invoice": {
         "before_save": ["ca_erpnext_zra.ca_erpnext_zra.overrides.server.shared_override.before_save"],
         "on_submit": [
-            "ca_erpnext_zra.ca_erpnext_zra.overrides.server.sales_invoice_override.on_submit",
-            
+            "ca_erpnext_zra.ca_erpnext_zra.overrides.server.sales_invoice_override.on_submit" 
         ],
     },
     "Item": {
@@ -171,6 +171,10 @@ doc_events = {
 
     "Stock Ledger Entry": {
         "after_insert": "ca_erpnext_zra.ca_erpnext_zra.apis.stock_api.sync_stock_from_sle"
+    },
+      "Purchase Invoice": {
+          "before_save": ["ca_erpnext_zra.ca_erpnext_zra.overrides.server.shared_override.before_save"],
+        "on_submit": ["ca_erpnext_zra.ca_erpnext_zra.apis.purchase_api.send_purchase_details"]
     }
 }
 # Scheduled Tasks

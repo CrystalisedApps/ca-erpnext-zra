@@ -71,7 +71,7 @@ frappe.ui.form.on(parentDoctype, {
       __("Verify Submission and Fix if Incorrect"),
       function () {
         executeVSDCAction("Verify Submission", activeSetting, (settings_name) => ({
-          method: "crystal_vsdc_integration.apis.apis.verify_invoice_details",
+          method: "ca_erpnext_zra.ca_erpnext_zra.apis.invoice_processor.verify_vsdc_invoice",
           args: {
             document_name: frm.doc.name,
             invoice_type: "Sales Invoice",
