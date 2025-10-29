@@ -1,0 +1,160 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2025-10-28 09:35:33.943789",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "purchase_id",
+  "supplier_tpin",
+  "supplier_name",
+  "column_break_wgnc",
+  "supplier_invoice_no",
+  "sales_date",
+  "total_amount",
+  "section_break_rrhh",
+  "supplier_branch_id",
+  "receipt_type_code",
+  "payment_type_code",
+  "column_break_pewb",
+  "confirmed_date",
+  "stock_release_date",
+  "total_item_count",
+  "section_break_stap",
+  "total_taxable_amount",
+  "total_tax_amount",
+  "remarks",
+  "section_break_smug",
+  "items"
+ ],
+ "fields": [
+  {
+   "fieldname": "purchase_id",
+   "fieldtype": "Data",
+   "label": "Purchase ID",
+   "unique": 1
+  },
+  {
+   "fieldname": "supplier_tpin",
+   "fieldtype": "Data",
+   "label": "Supplier TPIN"
+  },
+  {
+   "fieldname": "supplier_name",
+   "fieldtype": "Data",
+   "label": "Supplier Name"
+  },
+  {
+   "fieldname": "column_break_wgnc",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "supplier_invoice_no",
+   "fieldtype": "Int",
+   "label": "Supplier Invoice No"
+  },
+  {
+   "fieldname": "sales_date",
+   "fieldtype": "Date",
+   "label": "Sales Date"
+  },
+  {
+   "fieldname": "total_amount",
+   "fieldtype": "Currency",
+   "label": "Total Amount"
+  },
+  {
+   "fieldname": "section_break_rrhh",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "supplier_branch_id",
+   "fieldtype": "Data",
+   "label": "Supplier Branch ID"
+  },
+  {
+   "fieldname": "receipt_type_code",
+   "fieldtype": "Data",
+   "label": "Receipt Type Code"
+  },
+  {
+   "fieldname": "payment_type_code",
+   "fieldtype": "Data",
+   "label": "Payment Type Code"
+  },
+  {
+   "fieldname": "column_break_pewb",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "confirmed_date",
+   "fieldtype": "Date",
+   "label": "Confirmed Date"
+  },
+  {
+   "fieldname": "stock_release_date",
+   "fieldtype": "Date",
+   "label": "Stock Release Date"
+  },
+  {
+   "fieldname": "total_item_count",
+   "fieldtype": "Int",
+   "label": "Total Item Count"
+  },
+  {
+   "fieldname": "section_break_stap",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "total_taxable_amount",
+   "fieldtype": "Currency",
+   "label": "Total Taxable Amount"
+  },
+  {
+   "fieldname": "total_tax_amount",
+   "fieldtype": "Currency",
+   "label": "Total Tax Amount"
+  },
+  {
+   "fieldname": "remarks",
+   "fieldtype": "Small Text",
+   "label": "Remarks"
+  },
+  {
+   "fieldname": "section_break_smug",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "items",
+   "fieldtype": "Table",
+   "label": "Items",
+   "options": "Smart Registered Purchase Item"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2025-10-28 11:45:12.402811",
+ "modified_by": "Administrator",
+ "module": "Ca Erpnext Zra",
+ "name": "Crystallised ZRA Smart Purchases",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

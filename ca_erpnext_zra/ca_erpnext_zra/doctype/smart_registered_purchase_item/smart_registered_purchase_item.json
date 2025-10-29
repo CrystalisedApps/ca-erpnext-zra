@@ -1,0 +1,135 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2025-10-28 11:36:58.962691",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "item_seq",
+  "item_code",
+  "item_name",
+  "column_break_ebrm",
+  "item_class_code",
+  "packaging_unit_code",
+  "quantity_unit_code",
+  "section_break_pfdb",
+  "quantity",
+  "unit_price",
+  "supply_amount",
+  "column_break_fnfd",
+  "discount_rate",
+  "discount_amount",
+  "vat_amount",
+  "section_break_flxy",
+  "total_amount",
+  "column_break_zqxa",
+  "vat_category_code"
+ ],
+ "fields": [
+  {
+   "fieldname": "item_seq",
+   "fieldtype": "Int",
+   "label": "Item Seq"
+  },
+  {
+   "fieldname": "item_code",
+   "fieldtype": "Data",
+   "label": "Item Code"
+  },
+  {
+   "fieldname": "item_name",
+   "fieldtype": "Data",
+   "label": "Item Name"
+  },
+  {
+   "fieldname": "column_break_ebrm",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "item_class_code",
+   "fieldtype": "Data",
+   "label": "Item Class Code"
+  },
+  {
+   "fieldname": "packaging_unit_code",
+   "fieldtype": "Data",
+   "label": "Packaging Unit Code"
+  },
+  {
+   "fieldname": "quantity_unit_code",
+   "fieldtype": "Data",
+   "label": "Quantity Unit Code"
+  },
+  {
+   "fieldname": "section_break_pfdb",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "quantity",
+   "fieldtype": "Float",
+   "label": "Quantity"
+  },
+  {
+   "fieldname": "unit_price",
+   "fieldtype": "Currency",
+   "label": "Unit Price"
+  },
+  {
+   "fieldname": "supply_amount",
+   "fieldtype": "Currency",
+   "label": "Supply Amount"
+  },
+  {
+   "fieldname": "column_break_fnfd",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "discount_rate",
+   "fieldtype": "Percent",
+   "label": "Discount Rate"
+  },
+  {
+   "fieldname": "discount_amount",
+   "fieldtype": "Currency",
+   "label": "Discount Amount"
+  },
+  {
+   "fieldname": "vat_amount",
+   "fieldtype": "Currency",
+   "label": "VAT Amount"
+  },
+  {
+   "fieldname": "section_break_flxy",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "total_amount",
+   "fieldtype": "Currency",
+   "label": "Total Amount"
+  },
+  {
+   "fieldname": "column_break_zqxa",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "vat_category_code",
+   "fieldtype": "Data",
+   "label": "VAT Category Code "
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "links": [],
+ "modified": "2025-10-28 11:43:40.464371",
+ "modified_by": "Administrator",
+ "module": "Ca Erpnext Zra",
+ "name": "Smart Registered Purchase Item",
+ "owner": "Administrator",
+ "permissions": [],
+ "row_format": "Dynamic",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}
