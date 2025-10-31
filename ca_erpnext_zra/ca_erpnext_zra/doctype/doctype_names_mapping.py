@@ -13,3 +13,5 @@ ROUTES_TABLE_DOCTYPE_NAME = "Crystal Smart Invoice Routes"
 
 TAXATION_TYPE_DOCTYPE_NAME="Crystal ZRA Smart Invoice Taxation Type"
 ITEM_CLASSIFICATIONS_DOCTYPE_NAME = "Crystal ZRA Smart Invoice Item Classification"
+
+REGISTERED_PURCHASES_DOCTYPE_NAME="Crystallised ZRA Smart Purchases"

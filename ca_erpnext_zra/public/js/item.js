@@ -130,10 +130,7 @@ async function showCompanySelectionModal(frm, actionType, availableSettings) {
 // 🔹 Execute Smart API call per selected company
 function executeSmartItemAction(frm, actionType, settingsName) {
   let method;
-  let args = {
-    item_name: frm.doc.name,
-    settings_name: settingsName,
-  };
+ 
 
   switch (actionType) {
     case "register_item":
@@ -159,7 +156,7 @@ function executeSmartItemAction(frm, actionType, settingsName) {
 
   frappe.call({
     method,
-    args,
+    args: { doc: frm.doc },
     callback: () => {
       const messages = {
         register_item: "Smart Item Registration Queued. Please check later.",

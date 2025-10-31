@@ -7,9 +7,27 @@ from frappe.utils.background_jobs import enqueue
 
 
 @frappe.whitelist()
-def perform_item_registration(item_name: str, settings_name: str | None = None) -> dict | None:
+def perform_item_registration(doc, method=None) -> dict | None:
     """Register an Item with Smart Zambia API (single settings setup)."""
-    item = frappe.get_doc("Item", item_name)
+
+    # frappe.throw(str(doc))
+    import json
+
+    # If doc is a string (from JS), convert it
+    if isinstance(doc, str):
+        doc = json.loads(doc)
+
+    # Now, if it's a dict, get the actual Item record
+    if isinstance(doc, dict):
+        docname = doc.get("name")
+    else:
+        docname = getattr(doc, "name", None)
+
+    if not docname:
+        frappe.throw("No Item name provided for registration.")
+
+    item = frappe.get_doc("Item", docname)
+
     # frappe.throw(str(item))
     settings = _get_single_smart_settings()
     if not settings:

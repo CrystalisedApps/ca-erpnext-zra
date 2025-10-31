@@ -6,18 +6,347 @@ from frappe.utils.password import get_decrypted_password
 import re
 from frappe.utils.data import flt
 from datetime import datetime
-from frappe.utils import cint
 
-from frappe import _dict, get_doc, get_value
-from datetime import datetime
+
+
 
 from frappe.model.document import Document
 from .tax_utils import calculate_tax
 
 # from .id_utils import get_vsdc_id
-import frappe
-from frappe.utils import now_datetime
+
 from typing import Dict, Any
+
+
+
+
+def map_zra_purchase_to_payload(purchase_data: dict, company_tpin: str) -> dict:
+    """
+    Map fetched ZRA purchase data to Smart 'savePurchase' payload format.
+    """
+
+    sale_items = purchase_data.get("itemList", [])
+
+    payload = {
+        "tpin": company_tpin,  # Your own TPIN
+        "bhfId": "000",
+        "cisInvcNo": f"cis{purchase_data.get('spplrInvcNo')}",
+        "orgInvcNo": 0,
+        "spplrTpin": purchase_data.get("spplrTpin"),
+        "spplrBhfId": purchase_data.get("spplrBhfId", "000"),
+        "spplrNm": purchase_data.get("spplrNm"),
+        "spplrInvcNo": str(purchase_data.get("spplrInvcNo")),
+        "regTyCd": "M",
+        "pchsTyCd": "N",
+        "rcptTyCd": "P",
+        "pmtTyCd": purchase_data.get("pmtTyCd", "01"),
+        "pchsSttsCd": "02",
+        "cfmDt": datetime.now().strftime("%Y%m%d%H%M%S"),
+        "pchsDt": purchase_data.get("salesDt"),
+        "cnclReqDt": "",
+        "cnclDt": "",
+        "totItemCnt": purchase_data.get("totItemCnt", len(sale_items)),
+        "totTaxblAmt": purchase_data.get("totTaxblAmt"),
+        "totTaxAmt": purchase_data.get("totTaxAmt"),
+        "totAmt": purchase_data.get("totAmt"),
+        "remark": purchase_data.get("remark", ""),
+        "regrNm": frappe.session.user or "ADMIN",
+        "regrId": frappe.session.user or "ADMIN",
+        "modrNm": frappe.session.user or "ADMIN",
+        "modrId": frappe.session.user or "ADMIN",
+        "itemList": []
+    }
+
+    for item in sale_items:
+        payload["itemList"].append({
+            "itemSeq": item.get("itemSeq"),
+            "itemCd": item.get("itemCd"),
+            "itemClsCd": item.get("itemClsCd"),
+            "itemNm": item.get("itemNm"),
+            "bcd": item.get("bcd"),
+            "pkgUnitCd": item.get("pkgUnitCd", "EA"),
+            "pkg": item.get("pkg", 0),
+            "qtyUnitCd": item.get("qtyUnitCd", "EACH"),
+            "qty": item.get("qty", 1),
+            "prc": item.get("prc"),
+            "splyAmt": item.get("splyAmt"),
+            "dcRt": item.get("dcRt", 0),
+            "dcAmt": item.get("dcAmt", 0),
+            "taxTyCd": item.get("vatCatCd", "A"),
+            "vatCatCd": item.get("vatCatCd", "A"),
+            "taxblAmt": item.get("taxblAmt"),
+            "taxAmt": item.get("vatAmt", 0),
+            "totAmt": item.get("totAmt"),
+            "iplCatCd": None,
+            "tlCatCd": None,
+            "exciseCatCd": None,
+            "iplTaxblAmt": None,
+            "tlTaxblAmt": None,
+            "exciseTaxblAmt": None,
+            "iplAmt": None,
+            "tlAmt": None,
+            "exciseTxAmt": None
+        })
+
+    return payload
+
+
+
+def _safe_float(value, default=0.0) -> float:
+    try:
+        return float(value or 0.0)
+    except Exception:
+        return default
+
+
+def _fmt_datetime(dt) -> str:
+    """Return YYYYMMDDHHMMSS (cfmDt style)."""
+    if not dt:
+        return now_datetime().strftime("%Y%m%d%H%M%S")
+    if isinstance(dt, str):
+        # assume already formatted
+        return dt
+    return dt.strftime("%Y%m%d%H%M%S")
+
+
+def _fmt_date(d) -> str:
+    """Return YYYYMMDD (pchsDt / salesDt style)."""
+    if not d:
+        return now_datetime().strftime("%Y%m%d")
+    if isinstance(d, str):
+        return d
+    return d.strftime("%Y%m%d")
+
+
+def build_debit_note_payload(docname: str, settings_name: str) -> Dict[str, Any]:
+    """
+    Build a Debit Note payload for Smart Invoice (ZRA) from a Purchase Invoice
+
+    Args:
+        docname (str): name of the Purchase Invoice (or Debit Note) in ERPNext
+        settings_name (str): Crystal ZRA Smart Invoice Settings record name
+
+    Returns:
+        dict: payload ready for submission to Smart Invoice API
+    """
+    # Fetch documents
+    doc = frappe.get_doc("Purchase Invoice", docname)
+    # settings = frappe.get_doc("Crystal ZRA Smart Invoice Settings", settings_name)
+
+    # Top-level values & defaults
+              # Fetch first settings record
+    settings = frappe.get_all(
+        "Crystal ZRA Smart Invoice Settings",
+        fields=["name"]
+    )
+
+  
+
+    tpin = ""
+    if settings:
+        settings_name = settings[0]["name"]
+        tpin = get_decrypted_password(
+            "Crystal ZRA Smart Invoice Settings",
+            settings_name,        # positional docname
+            "tpin",               # fieldname
+            raise_exception=False
+        ) or ""
+    bhf_id = getattr(settings, "branch_id", "000") or "000"
+    user = frappe.session.user or "admin"
+
+    # Totals (attempt to use doc fields; fallback to computed sums)
+    tot_item_cnt = len(doc.items or [])
+    tot_taxbl_amt = _safe_float(getattr(doc, "base_net_total", None)) or sum(
+        (_safe_float(i.base_net_amount) for i in doc.items), 0.0
+    )
+    tot_tax_amt = _safe_float(getattr(doc, "base_tax_total", None)) or sum(
+        (_safe_float(i.item_tax_amount or 0) for i in doc.items), 0.0
+    )
+    tot_amt = _safe_float(getattr(doc, "base_grand_total", None)) or sum(
+        (_safe_float(i.base_amount) for i in doc.items), 0.0
+    )
+
+    # Optional document-level dates
+    cfm_dt = _fmt_datetime(getattr(doc, "confirmation_date", None) or getattr(doc, "posting_date", None))
+    sales_dt = _fmt_date(getattr(doc, "posting_date", None))
+
+    # Base structure
+    payload: Dict[str, Any] = {
+        "tpin": tpin,
+        "bhfId": bhf_id,
+        "orgInvcNo": getattr(doc, "original_invoice_number", 0) or 0,
+        "cisInvcNo": getattr(doc, "custom_cis_number", doc.name),
+        "custTpin": getattr(doc, "customer_tpin", None),
+        "custNm": getattr(doc, "supplier_name", None) or getattr(doc, "customer_name", None),
+        "salesTyCd": "N",  # default: Normal (adjust where required)
+        "rcptTyCd": "D",  # D = Debit Note / Receipt type
+        "pmtTyCd": getattr(doc, "payment_type_code", "01"),
+        "salesSttsCd": getattr(doc, "sales_status_code", "02"),
+        "cfmDt": cfm_dt,
+        "salesDt": sales_dt,
+        "stockRlsDt": None,
+        "cnclReqDt": None,
+        "cnclDt": None,
+        "rfdDt": None,
+        "rfdRsnCd": None,
+        # Tax buckets — try to copy common fields; keep all buckets present with defaults
+        "totItemCnt": tot_item_cnt,
+        "taxblAmtA": 0.0,
+        "taxblAmtB": 0.0,
+        "taxblAmtC1": 0.0,
+        "taxblAmtC2": 0.0,
+        "taxblAmtC3": 0.0,
+        "taxblAmtD": 0.0,
+        "taxblAmtRvat": 0.0,
+        "taxblAmtE": 0.0,
+        "taxblAmtF": 0.0,
+        "taxblAmtIpl1": 0.0,
+        "taxblAmtIpl2": 0.0,
+        "taxblAmtTl": 0.0,
+        "taxblAmtEcm": 0.0,
+        "taxblAmtExeeg": 0.0,
+        "taxblAmtTot": 0.0,
+        # Tax rates (defaults — adjust mapping logic if you have proper rates)
+        "taxRtA": getattr(doc, "tax_rate_a", 16),
+        "taxRtB": getattr(doc, "tax_rate_b", 0),
+        "taxRtC1": getattr(doc, "tax_rate_c1", 0),
+        "taxRtC2": getattr(doc, "tax_rate_c2", 0),
+        "taxRtC3": getattr(doc, "tax_rate_c3", 0),
+        "taxRtD": getattr(doc, "tax_rate_d", 0),
+        "tlAmt": 0.0,
+        "taxRtRvat": getattr(doc, "tax_rate_rvat", 16),
+        "taxRtE": 0,
+        "taxRtF": 0,
+        "taxRtIpl1": 0,
+        "taxRtIpl2": 0,
+        "taxRtTl": 0,
+        "taxRtEcm": 0,
+        "taxRtExeeg": 0,
+        "taxRtTot": 0,
+        # Tax amounts
+        "taxAmtA": 0.0,
+        "taxAmtB": 0.0,
+        "taxAmtC1": 0.0,
+        "taxAmtC2": 0.0,
+        "taxAmtC3": 0.0,
+        "taxAmtD": 0.0,
+        "taxAmtRvat": 0.0,
+        "taxAmtE": 0.0,
+        "taxAmtF": 0.0,
+        "taxAmtIpl1": 0.0,
+        "taxAmtIpl2": 0.0,
+        "taxAmtTl": 0.0,
+        "taxAmtEcm": 0.0,
+        "taxAmtExeeg": 0.0,
+        "taxAmtTot": 0.0,
+        # Totals
+        "totTaxblAmt": round(tot_taxbl_amt, 4),
+        "totTaxAmt": round(tot_tax_amt, 2),
+        "cashDcRt": getattr(doc, "cash_discount_rate", 0),
+        "cashDcAmt": getattr(doc, "cash_discount_amount", 0),
+        "totAmt": round(tot_amt, 2),
+        "prchrAcptcYn": getattr(doc, "prchr_acptc_yn", "N"),
+        "remark": getattr(doc, "remarks", "") or "",
+        "regrId": user,
+        "regrNm": user,
+        "modrId": user,
+        "modrNm": user,
+        "saleCtyCd": getattr(doc, "sale_city_code", "1"),
+        "lpoNumber": getattr(doc, "lpo_number", None),
+        "currencyTyCd": getattr(doc, "currency", frappe.defaults.get_global_default("currency") or "ZMW"),
+        "exchangeRt": str(getattr(doc, "exchange_rate", 1)),
+        "destnCountryCd": getattr(doc, "destination_country_code", "") or "",
+        "dbtRsnCd": getattr(doc, "debit_reason_code", "03"),
+        "invcAdjustReason": getattr(doc, "adjust_reason", ""),
+        "itemList": [],
+    }
+
+    # Per-item mapping — iterate items and compute taxables/taxes as needed
+    item_seq = 1
+    running_tot_taxbl = 0.0
+    running_tot_tax = 0.0
+    for itm in doc.items:
+        # attempt to pull classification and mapping from Item master or line fields
+        item_code = getattr(itm, "item_code", itm.get("item_code", None)) if hasattr(itm, "item_code") else itm.get("item_code")
+        item_name = getattr(itm, "item_name", itm.get("item_name", None)) if hasattr(itm, "item_name") else itm.get("item_name")
+        item_cls = getattr(itm, "custom_item_classification", None) or frappe.db.get_value("Item", item_code, "custom_smart_item_classification_code") or "50102517"
+
+        qty = _safe_float(getattr(itm, "qty", itm.get("qty", 1)))
+        prc = _safe_float(getattr(itm, "rate", getattr(itm, "base_rate", itm.get("prc", 0))))
+        sply_amt = round(prc * qty, 2)
+
+        # discount / dc
+        dc_rt = _safe_float(getattr(itm, "discount_percentage", itm.get("dcRt", 0)))
+        dc_amt = _safe_float(getattr(itm, "discount_amount", itm.get("dcAmt", 0)))
+
+        # Determine VATable / IPL / other breakdown — try to use line-level tax info when present
+        vat_taxable = 0.0
+        vat_amt = 0.0
+        ipl_taxable = 0.0
+        ipl_amt = 0.0
+
+        # If line has item_tax_amount or taxes table, use that to compute
+        if getattr(itm, "item_tax_amount", None) is not None:
+            vat_amt = _safe_float(itm.item_tax_amount)
+            # Back-calc taxable if tax rate known (assume 16% if not)
+            assumed_rate = getattr(itm, "tax_rate", 16) or 16
+            vat_taxable = round((sply_amt - dc_amt) - (vat_amt / (assumed_rate / 100 + 1) * 0), 4)  # keep simple
+            # Simpler approach: set taxable = sply_amt - dc_amt when API expects totals
+            vat_taxable = round(sply_amt - dc_amt, 4)
+        else:
+            # no tax info: assume taxable = sply_amt - dc_amt and tax rate from doc/settings
+            vat_taxable = round(sply_amt - dc_amt, 4)
+            vat_amt = round(vat_taxable * (getattr(itm, "tax_rate", 16) or 16) / 100, 2)
+
+        running_tot_taxbl += vat_taxable
+        running_tot_tax += vat_amt
+
+        item_payload = {
+            "itemSeq": item_seq,
+            "itemCd": item_code,
+            "itemClsCd": item_cls,
+            "itemNm": item_name,
+            "bcd": getattr(itm, "barcode", "") or "",
+            "pkgUnitCd": getattr(itm, "package_unit", "BA"),
+            "pkg": _safe_float(getattr(itm, "package_qty", 0)),
+            "qtyUnitCd": getattr(itm, "uom", getattr(itm, "stock_uom", "BE")),
+            "qty": qty,
+            "prc": prc,
+            "splyAmt": sply_amt,
+            "dcRt": dc_rt,
+            "dcAmt": dc_amt,
+            "isrccCd": getattr(itm, "isrc_code", "") or "",
+            "isrccNm": getattr(itm, "isrc_name", "") or "",
+            "isrcRt": 0,
+            "isrcAmt": 0,
+            "vatCatCd": getattr(itm, "vat_category", None),
+            "exciseTxCatCd": None,
+            "tlCatCd": None,
+            "iplCatCd": getattr(itm, "ipl_category", None),
+            "vatTaxblAmt": round(vat_taxable, 4),
+            "vatAmt": round(vat_amt, 2),
+            "exciseTaxblAmt": 0,
+            "tlTaxblAmt": 0,
+            "iplTaxblAmt": round(ipl_taxable, 4),
+            "iplAmt": round(ipl_amt, 2),
+            "totAmt": round(sply_amt - dc_amt, 2),
+        }
+
+        payload["itemList"].append(item_payload)
+        item_seq += 1
+
+    # Update totals from item loop if we computed them
+    payload["taxblAmtA"] = round(running_tot_taxbl, 4)
+    payload["taxAmtA"] = round(running_tot_tax, 2)
+    payload["totTaxblAmt"] = round(running_tot_taxbl, 4)
+    payload["totTaxAmt"] = round(running_tot_tax, 2)
+    payload["totItemCnt"] = len(payload["itemList"])
+    # totAmt already set above but ensure it's consistent with sum of item totAmt + adjustments
+    computed_tot_amt = round(sum(i.get("totAmt", 0) for i in payload["itemList"]) - payload.get("cashDcAmt", 0), 2)
+    payload["totAmt"] = payload.get("totAmt") or computed_tot_amt
+
+    return payload
+
 
 
 @frappe.whitelist()
@@ -32,8 +361,6 @@ def build_purchase_payload(docname: str, settings_name: str) -> dict:
     Returns:
         dict: Formatted payload ready for submission to ZRA API
     """
-    import frappe
-    from frappe.utils import now_datetime
 
     # Fetch documents
     doc = frappe.get_doc("Purchase Invoice", docname)

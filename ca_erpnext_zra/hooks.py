@@ -163,8 +163,8 @@ doc_events = {
         ],
     },
     "Item": {
-        "on_save": [
-            "ca_erpnext_zra.ca_erpnext_zra.overrides.server.item_overrides.on_item_update",
+        "on_submit": [
+            "ca_erpnext_zra.ca_erpnext_zra.apis.item_api.perform_item_registration",
             
         ],
     },
