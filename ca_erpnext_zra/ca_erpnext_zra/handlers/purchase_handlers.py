@@ -29,9 +29,6 @@ def purchase_search_on_success(response: dict, **kwargs) -> None:
 
 
 
-
-
-
 def create_purchase_from_smart_details(fetched_purchase: dict) -> str:
     """
     Create or update a 'Smart Registered Purchase' document in ERPNext
@@ -94,11 +91,19 @@ def create_purchase_from_smart_details(fetched_purchase: dict) -> str:
     # ---------------- Item List ----------------
     doc.items = []
     for item in fetched_purchase.get("itemList", []):
+          # Ensure item classification code exists
+        item_class_code = (
+            item.get("itemClsCd")
+            or item.get("item_class_code")
+            or "99999999"  # default generic classification if missing
+        )
         doc.append("items", {
             "item_seq": item.get("itemSeq"),
             "item_code": item.get("itemCd"),
             "item_name": item.get("itemNm"),
-            "item_class_code": item.get("itemClsCd"),
+            
+            "item_class_code": item_class_code,  # ✅ Ensures ItemClsCd equivalent is stored
+
             "package_unit_code": item.get("pkgUnitCd"),
             "quantity_unit_code": item.get("qtyUnitCd"),
             "quantity": flt(item.get("qty") or 1),
@@ -118,10 +123,9 @@ def create_purchase_from_smart_details(fetched_purchase: dict) -> str:
         doc.submit()
 
 
-    # ---------------- Create/Update Linked Purchase Invoice ----------------
-    purchase_invoice_name = create_or_update_purchase_invoice_from_smart(doc)
+    
 
-    return purchase_invoice_name
+    return doc.name
 
 def create_or_update_purchase_invoice_from_smart(doc):
     """
@@ -235,58 +239,98 @@ def get_default_warehouse() -> str:
 def get_default_cost_center() -> str:
     return frappe.db.get_value("Cost Center", {"is_group": 0}, "name")
 
+import frappe
+import json
+from frappe.model.document import Document
+
+@frappe.whitelist()
+def create_items_from_smart_purchase(request_data: str) -> None:
+    """
+    Create Items in ERPNext from ZRA Smart Invoice purchase data.
+    This can be called via Frappe call from a custom doctype (like Registered Purchases).
+    """
+    if isinstance(request_data, str):
+        data = json.loads(request_data)
+    else:
+        data = request_data
+
+    items = data.get("items") or []
+    if not items:
+        frappe.msgprint("No items found in Smart Purchase data.")
+        return
+
+    created_items = []
+    for item in items:
+        item_name = get_or_create_item_from_smart(item)
+        created_items.append(item_name)
+
+    frappe.msgprint(f"✅ Created or linked {len(created_items)} Smart items.")
+
+
 def get_or_create_item_from_smart(item_row) -> str:
     """
-    Ensure an Item exists for the Smart Invoice purchase product (ZRA).
+    Ensure an Item exists for the Smart Invoice purchase product (ZRA Smart System).
     Handles both dicts and Frappe Document objects like SmartRegisteredPurchaseItem.
     """
 
     def val(fieldname, default=None):
-        """Safely extract field from dict or frappe._dict or Document."""
+        """Safely extract field from dict, frappe._dict, or Document."""
         if hasattr(item_row, fieldname):
             return getattr(item_row, fieldname, default)
         if isinstance(item_row, (dict, frappe._dict)):
             return item_row.get(fieldname, default)
         return default
 
-    # Correct Smart field names
-    item_code = val("item_code") 
+    # 🧾 Core fields from Smart item
+    item_code = val("item_code") or val("prdCode") or val("product_code")
+    item_name = val("item_name") or val("prdNm") or "Unnamed Item"
+
     if not item_code:
-        frappe.throw(f"Item code is missing in Smart item: {item_row.name}")
+        frappe.throw(f"Item code missing in Smart item: {item_row}")
 
-    existing_item = frappe.db.exists("Item", {"item_code": item_code})
-    if existing_item:
-        return existing_item
-
-    # Units and VAT
-    packaging_unit = val("packaging_unit_code", "EA")
-    quantity_unit = val("quantity_unit_code", "Nos")
-    vat_category = val("vat_category_code", "A")
+    # 🧠 Smart VAT and unit details
+    packaging_unit = val("packaging_unit_code") or val("pkgUnitCd") or "EA"
+    quantity_unit = val("quantity_unit_code") or val("qtyUnitCd") or "Nos"
+    vat_category = val("vat_category_code") or val("taxTypeCd") or "A"
+    standard_rate = val("prc") or val("unit_price") or 0.0
+    class_code = val("itemClsCd") or val("item_class_code")
 
     ensure_uom_exists(quantity_unit)
     ensure_uom_exists(packaging_unit)
 
+    # 🔎 Check existing item
+    existing_item = frappe.db.exists("Item", {"item_code": item_code})
+    if existing_item:
+        return existing_item
+
+    # 🧱 Create new item
     new_item = frappe.get_doc({
         "doctype": "Item",
         "item_code": item_code,
-        "item_name": val("item_name"),
+        "item_name": item_name,
         "item_group": "Products",
         "is_stock_item": 1,
         "stock_uom": quantity_unit,
-        "standard_rate": val("prc") or 0.0,
-        "custom_item_classification": val("item_class_code"),
+        "standard_rate": standard_rate,
+        "valuation_rate": standard_rate,
+        "custom_smart_item_classification_code": class_code,
         "custom_smart_packaging_unit": packaging_unit,
         "custom_smart_quantity_unit": quantity_unit,
         "custom_smart_vat_category": vat_category,
     })
 
+    # Optional extra metadata
+    if hasattr(new_item, "custom_smart_origin_country"):
+        new_item.custom_smart_origin_country = val("origin_country") or "Zambia"
+
     new_item.insert(ignore_permissions=True)
     frappe.db.commit()
+
     return new_item.name
 
 
 def ensure_uom_exists(uom_name: str):
-    """Ensure a UOM record exists before linking."""
+    """Ensure a UOM record exists before linking (Smart often sends unit codes dynamically)."""
     if not uom_name:
         return
     if not frappe.db.exists("UOM", uom_name):
@@ -295,6 +339,11 @@ def ensure_uom_exists(uom_name: str):
             "uom_name": uom_name,
             "enabled": 1
         }).insert(ignore_permissions=True)
+
+import frappe
+import json
+from frappe.model.document import Document
+
 
 
 def get_or_create_supplier_from_smart(sale_data) -> str:
@@ -311,7 +360,7 @@ def get_or_create_supplier_from_smart(sale_data) -> str:
             return sale_data.get(fieldname, default)
         return default
 
-    # ✅ Try all possible Smart field names (depending on sync type)
+    # 🧾 Extract supplier details from Smart purchase data
     supplier_name = (
         val("supplier_name")
         or val("seller_name")
@@ -328,30 +377,41 @@ def get_or_create_supplier_from_smart(sale_data) -> str:
         or ""
     )
 
-    # ✅ Normalize values
+    supplier_branch_id = val("supplier_branch_id") or val("branch_id") or ""
+    supplier_country = val("supplier_country") or val("country") or "Zambia"
+    supplier_currency = val("supplier_currency") or "ZMW"
+
+    # Normalize values
     supplier_name = supplier_name.strip() if supplier_name else "Unknown Supplier"
     supplier_tpin = supplier_tpin.strip() if supplier_tpin else ""
 
-    # 🧾 Check existing supplier by TPIN (preferred)
+    # 🔍 Prefer to match by TPIN if available
     existing_supplier = None
     if supplier_tpin:
         existing_supplier = frappe.db.exists("Supplier", {"tax_id": supplier_tpin})
 
-    # 🔄 fallback check by supplier_name if no TPIN found
+    # fallback match by name if TPIN is missing
     if not existing_supplier and supplier_name:
         existing_supplier = frappe.db.exists("Supplier", {"supplier_name": supplier_name})
 
     if existing_supplier:
         return existing_supplier
 
-    # 🏗️ Create new Supplier
+    # 🏗️ Create a new Supplier
     new_supplier = frappe.get_doc({
         "doctype": "Supplier",
         "supplier_name": supplier_name,
         "supplier_group": "All Supplier Groups",
         "tax_id": supplier_tpin,
         "supplier_type": "Company",
+        "default_currency": supplier_currency,
+        "country": supplier_country,
     })
+
+    # Optional custom field for ZRA branch ID (if your doctype has it)
+    if frappe.db.has_column("Supplier", "custom_supplier_branch_id"):
+        new_supplier.custom_supplier_branch_id = supplier_branch_id
+
     new_supplier.insert(ignore_permissions=True)
     frappe.db.commit()
 

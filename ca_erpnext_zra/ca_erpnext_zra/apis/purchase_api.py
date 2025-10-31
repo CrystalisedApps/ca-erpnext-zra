@@ -1,4 +1,8 @@
 import frappe
+from frappe.utils import now_datetime
+from frappe.utils.password import get_decrypted_password
+from ..utils.settings_utils import get_settings
+import json
 from frappe.model.document import Document
 from ca_erpnext_zra.ca_erpnext_zra.utils.smart_api_utils import get_active_smart_settings
 from ..apis.api_processor import process_request
@@ -7,6 +11,201 @@ from ..handlers.invoice_handler import purchase_invoice_submission_on_success
 from ..handlers.purchase_handlers import purchase_search_on_success
 from ..doctype.doctype_names_mapping import REGISTERED_PURCHASES_DOCTYPE_NAME
 from datetime import datetime
+from ..handlers.purchase_handlers import get_or_create_supplier_from_smart, get_or_create_item_from_smart
+
+from frappe.utils import today, flt
+@frappe.whitelist()
+def create_purchase_invoice_from_smart_request(request_data: str) -> None:
+    """
+    Creates or updates a Purchase Invoice in ERPNext from ZRA Smart Invoice data.
+    Handles:
+    - Existing submitted/cancelled invoices safely
+    - Missing warehouses and accounts
+    - Item creation and linking
+    """
+
+    import json
+    from frappe.utils import today, flt
+
+    # --- 1️⃣ Parse request ---
+    data = json.loads(request_data) if isinstance(request_data, str) else request_data or {}
+    
+    # --- 2️⃣ Company context ---
+    company_name = (
+        data.get("company_name")
+        or frappe.defaults.get_user_default("Company")
+        or frappe.get_value("Company", {}, "name")
+    )
+
+    # --- 3️⃣ Ensure supplier exists ---
+    supplier_name = get_or_create_supplier_from_smart(data)
+
+    # --- 4️⃣ Find existing PI (Smart linked) ---
+    smart_purchase_id = data.get("purchase_id") 
+    # 🚨 If no unique Smart ID provided, generate one dynamically using supplier + date + random hash
+    # 🚨 If no unique Smart ID provided, generate one dynamically using supplier + date + random hash
+    if not  smart_purchase_id:
+        smart_purchase_id = f"{data.get('supplier_tpin')}-{data.get('invoice_date')}-{frappe.generate_hash('', 6)}"
+
+    # frappe.throw(str(data))
+    existing_pi_name = frappe.db.get_value(
+        "Purchase Invoice",
+        {"custom_smart_purchase_id": smart_purchase_id},
+        "name",
+    )
+
+    pi = None
+
+    if existing_pi_name:
+        pi = frappe.get_doc("Purchase Invoice", existing_pi_name)
+
+        if pi.docstatus == 1:
+            # ⚠️ Already submitted — don’t modify it
+            frappe.msgprint(
+                f"Purchase Invoice {pi.name} already submitted for supplier {pi.supplier}. Skipping recreation."
+            )
+            return
+
+        elif pi.docstatus == 2:
+            # 🧾 Cancelled — create a new one
+            frappe.log_error(
+                f"Smart Purchase {smart_purchase_id} linked to cancelled PI {pi.name}. Creating new one.",
+                "ZRA Smart Purchase",
+            )
+            pi = frappe.new_doc("Purchase Invoice")
+            pi.custom_smart_purchase_id = smart_purchase_id
+
+        else:
+            # 🧹 Draft but editable
+            pi.reload()
+            pi.set("items", [])
+
+    else:
+        # 🆕 Create new invoice
+        pi = frappe.new_doc("Purchase Invoice")
+        pi.custom_smart_purchase_id = smart_purchase_id
+
+    # --- 5️⃣ Basic fields ---
+    pi.company = company_name
+    pi.supplier = supplier_name
+    pi.currency = data.get("currency", "ZMW")
+    pi.bill_no = data.get("invoice_no") or data.get("spplrInvcNo")
+    pi.bill_date = data.get("invoice_date") or data.get("salesDt") or today()
+    pi.posting_date = today()
+    pi.update_stock = 1
+    pi.buying_price_list = (
+        frappe.db.get_value("Buying Settings", None, "price_list") or "Standard Buying"
+    )
+
+    # --- 6️⃣ Warehouse ---
+    branch_name = data.get("branch") or data.get("branch_id")
+    set_warehouse = None
+
+    if branch_name:
+        set_warehouse = frappe.db.get_value(
+            "Warehouse",
+            {
+                "company": company_name,
+                "warehouse_name": ["like", f"%{branch_name}%"],
+                "is_group": 0,
+            },
+            "name",
+        )
+
+    if not set_warehouse:
+        set_warehouse = (
+            frappe.db.get_value("Warehouse", {"company": company_name, "is_group": 0}, "name")
+            or "Main Warehouse"
+        )
+
+    pi.set_warehouse = set_warehouse
+    pi.custom_smart_branch = branch_name
+    pi.custom_smart_organisation = data.get("organisation")
+    pi.custom_source_registered_purchase = data.get("name")
+
+    # --- 7️⃣ Expense account ---
+    company_abbr = frappe.get_value("Company", company_name, "abbr")
+    expense_account = (
+        frappe.db.get_value(
+            "Account",
+            {"company": company_name, "root_type": "Expense", "is_group": 0},
+            "name",
+        )
+        or f"Cost of Goods Sold - {company_abbr}"
+    )
+
+    # --- 8️⃣ Smart items ---
+    for item in data.get("items", []):
+        item_code = get_or_create_item_from_smart(item)
+        qty = flt(item.get("qty") or item.get("quantity") or 1)
+        rate = flt(item.get("prc") or item.get("unit_price") or 0.0)
+        amount = qty * rate
+        uom = item.get("qtyUnitCd") or item.get("quantity_unit_code") or "Nos"
+
+        pi.append(
+            "items",
+            {
+                "item_code": item_code,
+                "item_name": item.get("itemNm") or item.get("item_name"),
+                "qty": qty,
+                "rate": rate,
+                "amount": amount,
+                "uom": uom,
+                "stock_uom": uom,
+                "conversion_factor": 1.0,
+                "warehouse": set_warehouse,
+                "expense_account": expense_account,
+                "custom_smart_packaging_unit": item.get("packaging_unit_code"),
+                "custom_smart_item_classification_code": item.get("item_class_code"),
+                "custom_smart_vat_category": item.get("vat_category_code"),
+                "custom_smart_quantity_unit": item.get("quantity_unit_code"),
+            },
+        )
+
+    # --- 9️⃣ Safe save & submit ---
+    pi.flags.ignore_permissions = True
+    pi.flags.ignore_mandatory = True
+    pi.flags.ignore_links = True
+
+    pi.run_method("set_missing_values")
+    pi.run_method("calculate_taxes_and_totals")
+
+    pi.save(ignore_permissions=True)
+
+    try:
+        if pi.docstatus == 0:
+            pi.submit()
+    except frappe.ValidationError:
+        frappe.log_error(
+            frappe.get_traceback(), f"Smart Purchase Invoice Submit Error ({pi.name})"
+        )
+
+    frappe.msgprint(
+        f"✅ Purchase Invoice '{pi.name}' created or updated for supplier {supplier_name}."
+    )
+
+@frappe.whitelist()
+def create_items_from_smart_purchase(request_data: str) -> None:
+    """
+    Create Items in ERPNext from ZRA Smart Invoice purchase data.
+    This can be called via Frappe call from a custom doctype (like Registered Purchases).
+    """
+    if isinstance(request_data, str):
+        data = json.loads(request_data)
+    else:
+        data = request_data
+
+    items = data.get("items") or []
+    if not items:
+        frappe.msgprint("No items found in Smart Purchase data.")
+        return
+
+    created_items = []
+    for item in items:
+        item_name = get_or_create_item_from_smart(item)
+        created_items.append(item_name)
+
+    frappe.msgprint(f" Created or linked {len(created_items)} Smart items.")
 
 def submit_smart_purchase_invoice(doc: Document) -> None:
     """
@@ -16,7 +215,7 @@ def submit_smart_purchase_invoice(doc: Document) -> None:
 
      # Ensure we have a proper Document object
     if isinstance(doc, str):
-        frappe.throw(str(doc))
+        # frappe.throw(str(doc))
         doc = frappe.get_doc("Purchase Invoice", doc)
     
     # Skip if already submitted to Smart
@@ -87,11 +286,6 @@ def send_purchase_details(doc, method=None) -> None:
     Manually trigger Smart submission for a Purchase Invoice or Debit Note.
     """
     submit_smart_purchase_invoice(doc)
-import frappe
-from frappe.utils import now_datetime
-from frappe.utils.password import get_decrypted_password
-from ..utils.settings_utils import get_settings
-
 
 
 @frappe.whitelist()
@@ -136,3 +330,18 @@ def perform_purchases_search(company: str) -> None:
     except Exception as e:
         frappe.log_error(frappe.get_traceback(), "Smart Purchase Fetch Failed")
         frappe.throw(f"Error fetching purchases from ZRA: {e}")
+
+@frappe.whitelist()
+def create_supplier_from_smart_purchase(request_data: str) -> None:
+    """
+    Creates a Supplier from ZRA Smart Purchase data.
+    Can be called from a Frappe client (JS) or internal function.
+    """
+    if isinstance(request_data, str):
+        data = json.loads(request_data)
+    else:
+        data = request_data
+
+    supplier_doc = get_or_create_supplier_from_smart(data)
+
+    frappe.msgprint(f"Supplier <b>{supplier_doc}</b> successfully created or linked.")

@@ -15,7 +15,7 @@ frappe.listview_settings[doctypeName] = {
             method:
               "ca_erpnext_zra.ca_erpnext_zra.apis.purchase_api.perform_purchases_search",
             args: {
-              company: companyName, // ✅ Pass company directly (not inside request_data)
+              company: companyName, // Pass company directly (not inside request_data)
             },
             freeze: true,
             freeze_message: __("Fetching Purchases from ZRA Smart Invoice System..."),

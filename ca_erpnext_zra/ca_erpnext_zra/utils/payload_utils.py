@@ -120,7 +120,7 @@ def _fmt_date(d) -> str:
 
 def build_debit_note_payload(docname: str, settings_name: str) -> Dict[str, Any]:
     """
-    Build a Debit Note payload for Smart Invoice (ZRA) from a Purchase Invoice / Credit Note doc.
+    Build a Debit Note payload for Smart Invoice (ZRA) from a Purchase Invoice
 
     Args:
         docname (str): name of the Purchase Invoice (or Debit Note) in ERPNext
