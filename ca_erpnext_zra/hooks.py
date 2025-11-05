@@ -5,12 +5,12 @@ app_description = "A Frappe custom app that integrates with ZRA VSDC API."
 app_email = "support@crystalisedapps.com"
 app_license = "agpl-3.0"
 
-
+from .ca_erpnext_zra.doctype.doctype_names_mapping import ROUTES_TABLE_DOCTYPE_NAME
 
 
 
 fixtures = [
-
+ {"dt": ROUTES_TABLE_DOCTYPE_NAME},
 ]
 
 doctype_js = {
@@ -157,16 +157,12 @@ doc_events = {
 	# 	"on_trash": "method"
 	
     "Sales Invoice": {
-        "before_save": ["ca_erpnext_zra.ca_erpnext_zra.overrides.server.shared_override.before_save"],
-        "on_submit": [
-            "ca_erpnext_zra.ca_erpnext_zra.overrides.server.sales_invoice_override.on_submit" 
-        ],
+        "before_save": "ca_erpnext_zra.ca_erpnext_zra.overrides.server.shared_override.before_save",
+        "on_submit": "ca_erpnext_zra.ca_erpnext_zra.overrides.server.sales_invoice_override.on_submit" 
+        
     },
     "Item": {
-        "on_submit": [
-            "ca_erpnext_zra.ca_erpnext_zra.apis.item_api.perform_item_registration",
-            
-        ],
+        "on_submit": "ca_erpnext_zra.ca_erpnext_zra.apis.item_api.perform_item_registration",
     },
 
     "Stock Ledger Entry": {

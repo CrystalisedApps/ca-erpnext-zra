@@ -144,10 +144,10 @@ def get_vsdc_invoice_details(
         frappe.msgprint(f"Invoice details synced successfully with ZRA for {invoice.name}")
 
     # Define error handler
-    def on_error(error):
+    def on_error(response=None,**kwargs):
         frappe.log_error(
             title="VSDC API Error",
-            message=f"Failed to fetch VSDC invoice details: {error}"
+            message=f"Failed to fetch VSDC invoice details: {response}"
         )
 
     # Use process_request to send the request
