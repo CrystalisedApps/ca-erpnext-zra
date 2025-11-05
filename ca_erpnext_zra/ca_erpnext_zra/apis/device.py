@@ -1,7 +1,7 @@
 import frappe
 from .api_processor import process_request
 from ..doctype.doctype_names_mapping import SETTINGS_DOCTYPE_NAME
-
+from frappe.utils.password import get_decrypted_password
 
 @frappe.whitelist()
 def initialize_device(settings_name: str = None) -> dict:
@@ -21,13 +21,21 @@ def initialize_device(settings_name: str = None) -> dict:
     Returns:
         dict: Response from Crystal VSDC.
     """
+
+    settings_doc = frappe.get_doc(SETTINGS_DOCTYPE_NAME, settings_name)
+
+    tpin = (
+        get_decrypted_password(SETTINGS_DOCTYPE_NAME, settings_name, "tpin", raise_exception=False)
+        or ""
+    ) 
     request_data={
-        "tpin":"1002152970",
+        "tpin": tpin,
         "bhfId":"000",
-        "dvcSrlNo":"1002152970_VSDC",
-        
-        
+        "dvcSrlNo": settings_doc.get("device_serial_number") or f"{tpin}_VSDC",
     }
+        
+        
+    
     if not request_data:
         frappe.throw("Request data required for device initialization")
     return process_request(
@@ -50,22 +58,12 @@ def initialize_device_on_success(response: dict, **kwargs) -> dict:
     
     # Handle different result codes with specific messages
     if result_cd == "902":
-        frappe.msgprint("ℹ️ Device already initialized with Crystal VSDC")
+        frappe.msgprint("ℹ Device already initialized with Crystal VSDC")
     elif result_cd == "000":
-        frappe.msgprint("✅ Successfully initialized device with Crystal VSDC")
+        frappe.msgprint(" Successfully initialized device with Crystal VSDC")
     else:
         # Fallback for other success cases or unknown result codes
-        frappe.msgprint("✅ Device initialization successful with Crystal VSDC")
+        frappe.msgprint(" Device initialization successful with Crystal VSDC")
 
-    # Save API keys to settings if available
-    # api_key = response.get("apiKey")
-    # secret_key = response.get("secretKey")
-
-    # if api_key and secret_key:
-    #     settings_name = kwargs.get("settings_name")
-    #     if settings_name:
-    #         settings = frappe.get_doc(SETTINGS_DOCTYPE_NAME, settings_name)
-    #         settings.db_set("api_key", api_key)
-    #         settings.db_set("secret_key", secret_key)
-
+  
     return response
