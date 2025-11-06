@@ -646,7 +646,7 @@ def build_invoice_payload(invoice: "Document", settings_name: str) -> dict:
     payload = {
         "tpin": tpin,
         "bhfId": bhf_id,
-        "cisInvcNo": f"{reference_number}-{frappe.generate_hash(length=5)}",
+        "cisInvcNo": reference_number,
         "salesDt": sales_dt,
         "custTpin": customer.tax_id,
         "custNm": customer.customer_name,
