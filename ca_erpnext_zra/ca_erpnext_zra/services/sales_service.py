@@ -7,7 +7,7 @@ from ..utils.payload_utils import (
     build_credit_note_payload
 )
 
-
+from ..apis.invoice_processor import get_vsdc_invoice_details
 
 def sales_information_submission_on_success(
     response: dict,
@@ -54,7 +54,7 @@ def sales_information_submission_on_success(
     # Extract the actual data from the nested response structure
     result_data = response.get("Result", {})
     actual_data = result_data.get("data", {})
-    
+    # frappe.throw(str(actual_data))
     # Debug logging to verify the structure
     print(f"DEBUG - Full response: {response}")
     print(f"DEBUG - Result data: {result_data}")
@@ -74,11 +74,11 @@ def sales_information_submission_on_success(
 
     # Enqueue background fetch of invoice details for consistency check
     frappe.enqueue(
-        "ca_erpnext_zra.ca_erpnext_zra.apis.invoice_processor.get_vsdc_invoice_details",
-        document_name=document_name,
-        invoice_type=doctype,
-        settings_name=settings_name,
-        queue="long",
+    get_vsdc_invoice_details,
+    queue="long",
+    document_name=document_name,
+    invoice_type=doctype,
+    settings_name=settings_name,
     )
 
 

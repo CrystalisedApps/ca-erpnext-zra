@@ -90,11 +90,42 @@ def get_vsdc_invoice_details(
     invoice_type: str = "Sales Invoice",
     settings_name: str = None,
     company: str = None,
+    **kwargs
 ):
     """
     Fetch and refresh Crystal VSDC (ZRA Smart Invoice) details for a Sales Invoice,
     using the centralized `process_request` API wrapper.
     """
+      # --- 🔍 Debug Logging: confirm arguments ---
+    frappe.log_error(
+        title="VSDC Invoice Details Debug",
+        message=f"""
+        🔎 get_vsdc_invoice_details() called with:
+        - document_name: {document_name}
+        - invoice_type: {invoice_type}
+        - settings_name: {settings_name}
+        - company: {company}
+        - kwargs: {kwargs}
+        """
+    )
+
+    # --- Optional: handle 'kwargs' wrapping (if job was enqueued as string path) ---
+    if not document_name and "kwargs" in kwargs:
+        inner = kwargs.get("kwargs") or {}
+        document_name = inner.get("document_name")
+        invoice_type = inner.get("invoice_type", invoice_type)
+        settings_name = inner.get("settings_name", settings_name)
+        company = inner.get("company", company)
+
+        frappe.log_error(
+            title="VSDC Invoice Details (Recovered from kwargs)",
+            message=f"Recovered args from kwargs → document_name={document_name}, invoice_type={invoice_type}, settings_name={settings_name}"
+        )
+
+    # --- Sanity check ---
+    if not document_name:
+        frappe.throw("❌ Missing document_name in get_vsdc_invoice_details()")
+
     
 
     # Fetch invoice
