@@ -80,15 +80,16 @@ def generic_invoices_on_submit_override(
         # Compute tax breakdown before sending (assuming calculate_tax is defined)
         calculate_tax(doc) 
 
-        # Enqueue the Credit Note submission
+        
         frappe.enqueue(
             process_request,
             queue="default",
             is_async=True,
             request_data=payload,
-            route_key="SaveCreditNote",  # Crystal-specific endpoint
-            handler_function=submit_credit_note,
+            route_key="SaveCreditNote",  
+            handler_function=_handle_sales_submission_success,
             request_method="POST",
+            document_name=doc.name,
             doctype=invoice_type,
             settings_name=settings_doc.name,
         )
