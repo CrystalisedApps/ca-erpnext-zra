@@ -994,6 +994,9 @@ def get_payment_type_code(doc):
 def build_stock_payload(tpin, bhf_id, user, stock_items, route_key=None, warehouse=None):
     """Build payload for SaveStockItems or SaveStockMaster depending on route_key.
        If warehouse is not provided, aggregates total item quantities across all warehouses.
+       
+       For SaveStockMaster: stock_items should include 'qty' field with the quantity being sold
+       e.g., [{"itemCd": "ITEM-001", "qty": 5}]
     """
 
     if not isinstance(stock_items, list):
@@ -1071,22 +1074,26 @@ def build_stock_payload(tpin, bhf_id, user, stock_items, route_key=None, warehou
 
             if warehouse:
                 # Get balance quantity from the specified warehouse
-                qty = frappe.db.get_value(
+                current_qty = frappe.db.get_value(
                     "Bin",
                     {"item_code": item_code, "warehouse": warehouse},
                     "actual_qty"
                 ) or 0
             else:
                 # Aggregate quantity across all warehouses
-                qty = frappe.db.get_all(
+                current_qty = frappe.db.get_all(
                     "Bin",
                     filters={"item_code": item_code},
                     fields=["sum(actual_qty) as qty"]
                 )[0].qty or 0
 
+            # Subtract the sold quantity from current stock
+            sold_qty = float(i.get("qty", 0))
+            remaining_qty = float(current_qty) - sold_qty
+
             stock_item_list.append({
                 "itemCd": item_code,
-                "rsdQty": float(qty),
+                "rsdQty": remaining_qty,
             })
 
         payload = {

@@ -51,11 +51,24 @@ def sales_information_submission_on_success(
 #     )
 
 
+    # Extract the actual data from the nested response structure
+    result_data = response.get("Result", {})
+    actual_data = result_data.get("data", {})
+    
+    # Debug logging to verify the structure
+    print(f"DEBUG - Full response: {response}")
+    print(f"DEBUG - Result data: {result_data}")
+    print(f"DEBUG - Actual data: {actual_data}")
+    
+    # Use the actual_data which contains the invoice information
     updates = {
         "custom_successfully_submitted": 1,
-        "custom_scu_invoice_number": response.get("cisInvcNo"),  # Crystal VSDC returns this unique invoice number
-        "custom_control_unit_date_time": response.get("cfmDt"),   # Confirmation date if available
+        "custom_scu_invoice_number": actual_data.get("cisInvcNo"),  # This should now work
+        "custom_control_unit_date_time": actual_data.get("vsdcRcptPbctDate"),  # Using vsdcRcptPbctDate instead of cfmDt
+        "custom_total_receipt_number": actual_data.get("rcptNo"),
     }
+    
+    print(f"Sales submission success updates for {doctype} {document_name}: {updates}")
 
     frappe.db.set_value(doctype, document_name, updates)
 
