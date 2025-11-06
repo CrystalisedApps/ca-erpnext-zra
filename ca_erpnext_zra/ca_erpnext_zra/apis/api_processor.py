@@ -46,7 +46,8 @@ def process_request(
 
     # Normalize and parse incoming request data
     data = parse_request_data(request_data)
-    extracted_company, branch_id, document_name = extract_metadata(data)
+    extracted_company, branch_id, extracted_docname = extract_metadata(data)
+    document_name = document_name or extracted_docname
     company_name = (
         company
         or extracted_company
@@ -128,6 +129,7 @@ def extract_metadata(data: dict) -> tuple:
             or frappe.get_value("Branch", "name")
         )
         document_name = first_entry.get("document_name", None)
+
     else:
         company_name = (
             data.pop("company", None)

@@ -157,14 +157,15 @@ doc_events = {
 	# 	"on_trash": "method"
 	
     "Sales Invoice": {
-        "before_save": "ca_erpnext_zra.ca_erpnext_zra.overrides.server.shared_override.before_save",
-        "on_submit": "ca_erpnext_zra.ca_erpnext_zra.overrides.server.sales_invoice_override.on_submit" 
+        "before_save": ["ca_erpnext_zra.ca_erpnext_zra.overrides.server.shared_override.before_save"],
+        # FIX: Changed to a list format to ensure the hook registers correctly
+        "on_submit": ["ca_erpnext_zra.ca_erpnext_zra.overrides.server.sales_invoice_override.on_submit"] 
         
     },
     "Item": {
-        "on_submit": "ca_erpnext_zra.ca_erpnext_zra.apis.item_api.perform_item_registration",
+        # FIX: Changed to a list format to ensure the hook registers correctly
+        "on_submit": ["ca_erpnext_zra.ca_erpnext_zra.apis.item_api.perform_item_registration"],
     },
-
     "Stock Ledger Entry": {
         "after_insert": "ca_erpnext_zra.ca_erpnext_zra.apis.stock_api.sync_stock_from_sle"
     },
