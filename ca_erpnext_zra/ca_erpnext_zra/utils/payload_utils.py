@@ -357,7 +357,7 @@ def build_debit_note_payload(docname: str, settings_name: str = None) -> Dict[st
             "qty": qty,
             "qtyUnitCd": cstr(getattr(itm, "uom", getattr(itm, "stock_uom", "EA"))),
             "prc": sply_rate,
-            "splyAmt": sply_amt,
+            "splyAmt": tl_amt,
             "vatAmt": vat_amt,
             "tlAmt": 0,
             "totAmt": tot_amt,
