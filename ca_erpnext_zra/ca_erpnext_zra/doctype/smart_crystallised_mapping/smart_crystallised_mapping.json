@@ -1,0 +1,53 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2025-11-11 12:18:32.508711",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "smart_setup",
+  "zra_item_code",
+  "column_break_hsfp",
+  "is_active"
+ ],
+ "fields": [
+  {
+   "fieldname": "smart_setup",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Smart Setup",
+   "options": "Crystal ZRA Smart Invoice Settings"
+  },
+  {
+   "fieldname": "column_break_hsfp",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "0",
+   "fieldname": "is_active",
+   "fieldtype": "Check",
+   "in_list_view": 1,
+   "label": "Is Active"
+  },
+  {
+   "fieldname": "zra_item_code",
+   "fieldtype": "Data",
+   "label": "ZRA Item Code"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "links": [],
+ "modified": "2025-11-11 13:07:32.159837",
+ "modified_by": "Administrator",
+ "module": "Ca Erpnext Zra",
+ "name": "Smart Crystallised Mapping",
+ "owner": "Administrator",
+ "permissions": [],
+ "row_format": "Dynamic",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}
