@@ -156,7 +156,11 @@ function executeSmartItemAction(frm, actionType, settingsName) {
 
   frappe.call({
     method,
-    args: { doc: frm.doc },
+   args: {
+    doc: frm.doc,
+    item_code: frm.doc.item_code,
+    settings_name: settingsName,
+  },
     callback: () => {
       const messages = {
         register_item: "Smart Item Registration Queued. Please check later.",
