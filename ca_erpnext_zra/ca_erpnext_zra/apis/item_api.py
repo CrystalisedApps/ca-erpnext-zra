@@ -1,25 +1,23 @@
+
 import frappe
 from frappe import _
 from ..utils.payload_utils import generate_vsdc_item_payload
 from ..apis.api_processor import process_request
 from ..utils.smart_api_utils import get_active_smart_settings
+# from ..utils.smart_api_utils import get_active_smart_settings
 from frappe.utils.background_jobs import enqueue
 from frappe.utils.password import get_decrypted_password
-
-
+from ..services.item_service import fetch_matching_items_on_success
+from ..services.item_service import handle_registration_response
+from ..utils.payload_utils import  generate_custom_item_code_smart
+from ..utils.payload_utils import build_stock_payload
 
 @frappe.whitelist()
 def perform_item_registration(doc, method=None) -> dict | None:
-    """Register an Item with Smart Zambia API (single settings setup)."""
-
-    # frappe.throw(str(doc))
     import json
-
-    # If doc is a string (from JS), convert it
+    # Handle both dict or string inputs (from frontend or hooks)
     if isinstance(doc, str):
         doc = json.loads(doc)
-
-    # Now, if it's a dict, get the actual Item record
     if isinstance(doc, dict):
         docname = doc.get("name")
     else:
@@ -30,56 +28,95 @@ def perform_item_registration(doc, method=None) -> dict | None:
 
     item = frappe.get_doc("Item", docname)
 
-    # frappe.throw(str(item))
+    # Get the settings
     settings = _get_single_smart_settings()
     if not settings:
-        frappe.throw(_("No active Smart API Settings found"))
+        frappe.throw(_("No active Smart API Settings found."))
 
+    settings_name = settings.get("name")
+
+    # Validate eligibility and required fields before proceeding
     if not is_item_eligible_for_registration(item):
+        frappe.msgprint(_("Item not eligible for registration."), alert=True)
         return None
-    # frappe.throw(str(generate_vsdc_item_payload(item.name)))
-  
-    
-    # Enqueue async job
-    enqueue(
-            "ca_erpnext_zra.ca_erpnext_zra.apis.item_api._process_item_registration",
-        queue="long",  # or "default"
-        job_name=f"Register Item {item.name} with Smart Zambia",
+
+    missing_fields = validate_required_fields(item)
+    if missing_fields:
+        frappe.msgprint(
+            _("Missing required fields: {0}").format(", ".join(missing_fields)), alert=True
+        )
+        return None
+
+    # Generate Smart Item code code if missing
+    if not item.custom_smart_item_code:
+        generate_and_set_smart_code(item)
+
+    # Step 1: Enqueue async GET to check if item already exists remotely
+    frappe.enqueue(
+        "ca_erpnext_zra.ca_erpnext_zra.apis.item_api._process_item_lookup",
+        queue="default",
+        job_name=f"[SMART] Lookup existing item {item.name}",
         timeout=300,
         item_name=item.name,
-        settings_name=settings["name"],
+        settings_name=settings_name,
     )
 
     return {
         "queued": True,
         "item": item.name,
-        "message": "Item registration has been queued"
+        "message": _("Item lookup has been queued for Smart Zambia registration."),
     }
 
-def _process_item_registration(item_name: str, settings_name: str):
-    try:
-        item = frappe.get_doc("Item", item_name)
-        payload = generate_vsdc_item_payload(item.name)
 
-        response = process_request(
-            request_data=payload,
-            route_key="SaveItem",
-            request_method="POST",
-            handler_function=handle_registration_response,
-            settings_name=settings_name,
-        )
+@frappe.whitelist()
+def _process_item_lookup(item_name: str, settings_name: str):
+    """Search for existing Smart Zambia item before registration (selectItem)."""
+    from ..apis.api_processor import process_request
 
-        # frappe.db.set_value("Item", item.name, "last_registration_response", str(response))
-        frappe.db.commit()
-        return response
+    # Fetch Item and settings
+    item = frappe.get_doc("Item", item_name)
+    settings = frappe.get_doc("Crystal ZRA Smart Invoice Settings", settings_name)
 
-    except Exception as e:
+    # Extract required Smart API identifiers
+    tpin = get_decrypted_password(
+            "Crystal ZRA Smart Invoice Settings",
+            settings.name,
+            "tpin",
+            raise_exception=False
+        ) or ""
+    bhf_id = settings.get("branch_id") or "000"  # Default branch
+    item_cd = item.get("custom_smart_item_code")
+
+    if not (tpin and item_cd):
         frappe.log_error(
-            title="Item Registration Failed",
-            message=f"Item: {item_name}\nError: {frappe.get_traceback()}"
+            title="[SMART] Missing Required Data for selectItem",
+            message=f"TPIN: {tpin}, Item Code: {item_cd}, Item: {item.name}"
         )
-        raise  # Let RQ mark the job as failed
+        return
 
+    # Build the expected Smart Zambia API request payload
+    request_data = {
+        "tpin": tpin,
+        "bhfId": bhf_id,
+        "itemCd": item_cd
+    }
+
+    frappe.logger().info(f"[SMART] 🔍 Looking up existing Smart item: {request_data}")
+
+    # Enqueue Smart API call
+    frappe.enqueue(
+        process_request,
+        queue="default",
+        is_async=True,
+        request_data=request_data,
+        route_key="selectItem",  # Smart API endpoint
+        handler_function=fetch_matching_items_on_success,
+        request_method="POST",
+        doctype="Item",
+        document_name=item.name,
+        settings_name=settings_name,
+        error_callback = fetch_matching_items_on_success
+    )
 
 
 
@@ -117,9 +154,24 @@ def fetch_item_details(item_code: str, settings_name: str = None) -> None:
 
 
 @frappe.whitelist()
-def update_item(item_name: str) -> dict | None:
+def update_item(doc, method=None) -> dict | None:
     """Update Item details in Smart Zambia API."""
-    item = frappe.get_doc("Item", item_name)
+    import json
+
+    # If doc is a string (from JS), convert it
+    if isinstance(doc, str):
+        doc = json.loads(doc)
+
+    # Now, if it's a dict, get the actual Item record
+    if isinstance(doc, dict):
+        docname = doc.get("name")
+    else:
+        docname = getattr(doc, "name", None)
+
+    if not docname:
+        frappe.throw("No Item name provided for registration.")
+
+    item = frappe.get_doc("Item", docname)
 
     if not is_item_eligible_for_registration(item):
         return None
@@ -133,14 +185,13 @@ def update_item(item_name: str) -> dict | None:
         queue="default",
         is_async=True,
         request_data=generate_vsdc_item_payload(item.name),
-        route_key="ItemUpdateReq",
+        route_key="updateItem",
         handler_function=handle_update_response,
         request_method="POST",
         doctype="Item",
         settings_name=settings["name"],
     )
     return {"queued": True, "item": item.name}
-
 
 @frappe.whitelist()
 def submit_inventory(item_name: str) -> dict | None:
@@ -151,23 +202,45 @@ def submit_inventory(item_name: str) -> dict | None:
     if not settings:
         frappe.throw(_("No active Smart API Settings found"))
 
+    # Assign variables AFTER confirming settings exist
+    tpin = get_decrypted_password(
+        "Crystal ZRA Smart Invoice Settings",
+         settings["name"],
+        "tpin",
+        raise_exception=False
+    ) or ""
+
+    bhf_id = settings.get("bhfId") or "000"
+    user = frappe.session.user or "Admin"
+
     request_payload = {
         "itemCd": item.item_code,
         "qty": item.get("actual_qty") or 0,
-        "bhfId": settings.get("bhfId") or "000",
+        "bhfId": bhf_id,
     }
+
+    # Prepare stock payload
+    stock_payload = build_stock_payload(
+        tpin=tpin,
+        bhf_id=bhf_id,
+        user=user,
+        stock_items=[request_payload],
+        route_key="SaveStockMaster",
+    )
 
     frappe.enqueue(
         process_request,
         queue="default",
         is_async=True,
-        request_data=request_payload,
-        route_key="",
+
+        request_data=stock_payload,
+        route_key="saveStockMaster",
         handler_function=handle_inventory_response,
         request_method="POST",
         doctype="Item",
-        settings_name=settings["name"],
+        settings_name=settings["name"]
     )
+
     return {"queued": True, "item": item.name}
 
 
@@ -185,54 +258,6 @@ def is_item_eligible_for_registration(item) -> bool:
     """Check if item can be registered in Smart Zambia."""
     return not (item.get("custom_prevent_smart_registration") or item.disabled)
 
-
-# ----------------------------
-# Callback Handlers (placeholders)
-# ----------------------------
-def handle_registration_response(
-    response,
-    request_data=None,
-    document_name=None,
-    doctype=None,
-    payload=None,
-    settings_name=None,
-):
-    frappe.logger().info(f"[SMART] Registration Response: {response}")
-
-    try:
-        is_success = response.get("IsSuccess")
-        result = response.get("Result") or {}
-        result_cd = result.get("resultCd")
-
-        if is_success and result_cd == "000":
-            # Prefer payload (what we sent to ZRA) → fallback to request_data
-            item_code = (payload or {}).get("itemCd") or (request_data or {}).get("itemCd")
-            if not item_code:
-                frappe.log_error("Missing itemCd in payload/request_data", "[SMART] Registration Handler")
-                return
-
-            # Fetch Item name
-            item_name = frappe.db.get_value("Item", {"item_code": item_code}, "name")
-            if not item_name:
-                frappe.log_error(f"Item with code {item_code} not found", "[SMART] Registration Handler")
-                return
-
-            # Update Item as registered
-            frappe.db.set_value("Item", item_name, "custom_item_registered", 1)
-
-          
-
-            frappe.db.commit()
-            frappe.logger().info(f"[SMART] Item {item_code} marked as registered.")
-
-        else:
-            frappe.log_error(
-                title="[SMART] Registration Failed",
-                message=f"Response: {response}, Payload: {payload}"
-            )
-
-    except Exception as e:
-        frappe.log_error(frappe.get_traceback(), f"[SMART] Failed to process registration response: {e}")
 
 
 def item_search_on_success(response: dict, settings_name: str, **kwargs) -> None:
@@ -400,5 +425,25 @@ def handle_update_response(response, request_data):
     frappe.logger().info(f"[SMART] Update Response: {response}")
 
 
-def handle_inventory_response(response, request_data):
+def handle_inventory_response(response,**kwargs):
     frappe.logger().info(f"[SMART] Inventory Response: {response}")
+
+def validate_required_fields(item) -> list:
+    """Validate required fields for item registration"""
+    required_fields = [
+        "custom_smart_item_classification_code",
+        "custom_smart_item_type",
+        "custom_smart_country_of_origin_",
+        "custom_smart_packaging_unit",
+        "custom_smart_quantity_unit",
+        "custom_smart_vat_category_name",
+    ]
+    return [field for field in required_fields if not item.get(field)]
+
+def generate_and_set_smart_code(item) -> None:
+    """Generate and set Smart code for item"""
+    item.custom_smart_item_code =  generate_custom_item_code_smart(item)
+    frappe.db.set_value(
+        "Item", item.name, "custom_smart_item_code", item.custom_smart_item_code
+    )
+    frappe.db.commit()

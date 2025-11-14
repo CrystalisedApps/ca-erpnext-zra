@@ -21,14 +21,9 @@ from typing import Dict, Any
 
 
 def map_zra_purchase_to_payload(purchase_data: dict, company_tpin: str) -> dict:
-    """
-    Map fetched ZRA purchase data to Smart 'savePurchase' payload format.
-    """
-
     sale_items = purchase_data.get("itemList", [])
-
     payload = {
-        "tpin": company_tpin,  # Your own TPIN
+        "tpin": company_tpin, 
         "bhfId": "000",
         "cisInvcNo": f"cis{purchase_data.get('spplrInvcNo')}",
         "orgInvcNo": 0,
@@ -91,38 +86,23 @@ def map_zra_purchase_to_payload(purchase_data: dict, company_tpin: str) -> dict:
     return payload
 
 def _safe_float(value) -> float:
-    """Safely converts a value to float, handling None or non-numeric types."""
     return flt(value)
 
 def _fmt_datetime(date_time_str) -> str:
-    """
-    Formats datetime string for ZRA payload (YYYYMMDDhhmmss).
-    Guarantees a 14-character output, removing potential microseconds.
-    """
     if date_time_str:
         try:
-            # Use Frappe's get_datetime to ensure it's a datetime object
             dt_obj = get_datetime(date_time_str)
-            # Use standard Python formatting for strict output control
             return dt_obj.strftime("%Y%m%d%H%M%S")
         except Exception:
-            # If all parsing/formatting fails, return an empty string
             return ""
     return ""
 
 def _fmt_date(date_str) -> str:
-    """
-    Formats date string for ZRA payload (YYYYMMDD).
-    Guarantees an 8-character output.
-    """
     if date_str:
         try:
-            # Use Frappe's get_date to ensure it's a date object
             d_obj = getdate(date_str)
-            # Use standard Python formatting for strict output control
             return d_obj.strftime("%Y%m%d")
         except Exception:
-            # If all parsing/formatting fails, return an empty string
             return ""
     return ""
 
@@ -406,21 +386,9 @@ def build_debit_note_payload(docname: str, settings_name: str = None) -> Dict[st
     return payload
 
 
-
-
 @frappe.whitelist()
 def build_purchase_payload(docname: str, settings_name: str) -> dict:
-    """
-    Dynamically build a valid Purchase payload for ZRA Smart Invoice (VSDC).
-
-    Args:
-        docname (str): Purchase Invoice document name
-        settings_name (str): Crystal ZRA Smart Invoice Settings record name
-
-    Returns:
-        dict: Formatted payload ready for submission to ZRA API
-    """
-
+ 
     # Fetch documents
     doc = frappe.get_doc("Purchase Invoice", docname)
             # Fetch first settings record
@@ -520,22 +488,11 @@ def build_purchase_payload(docname: str, settings_name: str) -> dict:
     return payload
 
 
-
-
-
 def generate_vsdc_item_payload(item_name: str) -> dict:
-    """
-    Generate Crystal VSDC Item payload from ERPNext Item doc.
-    Assumes Item has custom fields linked to 'Crystallised Smart' doctypes.
-    """
-
     item = frappe.get_doc("Item", item_name)
-
     def get_code(fieldname: str) -> str | None:
-        """Fetch correct code field from linked Crystallised Smart doctypes."""
         if not item.get(fieldname):
             return None
-
         link_doctype = item.meta.get_field(fieldname).options
         link_value = item.get(fieldname)
 
@@ -569,8 +526,8 @@ def generate_vsdc_item_payload(item_name: str) -> dict:
         settings_name = settings[0]["name"]
         tpin = get_decrypted_password(
             "Crystal ZRA Smart Invoice Settings",
-            settings_name,        # positional docname
-            "tpin",               # fieldname
+            settings_name,     
+            "tpin",               
             raise_exception=False
         ) or ""
     # --- Get BhfId from Settings ---
@@ -579,18 +536,18 @@ def generate_vsdc_item_payload(item_name: str) -> dict:
     payload = {
         "tpin": tpin,
         "bhfid":"000",
-        "itemCd": item.item_code,
-        "itemClsCd": get_code("custom_smart_item_classification_code"),   # Link → Crystallised Smart Item Type
-        "itemTyCd": item.custom_smart_item_type,              # Link → Crystallised Smart Item Type
+        "itemCd": item.item_code, #Generate a custom smart_item_code
+        "itemClsCd": get_code("custom_smart_item_classification_code"),  
+        "itemTyCd": item.custom_smart_item_type,             
         "itemNm": item.item_name,
-        "itemStdNm": item.item_name,  # assuming same as itemNm
-        "orgnNatCd": get_code("custom_smart_country_of_origin_"),          # Link → Crystallised Smart Countries
-        "pkgUnitCd": get_code("custom_smart_packaging_unit"),        # Link → Crystallised Smart Packing Unit
-        "qtyUnitCd": get_code("custom_smart_quantity_unit"),         # Link → Crystallised Smart Quantity Unit
-        "vatCatCd": get_code("custom_vat_category_code"),           # Link → Crystallised Smart VAT Type
-        "iplCatCd": get_code("custom_smart_insurance_premium_levy"),           # Link → Crystallised Smart IPL Registration Status
-        "tlCatCd": get_code("custom_smart_tourism_levy"),          # Link → Crystallised Smart Tourism Levy
-        "exciseTxCatCd": get_code("custom_smart_excise_duties_"),    # Link → Crystallised Smart Excise Duties
+        "itemStdNm": item.item_name,  
+        "orgnNatCd": get_code("custom_smart_country_of_origin_"),  
+        "pkgUnitCd": get_code("custom_smart_packaging_unit"),     
+        "qtyUnitCd": get_code("custom_smart_quantity_unit"),         
+        "vatCatCd": get_code("custom_vat_category_code"),          
+        "iplCatCd": get_code("custom_smart_insurance_premium_levy"),         
+        "tlCatCd": get_code("custom_smart_tourism_levy"),          
+        "exciseTxCatCd": get_code("custom_smart_excise_duties_"),   
         "btchNo": item.get("batch_number") or None,
         "bcd": item.get("barcode") or None,
         "dftPrc": float(item.standard_rate),
@@ -611,7 +568,6 @@ def generate_vsdc_item_payload(item_name: str) -> dict:
 
 
 def fmt4(value):
-    """Format to 4 decimal places as float."""
     try:
         return float(round(float(value or 0), 4))
     except Exception:
@@ -940,6 +896,7 @@ def get_vat_category(item):
     else:
         return "D"  # Non-taxable
 
+
 def get_payment_type_code(doc):
     """
     Map ERPNext payment method(s) to ZRA payment type codes.
@@ -990,15 +947,7 @@ def get_payment_type_code(doc):
     return payment_code
 
 
-
 def build_stock_payload(tpin, bhf_id, user, stock_items, route_key=None, warehouse=None):
-    """Build payload for SaveStockItems or SaveStockMaster depending on route_key.
-       If warehouse is not provided, aggregates total item quantities across all warehouses.
-       
-       For SaveStockMaster: stock_items should include 'qty' field with the quantity being sold
-       e.g., [{"itemCd": "ITEM-001", "qty": 5}]
-    """
-
     if not isinstance(stock_items, list):
         raise ValueError("stock_items must be a list of dicts")
 
@@ -1015,12 +964,11 @@ def build_stock_payload(tpin, bhf_id, user, stock_items, route_key=None, warehou
                 ["item_name", "custom_smart_item_classification_code", "valuation_rate"],
                 as_dict=True
             ) or {}
-
             class_code = item_doc.get("custom_smart_item_classification_code") 
             item_name = item_doc.get("item_name")
             price = float(item.get("prc") or 0)
             qty = float(item.get("qty") or 1)
-            tax_rate = 0.16
+            tax_rate = 0.16  # Get this dynamically based on configuration
             tax_amt = round(price * qty * tax_rate / (1 + tax_rate), 2)
             taxable_amt = round(price * qty - tax_amt, 2)
 
@@ -1231,53 +1179,44 @@ def build_sales_payload(sales_invoice_name, company_tpin, user="Admin"):
     return payload
 
 
+def generate_custom_item_code_smart(doc: Document) -> str:
+    prefix_parts = [
+        doc.get("custom_smart_item_classification_code") or "",
+        doc.get("custom_smart_item_type") or "",
+        doc.get("custom_smart_packaging_unit") or "",
+        doc.get("custom_smart_quantity_unit") or "",
+    ]
+    new_prefix = "".join(prefix_parts)
+    if doc.get("custom_smart_item_code"):
+        existing_suffix = doc.custom_smart_item_code[-7:]
+    else:
+        # Find last code under same classification to increment suffix
+        last_code = frappe.db.sql(
+            """
+            SELECT custom_smart_item_code
+            FROM `tabItem`
+            WHERE custom_smart_item_classification_code = %s
+              AND custom_smart_item_code IS NOT NULL
+            ORDER BY CAST(RIGHT(custom_smart_item_code, 7) AS UNSIGNED) DESC
+            LIMIT 1
+            """,
+            (doc.custom_smart_item_classification_code,),
+        )
 
+        last_code = last_code[0][0] if last_code else None
+        if last_code:
+            try:
+                last_suffix = int(last_code[-7:])
+                existing_suffix = str(last_suffix + 1).zfill(7)
+            except ValueError:
+                existing_suffix = "0000001"
+        else:
+            existing_suffix = "0000001"
 
+    new_code = f"{new_prefix}{existing_suffix}"
 
+    # Save it back to the Item if needed
+    doc.db_set("custom_smart_item_code", new_code, update_modified=False)
+    frappe.logger().info(f"[SMART] Generated Smart Code for {doc.name}: {new_code}")
 
-
-# def build_stock_master_payload(settings_name, item_codes, warehouse=None):
-#     """
-#     Build payload for SaveStockMaster (stock balance sync)
-#     """
-#     settings = frappe.get_doc("Crystal ZRA Smart Invoice Settings", settings_name)
-#     tpin = get_decrypted_password("Crystal ZRA Smart Invoice Settings", settings.name, "tpin", raise_exception=False) or ""
-#     bhf = getattr(settings, "bhfid", "000") or "000"
-
-#     stock_list = []
-#     for code in item_codes:
-#         qty = 0
-#         if warehouse:
-#             qty = flt(frappe.db.get_value("Bin", {"item_code": code, "warehouse": warehouse}, "actual_qty") or 0)
-#         else:
-#             qty = flt(frappe.db.sql("""SELECT SUM(actual_qty) FROM `tabBin` WHERE item_code=%s""", code)[0][0] or 0)
-
-#         stock_list.append({
-#             "itemCd": code,
-#             "rsdQty": qty
-#         })
-
-#     payload = {
-#         "tpin": tpin,
-#         "bhfId": bhf,
-#         "regrId": frappe.session.user,
-#         "regrNm": frappe.utils.get_fullname(frappe.session.user),
-#         "modrNm": frappe.utils.get_fullname(frappe.session.user),
-#         "modrId": frappe.session.user,
-#         "stockItemList": stock_list
-#     }
-
-#     return payload
-# def build_stock_payload(tpin: str, bhf_id: str, user: str, stock_items: list):
-#     return {
-#         "tpin": tpin,
-#         "bhfId": bhf_id,
-#         "regrId": user,
-#         "regrNm": user,
-#         "modrNm": user,
-#         "modrId": user,
-#         "stockItemList": [
-#             {"itemCd": d.get("item_code"), "rsdQty": float(d.get("qty", 0))}
-#             for d in stock_items
-#         ],
-#     }
+    return new_code
