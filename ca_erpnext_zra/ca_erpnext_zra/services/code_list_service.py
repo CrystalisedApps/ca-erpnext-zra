@@ -634,7 +634,7 @@ def sync_item_codes(settings_name: str, LastReqDt: str = None, **kwargs) -> dict
 
     response = process_request(
         request_data=payload,
-        route_key="selectItemsClass",  # <-- API route for item codes
+        route_key="selectItemsClass",  
         request_method="POST",
         handler_function=handle_item_codes_response,
         settings_name=settings_name,
