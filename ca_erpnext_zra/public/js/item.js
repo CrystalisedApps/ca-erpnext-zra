@@ -142,7 +142,7 @@ function executeSmartItemAction(frm, actionType, settingsName) {
       break;
 
     case "update_item":
-      method = "ca_erpnext_zra.ca_erpnext_zra.apis.item_api.update_item";
+      method = "ca_erpnext_zra.ca_erpnext_zra.apis.item_api.perform_item_registration";
       break;
 
     case "submit_inventory":
@@ -158,9 +158,11 @@ function executeSmartItemAction(frm, actionType, settingsName) {
     method,
    args: {
     doc: frm.doc,
+    item_name: frm.doc.item_name,
     item_code: frm.doc.item_code,
     settings_name: settingsName,
   },
+ 
     callback: () => {
       const messages = {
         register_item: "Smart Item Registration Queued. Please check later.",

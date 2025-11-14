@@ -163,11 +163,10 @@ doc_events = {
         
     },
     "Item": {
-        # FIX: Changed to a list format to ensure the hook registers correctly
-        "on_submit": ["ca_erpnext_zra.ca_erpnext_zra.apis.item_api.perform_item_registration"],
+        "on_update": ["ca_erpnext_zra.ca_erpnext_zra.apis.item_api.perform_item_registration"],
     },
     "Stock Ledger Entry": {
-        "after_insert": "ca_erpnext_zra.ca_erpnext_zra.apis.stock_api.sync_stock_from_sle"
+        "on_update": "ca_erpnext_zra.ca_erpnext_zra.apis.stock_api.sync_stock_from_sle"
     },
       "Purchase Invoice": {
           "before_save": ["ca_erpnext_zra.ca_erpnext_zra.overrides.server.shared_override.before_save"],

@@ -1,12 +1,12 @@
 
-
 import frappe
+from frappe.utils import nowdate
+from frappe.utils.password import get_decrypted_password
+from ..utils.settings_utils import get_settings
+from ..utils.payload_utils import build_stock_payload
+from .api_processor import process_request
 from ..utils.payload_utils import build_sales_payload
 from ..utils.payload_utils import build_stock_item_payload
-from .api_processor import process_request
-from ..utils.settings_utils import get_settings
-from frappe.utils.password import get_decrypted_password
-from ..utils.payload_utils import build_stock_payload
 
 
 @frappe.whitelist()
@@ -115,12 +115,7 @@ def sync_stock_to_zra(company_name: str, tpin: str):
             message=f"Error syncing stock for {company_name}:\n{frappe.get_traceback()}",
         )
 
-import frappe
-from frappe.utils import nowdate
-from frappe.utils.password import get_decrypted_password
-from ..utils.settings_utils import get_settings
-from ..utils.payload_utils import build_stock_payload
-from .api_processor import process_request
+
 
 @frappe.whitelist()
 def sync_stock_from_sle(doc, method=None):
