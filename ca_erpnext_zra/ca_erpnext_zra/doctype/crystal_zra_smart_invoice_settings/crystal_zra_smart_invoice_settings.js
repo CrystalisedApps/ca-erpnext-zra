@@ -1,5 +1,4 @@
-// Copyright (c) 2025, Brian Mwambia and contributors
-// For license information, please see license.txt
+
 
 frappe.ui.form.on("Crystal ZRA Smart Invoice Settings", {
 	refresh(frm) {
@@ -51,7 +50,34 @@ frappe.ui.form.on("Crystal ZRA Smart Invoice Settings", {
 			},
 			__("Smart Actions")
 		);
+frm.add_custom_button(
+			__("Import Classification Codes"),
+			function () {
+				if (!frm.doc.classification_codes_file) {
+					frappe.msgprint(__("Please upload a CSV/Excel file in the field 'Classification Codes File' first."));
+					return;
+				}
 
+				frappe.dom.freeze(__("Importing Codes... Please Wait"));
+
+				frappe.call({
+					method: "ca_erpnext_zra.ca_erpnext_zra.apis.code_list_api.import_classification_codes",
+					args: {
+						settings_name: frm.doc.name,
+					},
+					callback: function (r) {
+						frappe.dom.unfreeze();
+						if (!r.exc) {
+							frappe.msgprint(__(`Import complete. ${r.message.inserted || 0} records added.`));
+						}
+					},
+					error: function () {
+						frappe.dom.unfreeze();
+					},
+				});
+			},
+			__("Smart Actions")
+		);
 		// Get Codes Button
 		frm.add_custom_button(
 			__("Get Codes"),

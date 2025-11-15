@@ -22,6 +22,7 @@
   "default_warehouse",
   "department",
   "bhfid",
+  "classification_codes_file",
   "submission_frequency_settings_tab",
   "frequency_of_communication_with_zra_section",
   "notices_refresh_frequency",
@@ -273,12 +274,17 @@
    "hidden": 1,
    "label": "Branch Id",
    "options": "Branch"
+  },
+  {
+   "fieldname": "classification_codes_file",
+   "fieldtype": "Attach",
+   "label": "Classification Codes File"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-10-23 14:16:26.623108",
+ "modified": "2025-11-14 13:15:53.673313",
  "modified_by": "Administrator",
  "module": "Ca Erpnext Zra",
  "name": "Crystal ZRA Smart Invoice Settings",

@@ -11,6 +11,8 @@ from .ca_erpnext_zra.doctype.doctype_names_mapping import ROUTES_TABLE_DOCTYPE_N
 
 fixtures = [
  {"dt": ROUTES_TABLE_DOCTYPE_NAME},
+ {"dt": "Crystal ZRA Smart Invoice Settings"},
+{"dt": "File", "filters": [["file_name", "in", ["classification_codes.xlsx"]]]}
 ]
 
 doctype_js = {
