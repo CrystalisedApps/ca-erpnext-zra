@@ -536,7 +536,7 @@ def generate_vsdc_item_payload(item_name: str) -> dict:
     payload = {
         "tpin": tpin,
         "bhfid":"000",
-        "itemCd": item.item_code, #Generate a custom smart_item_code
+        "itemCd": item.custom_smart_item_code, #Generate a custom smart_item_code
         "itemClsCd": get_code("custom_smart_item_classification_code"),  
         "itemTyCd": item.custom_smart_item_type,             
         "itemNm": item.item_name,
@@ -550,7 +550,7 @@ def generate_vsdc_item_payload(item_name: str) -> dict:
         "exciseTxCatCd": get_code("custom_smart_excise_duties_"),   
         "btchNo": item.get("batch_number") or None,
         "bcd": item.get("barcode") or None,
-        "dftPrc": float(item.standard_rate),
+        "dftPrc": float(item.valuation_rate),
         "manufacturerTpin": item.get("custom_manufacture_tpin") or None,
         "manufacturerItemCd": item.get("custom_manufacturer_item_code") or None,
         "rrp": float(item.get("standard_rate") or 0),
@@ -1181,10 +1181,11 @@ def build_sales_payload(sales_invoice_name, company_tpin, user="Admin"):
 
 def generate_custom_item_code_smart(doc: Document) -> str:
     prefix_parts = [
-        doc.get("custom_smart_item_classification_code") or "",
-        doc.get("custom_smart_item_type") or "",
         doc.get("custom_smart_packaging_unit") or "",
         doc.get("custom_smart_quantity_unit") or "",
+        doc.get("custom_smart_item_type") or "",
+        doc.get("custom_smart_item_classification_code") or "",
+       
     ]
     new_prefix = "".join(prefix_parts)
     if doc.get("custom_smart_item_code"):

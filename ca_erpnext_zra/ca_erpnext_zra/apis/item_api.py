@@ -193,55 +193,55 @@ def update_item(doc, method=None) -> dict | None:
     )
     return {"queued": True, "item": item.name}
 
-@frappe.whitelist()
-def submit_inventory(item_name: str) -> dict | None:
-    """Submit inventory stock levels to Smart Zambia API."""
-    item = frappe.get_doc("Item", item_name)
+# @frappe.whitelist()
+# def submit_inventory(item_name: str) -> dict | None:
+#     """Submit inventory stock levels to Smart Zambia API."""
+#     item = frappe.get_doc("Item", item_name)
 
-    settings = _get_single_smart_settings()
-    if not settings:
-        frappe.throw(_("No active Smart API Settings found"))
+#     settings = _get_single_smart_settings()
+#     if not settings:
+#         frappe.throw(_("No active Smart API Settings found"))
 
-    # Assign variables AFTER confirming settings exist
-    tpin = get_decrypted_password(
-        "Crystal ZRA Smart Invoice Settings",
-         settings["name"],
-        "tpin",
-        raise_exception=False
-    ) or ""
+#     # Assign variables AFTER confirming settings exist
+#     tpin = get_decrypted_password(
+#         "Crystal ZRA Smart Invoice Settings",
+#          settings["name"],
+#         "tpin",
+#         raise_exception=False
+#     ) or ""
 
-    bhf_id = settings.get("bhfId") or "000"
-    user = frappe.session.user or "Admin"
+#     bhf_id = settings.get("bhfId") or "000"
+#     user = frappe.session.user or "Admin"
 
-    request_payload = {
-        "itemCd": item.item_code,
-        "qty": item.get("actual_qty") or 0,
-        "bhfId": bhf_id,
-    }
+#     request_payload = {
+#         "itemCd": item.item_code,
+#         "qty": item.get("actual_qty") or 0,
+#         "bhfId": bhf_id,
+#     }
 
-    # Prepare stock payload
-    stock_payload = build_stock_payload(
-        tpin=tpin,
-        bhf_id=bhf_id,
-        user=user,
-        stock_items=[request_payload],
-        route_key="SaveStockMaster",
-    )
+#     # Prepare stock payload
+#     stock_payload = build_stock_payload(
+#         tpin=tpin,
+#         bhf_id=bhf_id,
+#         user=user,
+#         stock_items=[request_payload],
+#         route_key="SaveStockMaster",
+#     )
 
-    frappe.enqueue(
-        process_request,
-        queue="default",
-        is_async=True,
+#     frappe.enqueue(
+#         process_request,
+#         queue="default",
+#         is_async=True,
 
-        request_data=stock_payload,
-        route_key="saveStockMaster",
-        handler_function=handle_inventory_response,
-        request_method="POST",
-        doctype="Item",
-        settings_name=settings["name"]
-    )
+#         request_data=stock_payload,
+#         route_key="saveStockMaster",
+#         handler_function=handle_inventory_response,
+#         request_method="POST",
+#         doctype="Item",
+#         settings_name=settings["name"]
+#     )
 
-    return {"queued": True, "item": item.name}
+#     return {"queued": True, "item": item.name}
 
 
 # ----------------------------

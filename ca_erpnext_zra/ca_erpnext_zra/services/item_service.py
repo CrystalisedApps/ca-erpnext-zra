@@ -83,13 +83,13 @@ def handle_registration_response(
 
             frappe.logger().info(f"[SMART] Registered: {item_code} → ZRA Code: {zra_item_code}")
 
-            # Enqueue inventory sync if applicable
-            if getattr(item_doc, "is_stock_item", False):
-                frappe.enqueue(
-                    "ca_erpnext_zra.ca_erpnext_zra.apis.item_api.submit_inventory",
-                    item_name=item_name,
-                    queue="long",
-                )
+            # # Enqueue inventory sync if applicable
+            # if getattr(item_doc, "is_stock_item", False):
+            #     frappe.enqueue(
+            #         "ca_erpnext_zra.ca_erpnext_zra.apis.item_api.submit_inventory",
+            #         item_name=item_name,
+            #         queue="long",
+            #     )
 
         else:
             frappe.log_error(
