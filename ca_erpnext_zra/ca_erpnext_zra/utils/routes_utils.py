@@ -1,5 +1,6 @@
 import frappe
 from frappe.query_builder import DocType
+from datetime import datetime
 
 from ..doctype.doctype_names_mapping import (
     ROUTES_TABLE_CHILD_DOCTYPE_NAME,
@@ -45,3 +46,38 @@ def get_route_path(
         return (results[0]["url_path"], results[0]["last_request_date"])
 
     return None, None
+
+def build_datetime_from_string(
+    date_string: str, format: str = "%Y-%m-%d %H:%M:%S"
+) -> datetime:
+    """Builds a Datetime object from string, and format provided
+
+    Args:
+        date_string (str): The string to build object from
+        format (str, optional): The format of the date_string string. Defaults to "%Y-%m-%d".
+
+    Returns:
+        datetime: The datetime object
+    """
+    date_object = datetime.strptime(date_string, format)
+
+    return date_object
+
+
+def update_last_request_date(
+    response_datetime: str,
+    route: str,
+    routes_table: str =  ROUTES_TABLE_CHILD_DOCTYPE_NAME,
+) -> None:
+    doc = frappe.get_doc(
+        routes_table,
+        {"url_path": route},
+        ["*"],
+    )
+
+    doc.last_request_date = build_datetime_from_string(
+        response_datetime, "%Y%m%d%H%M%S"
+    )
+
+    doc.save()
+    frappe.db.commit()

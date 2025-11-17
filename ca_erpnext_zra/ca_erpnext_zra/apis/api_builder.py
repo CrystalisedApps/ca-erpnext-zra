@@ -181,7 +181,12 @@ class EndpointsBuilder(BaseEndpointsBuilder):
                 )
                 if document_name:  # only pass if not None
                     kwargs["reference_docname"] = document_name
+                ref_dt = kwargs.get("reference_doctype")
+                ref_dn = kwargs.get("reference_docname")
 
+                if ref_dt and ref_dn and not frappe.db.exists(ref_dt, ref_dn):
+                    kwargs["reference_doctype"] = None
+                    kwargs["reference_docname"] = None
                 self.integration_request = create_request_log(**kwargs)
 
             except Exception:

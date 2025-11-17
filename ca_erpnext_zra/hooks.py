@@ -167,9 +167,7 @@ doc_events = {
     "Item": {
         "on_update": ["ca_erpnext_zra.ca_erpnext_zra.apis.item_api.perform_item_registration"],
     },
-    "Stock Ledger Entry": {
-        "on_update": "ca_erpnext_zra.ca_erpnext_zra.apis.stock_api.sync_stock_from_sle"
-    },
+  
       "Purchase Invoice": {
           "before_save": ["ca_erpnext_zra.ca_erpnext_zra.overrides.server.shared_override.before_save"],
         "on_submit": ["ca_erpnext_zra.ca_erpnext_zra.apis.purchase_api.send_purchase_details"]
@@ -178,23 +176,24 @@ doc_events = {
 # Scheduled Tasks
 # ---------------
 
-# scheduler_events = {
-# 	"all": [
-# 		"ca_erpnext_zra.tasks.all"
-# 	],
-# 	"daily": [
-# 		"ca_erpnext_zra.tasks.daily"
-# 	],
-# 	"hourly": [
-# 		"ca_erpnext_zra.tasks.hourly"
-# 	],
-# 	"weekly": [
-# 		"ca_erpnext_zra.tasks.weekly"
-# 	],
-# 	"monthly": [
-# 		"ca_erpnext_zra.tasks.monthly"
-# 	],
-# }
+scheduler_events = {
+	"all": [
+        "ca_erpnext_zra.ca_erpnext_zra.background_tasks.tasks.send_stock_information",
+		"ca_erpnext_zra.ca_erpnext_zra.background_tasks.tasks.send_item_inventory_information"
+	],
+	# "daily": [
+	# 	"ca_erpnext_zra.tasks.daily"
+	# ],
+	# "hourly": [
+	# 	"ca_erpnext_zra.tasks.hourly"
+	# ],
+	# "weekly": [
+	# 	"ca_erpnext_zra.tasks.weekly"
+	# ],
+	# "monthly": [
+	# 	"ca_erpnext_zra.tasks.monthly"
+	# ],
+}
 
 # Testing
 # -------

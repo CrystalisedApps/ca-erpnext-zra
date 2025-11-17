@@ -103,3 +103,8 @@ def get_active_smart_settings() -> list[dict]:
         })
 
     return active_settings
+
+
+def split_user_email(email_string: str) -> str:
+    """Retrieve portion before @ from an email string"""
+    return email_string.split("@")[0]

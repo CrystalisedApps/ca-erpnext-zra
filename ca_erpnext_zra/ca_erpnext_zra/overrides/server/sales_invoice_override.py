@@ -10,11 +10,11 @@ def on_submit(doc: Document, method: str = None) -> None:
     """Triggered when a Sales Invoice is submitted in ERPNext.
     Pushes invoice or return details to Crystal VSDC if auto-submission is enabled.
     """
-    # frappe.log_error("✅ ENTERED on_submit for Sales Invoice: " + doc.name, "DEBUG: Sales Invoice Hook")
+    # frappe.log_error(" ENTERED on_submit for Sales Invoice: " + doc.name, "DEBUG: Sales Invoice Hook")
 
     settings_doc = get_settings()
     if not settings_doc or not settings_doc.sales_auto_submission_enabled:
-        frappe.log_error("⚠️ Auto submission disabled or no settings found", "DEBUG: Sales Invoice Hook")
+        frappe.log_error("Auto submission disabled or no settings found", "DEBUG: Sales Invoice Hook")
         return
 
     # frappe.throw(str(doc))
