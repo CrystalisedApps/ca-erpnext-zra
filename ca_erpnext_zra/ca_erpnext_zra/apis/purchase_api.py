@@ -27,23 +27,23 @@ def create_purchase_invoice_from_smart_request(request_data: str) -> None:
     import json
     from frappe.utils import today, flt
 
-    # --- 1️⃣ Parse request ---
+    # ---  Parse request ---
     data = json.loads(request_data) if isinstance(request_data, str) else request_data or {}
     
-    # --- 2️⃣ Company context ---
+    # ---  Company context ---
     company_name = (
         data.get("company_name")
         or frappe.defaults.get_user_default("Company")
         or frappe.get_value("Company", {}, "name")
     )
 
-    # --- 3️⃣ Ensure supplier exists ---
+    # -- Ensure supplier exists ---
     supplier_name = get_or_create_supplier_from_smart(data)
 
-    # --- 4️⃣ Find existing PI (Smart linked) ---
+    # --- Find existing PI (Smart linked) ---
     smart_purchase_id = data.get("purchase_id") 
-    # 🚨 If no unique Smart ID provided, generate one dynamically using supplier + date + random hash
-    # 🚨 If no unique Smart ID provided, generate one dynamically using supplier + date + random hash
+    #  If no unique Smart ID provided, generate one dynamically using supplier + date + random hash
+    #  If no unique Smart ID provided, generate one dynamically using supplier + date + random hash
     if not  smart_purchase_id:
         smart_purchase_id = f"{data.get('supplier_tpin')}-{data.get('invoice_date')}-{frappe.generate_hash('', 6)}"
 
@@ -60,14 +60,14 @@ def create_purchase_invoice_from_smart_request(request_data: str) -> None:
         pi = frappe.get_doc("Purchase Invoice", existing_pi_name)
 
         if pi.docstatus == 1:
-            # ⚠️ Already submitted — don’t modify it
+            #  Already submitted — don’t modify it
             frappe.msgprint(
                 f"Purchase Invoice {pi.name} already submitted for supplier {pi.supplier}. Skipping recreation."
             )
             return
 
         elif pi.docstatus == 2:
-            # 🧾 Cancelled — create a new one
+            #  Cancelled — create a new one
             frappe.log_error(
                 f"Smart Purchase {smart_purchase_id} linked to cancelled PI {pi.name}. Creating new one.",
                 "ZRA Smart Purchase",
@@ -134,7 +134,7 @@ def create_purchase_invoice_from_smart_request(request_data: str) -> None:
         or f"Cost of Goods Sold - {company_abbr}"
     )
 
-    # --- 8️⃣ Smart items ---
+    # ---  Smart items ---
     for item in data.get("items", []):
         item_code = get_or_create_item_from_smart(item)
         qty = flt(item.get("qty") or item.get("quantity") or 1)
@@ -162,7 +162,7 @@ def create_purchase_invoice_from_smart_request(request_data: str) -> None:
             },
         )
 
-    # --- 9️⃣ Safe save & submit ---
+    # ---  Safe save & submit ---
     pi.flags.ignore_permissions = True
     pi.flags.ignore_mandatory = True
     pi.flags.ignore_links = True
@@ -181,7 +181,7 @@ def create_purchase_invoice_from_smart_request(request_data: str) -> None:
         )
 
     frappe.msgprint(
-        f"✅ Purchase Invoice '{pi.name}' created or updated for supplier {supplier_name}."
+        f" Purchase Invoice '{pi.name}' created or updated for supplier {supplier_name}."
     )
 
 @frappe.whitelist()

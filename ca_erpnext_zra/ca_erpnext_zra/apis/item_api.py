@@ -436,7 +436,7 @@ def validate_required_fields(item) -> list:
         "custom_smart_country_of_origin_",
         "custom_smart_packaging_unit",
         "custom_smart_quantity_unit",
-        "custom_smart_vat_category_name",
+        "custom_vat_category_code",
     ]
     return [field for field in required_fields if not item.get(field)]
 
