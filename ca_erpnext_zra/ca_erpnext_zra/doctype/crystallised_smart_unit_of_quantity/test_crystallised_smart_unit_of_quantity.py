@@ -5,5 +5,5 @@
 from frappe.tests.utils import FrappeTestCase
 
 
-class TestCrystallisedSmartCountries(FrappeTestCase):
+class TestCrystallisedSmartUnitOfQuantity(FrappeTestCase):
 	pass
