@@ -1,5 +1,4 @@
-# Copyright (c) 2025, Brian Mwambia
-# For license information, please see license.txt
+
 
 """
 Centralized mapping for all DocType names used in the ZRA VSDC integration.
@@ -21,3 +20,6 @@ PACKAGING_UNIT_DOCTYPE_NAME = "Crystallised Smart Packaging Unit"
 UNIT_OF_QUANTITY_DOCTYPE_NAME = "Crystallised Smart Unit Of Quantity"
 IMPORTED_ITEMS_STATUS_DOCTYPE_NAME = "Crystallised Smart Import Item Status"
 SMART_CRYSTALLISED_MAPPING_DOCTYPE_NAME = "Smart Crystallised Mapping"
+REGISTERED_PURCHASES_DOCTYPE_NAME="Crystallised ZRA Smart Purchases"
+REGISTERED_PURCHASE_ITEM_CHILD = "Smart Registered Purchase Item"
+

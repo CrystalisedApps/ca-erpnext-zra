@@ -409,106 +409,113 @@ def build_debit_note_payload(docname: str, settings_name: str = None) -> Dict[st
 	# as required by the API.
 	return payload
 
-
 @frappe.whitelist()
 def build_purchase_payload(docname: str, settings_name: str) -> dict:
-	# Fetch documents
-	doc = frappe.get_doc("Purchase Invoice", docname)
-	# Fetch first settings record
-	settings = frappe.get_all("Crystal ZRA Smart Invoice Settings", fields=["name"])
+    # Fetch documents
+    doc = frappe.get_doc("Purchase Invoice", docname)
 
-	tpin = ""
-	if settings:
-		settings_name = settings[0]["name"]
-		tpin = (
-			get_decrypted_password(
-				"Crystal ZRA Smart Invoice Settings",
-				settings_name,  # positional docname
-				"tpin",  # fieldname
-				raise_exception=False,
-			)
-			or ""
-		)
+    # Fetch first settings record
+    settings = frappe.get_all("Crystal ZRA Smart Invoice Settings", fields=["name"])
 
-	# --- Helper: safely get numeric supplier invoice number ---
-	def get_supplier_invoice_number(value):
-		try:
-			# If doc.name ends like "ACC-PINV-2025-00002" → returns 2
-			return int(str(value).split("-")[-1])
-		except Exception:
-			return 0
+    tpin = ""
+    if settings:
+        settings_name = settings[0]["name"]
+        tpin = (
+            get_decrypted_password(
+                "Crystal ZRA Smart Invoice Settings",
+                settings_name,   # positional docname
+                "tpin",          # fieldname
+                raise_exception=False,
+            )
+            or ""
+        )
 
-	payload = {
-		"tpin": tpin,
-		"bhfId": getattr(settings, "branch_id", "000"),
-		"cisInvcNo": f"cis_{doc.name}",
-		"orgInvcNo": 0,
-		"spplrTpin": getattr(doc, "supplier_tpin", None),
-		"spplrBhfId": getattr(doc, "supplier_branch_id", "000"),
-		"spplrNm": doc.supplier_name,
-		"spplrInvcNo": get_supplier_invoice_number(doc.name),
-		"regTyCd": "M",  # M = Manual
-		"pchsTyCd": "N",  # N = Normal Purchase
-		"rcptTyCd": "P",  # P = Purchase
-		"pmtTyCd": "01",  # 01 = Cash
-		"pchsSttsCd": "02",  # 02 = Confirmed
-		"cfmDt": now_datetime().strftime("%Y%m%d%H%M%S"),
-		"pchsDt": now_datetime().strftime("%Y%m%d"),
-		"cnclReqDt": "",
-		"cnclDt": "",
-		"totItemCnt": len(doc.items),
-		"totTaxblAmt": round(sum(float(i.base_net_amount) for i in doc.items), 4),
-		"totTaxAmt": round(sum(float(getattr(i, "item_tax_amount", 0)) for i in doc.items), 4),
-		"totAmt": round(float(doc.base_grand_total), 2),
-		"remark": doc.remarks or "No Remarks",
-		"regrNm": frappe.session.user,
-		"regrId": frappe.session.user,
-		"modrNm": frappe.session.user,
-		"modrId": frappe.session.user,
-		"itemList": [],
-	}
+    # --- Helper: safely get numeric supplier invoice number ---
+    def get_supplier_invoice_number(value):
+        try:
+            # If doc.name ends like "ACC-PINV-2025-00002" → returns 2
+            return int(str(value).split("-")[-1])
+        except Exception:
+            return 0
 
-	# --- Build item list ---
-	for idx, item in enumerate(doc.items, start=1):
-		# Fetch custom codes
-		pkg_code = frappe.db.get_value("Item", item.item_code, "custom_smart_packaging_unit") or "EA"
-		class_code = (
-			frappe.db.get_value("Item", item.item_code, "custom_smart_item_classification_code") or "00000000"
-		)
-		uom_code = frappe.db.get_value("Item", item.item_code, "custom_smart_quantity_unit") or "EA"
+    # Dynamic codes
+    rcpt_ty_cd = "R" if getattr(doc, "is_return", 0) else "P"
+    reg_ty_cd = "A" if getattr(doc, "custom_smart_purchase_id", None) else "M"
 
-		item_data = {
-			"itemSeq": idx,
-			"itemCd": getattr(item, "item_code", None),
-			"itemClsCd": class_code,
-			"itemNm": item.item_name,
-			"bcd": getattr(item, "barcode", None),
-			"pkgUnitCd": pkg_code,
-			"pkg": float(getattr(item, "package_qty", 0)),
-			"qtyUnitCd": uom_code,
-			"qty": float(item.qty),
-			"prc": float(item.base_rate),
-			"splyAmt": float(item.base_net_amount),
-			"dcRt": float(getattr(item, "discount_percentage", 0)),
-			"dcAmt": float(getattr(item, "discount_amount", 0)),
-			"taxTyCd": getattr(item, "custom_tax_type", "A"),
-			"taxblAmt": round(float(item.base_net_amount), 2),
-			"vatCatCd": "A",
-			"taxAmt": round(float(getattr(item, "item_tax_amount", 0)), 2),
-			"totAmt": round(float(item.base_amount), 2),
-			"iplCatCd": None,
-			"tlCatCd": None,
-			"exciseCatCd": None,
-			"iplTaxblAmt": None,
-			"tlTaxblAmt": None,
-			"exciseTaxblAmt": None,
-			"iplAmt": None,
-			"tlAmt": None,
-			"exciseTxAmt": None,
-		}
-		payload["itemList"].append(item_data)
+    payload = {
+        "tpin": tpin,
+        "bhfId": getattr(settings, "branch_id", "000"),
+        "cisInvcNo": f"cis_{doc.name}",
+        "orgInvcNo": 0,
+        "spplrTpin": getattr(doc, "supplier_tpin", None),
+        "spplrBhfId": getattr(doc, "supplier_branch_id", "000"),
+        "spplrNm": doc.supplier_name,
+        "spplrInvcNo": get_supplier_invoice_number(doc.name),
+        "regTyCd": reg_ty_cd,
+        "pchsTyCd": "N",        # N = Normal Purchase
+        "rcptTyCd": rcpt_ty_cd, # P = Purchase, R = Return
+        "pmtTyCd": "01",        # 01 = Cash
+        "pchsSttsCd": "02",     # 02 = Confirmed
+        "cfmDt": now_datetime().strftime("%Y%m%d%H%M%S"),
+        "pchsDt": now_datetime().strftime("%Y%m%d"),
+        "cnclReqDt": "",
+        "cnclDt": "",
+        "totItemCnt": len(doc.items),
+        "totTaxblAmt": round(sum(float(i.base_net_amount) for i in doc.items), 4),
+        "totTaxAmt": round(sum(float(getattr(i, "item_tax_amount", 0)) for i in doc.items), 4),
+        "totAmt": round(float(doc.base_grand_total), 2),
+        "remark": doc.remarks or "No Remarks",
+        "regrNm": frappe.session.user,
+        "regrId": frappe.session.user,
+        "modrNm": frappe.session.user,
+        "modrId": frappe.session.user,
+        "itemList": [],
+    }
 
-	return payload
+    # --- Build item list ---
+    for idx, item in enumerate(doc.items, start=1):
+
+        # Fetch custom codes
+        pkg_code = frappe.db.get_value("Item", item.item_code, "custom_smart_packaging_unit") or "EA"
+        class_code = (
+            frappe.db.get_value("Item", item.item_code, "custom_smart_item_classification_code")
+            or "00000000"
+        )
+        uom_code = frappe.db.get_value("Item", item.item_code, "custom_smart_quantity_unit") or "EA"
+
+        item_data = {
+            "itemSeq": idx,
+            "itemCd": getattr(item, "item_code", None),
+            "itemClsCd": class_code,
+            "itemNm": item.item_name,
+            "bcd": getattr(item, "barcode", None),
+            "pkgUnitCd": pkg_code,
+            "pkg": float(getattr(item, "package_qty", 0)),
+            "qtyUnitCd": uom_code,
+            "qty": float(item.qty),
+            "prc": float(item.base_rate),
+            "splyAmt": float(item.base_net_amount),
+            "dcRt": float(getattr(item, "discount_percentage", 0)),
+            "dcAmt": float(getattr(item, "discount_amount", 0)),
+            "taxTyCd": getattr(item, "custom_tax_type", "A"),
+            "taxblAmt": round(float(item.base_net_amount), 2),
+            "vatCatCd": "A",
+            "taxAmt": round(float(getattr(item, "item_tax_amount", 0)), 2),
+            "totAmt": round(float(item.base_amount), 2),
+            "iplCatCd": None,
+            "tlCatCd": None,
+            "exciseCatCd": None,
+            "iplTaxblAmt": None,
+            "tlTaxblAmt": None,
+            "exciseTaxblAmt": None,
+            "iplAmt": None,
+            "tlAmt": None,
+            "exciseTxAmt": None,
+        }
+
+        payload["itemList"].append(item_data)
+
+    return payload
 
 
 def generate_vsdc_item_payload(item_name: str) -> dict:
@@ -1223,19 +1230,20 @@ def build_sales_payload(sales_invoice_name, company_tpin, user="Admin"):
 
 
 def generate_custom_item_code_smart(doc: Document) -> str:
-	prefix_parts = [
-		doc.get("custom_smart_packaging_unit") or "",
-		doc.get("custom_smart_quantity_unit") or "",
-		doc.get("custom_smart_item_type") or "",
-		doc.get("custom_smart_item_classification_code") or "",
-	]
-	new_prefix = "".join(prefix_parts)
-	if doc.get("custom_smart_item_code"):
-		existing_suffix = doc.custom_smart_item_code[-7:]
-	else:
-		# Find last code under same classification to increment suffix
-		last_code = frappe.db.sql(
-			"""
+    prefix_parts = [
+        doc.get("custom_smart_packaging_unit") or "",
+        doc.get("custom_smart_quantity_unit") or "",
+        doc.get("custom_smart_item_type") or "",
+        doc.get("custom_smart_item_classification_code") or "",
+       
+    ]
+    prefix = "".join(prefix_parts)
+    if doc.get("custom_smart_item_code"):
+        existing_suffix = doc.custom_smart_item_code[-7:]
+    else:
+        # Find last code under same classification to increment suffix
+        last_code = frappe.db.sql(
+            """
             SELECT custom_smart_item_code
             FROM `tabItem`
             WHERE custom_smart_item_classification_code = %s
@@ -1246,23 +1254,24 @@ def generate_custom_item_code_smart(doc: Document) -> str:
 			(doc.custom_smart_item_classification_code,),
 		)
 
-		last_code = last_code[0][0] if last_code else None
-		if last_code:
-			try:
-				last_suffix = int(last_code[-7:])
-				existing_suffix = str(last_suffix + 1).zfill(7)
-			except ValueError:
-				existing_suffix = "0000001"
-		else:
-			existing_suffix = "0000001"
+        last_code = last_code[0][0] if last_code else None
+        if last_code:
+            try:
+                last_suffix = int(last_code[-7:])
+                existing_suffix = str(last_suffix + 1).zfill(7)
+            except ValueError:
+                existing_suffix = "0000001"
+        else:
+            existing_suffix = "0000001"
 
-	new_code = f"{new_prefix}{existing_suffix}"
+    # Final smart item code
+    new_code = f"{prefix}{existing_suffix}"
 
-	# Save it back to the Item if needed
-	doc.db_set("custom_smart_item_code", new_code, update_modified=False)
-	frappe.logger().info(f"[SMART] Generated Smart Code for {doc.name}: {new_code}")
+    # Save it back to the Item if needed
+    doc.db_set("custom_smart_item_code", new_code, update_modified=False)
+    frappe.logger().info(f"[SMART] Generated Smart Code for {doc.name}: {new_code}")
 
-	return new_code
+    return new_code
 
 
 def build_import_item_payload(settings: dict):

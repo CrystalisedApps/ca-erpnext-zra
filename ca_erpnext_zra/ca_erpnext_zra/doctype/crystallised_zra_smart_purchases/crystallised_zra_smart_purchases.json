@@ -8,11 +8,18 @@
   "purchase_id",
   "supplier_tpin",
   "supplier_name",
+  "pchstycd",
+  "pchssttscd",
+  "purchase_type",
   "column_break_wgnc",
   "supplier_invoice_no",
   "sales_date",
   "total_amount",
+  "purchase_status",
+  "regtycd",
+  "registration_type",
   "section_break_rrhh",
+  "receipt_type",
   "supplier_branch_id",
   "receipt_type_code",
   "payment_type_code",
@@ -129,12 +136,48 @@
    "fieldtype": "Table",
    "label": "Items",
    "options": "Smart Registered Purchase Item"
+  },
+  {
+   "fieldname": "purchase_status",
+   "fieldtype": "Data",
+   "label": "Purchase Status",
+   "options": "Pending\nApproved\nRejected"
+  },
+  {
+   "fieldname": "pchstycd",
+   "fieldtype": "Data",
+   "label": "Purchase Type Code"
+  },
+  {
+   "fieldname": "pchssttscd",
+   "fieldtype": "Data",
+   "label": "Purchase Status Code"
+  },
+  {
+   "fieldname": "regtycd",
+   "fieldtype": "Data",
+   "label": "Registration Type Code"
+  },
+  {
+   "fieldname": "receipt_type",
+   "fieldtype": "Data",
+   "label": "Receipt Type"
+  },
+  {
+   "fieldname": "registration_type",
+   "fieldtype": "Data",
+   "label": "Registration Type"
+  },
+  {
+   "fieldname": "purchase_type",
+   "fieldtype": "Data",
+   "label": "Purchase Type"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-10-28 11:45:12.402811",
+ "modified": "2025-11-18 12:02:46.898859",
  "modified_by": "Administrator",
  "module": "Ca Erpnext Zra",
  "name": "Crystallised ZRA Smart Purchases",
