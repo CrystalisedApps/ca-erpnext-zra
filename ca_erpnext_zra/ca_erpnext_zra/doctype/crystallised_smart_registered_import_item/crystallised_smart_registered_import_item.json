@@ -1,0 +1,203 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "field:item_name",
+ "creation": "2025-11-18 10:25:41.119630",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "item_name",
+  "origin_nation_code",
+  "declaration_date",
+  "item_sequence",
+  "package",
+  "suppliers_name",
+  "invoice_foreign_currency",
+  "foreign_currency_exchange_rate",
+  "column_break_okps",
+  "task_code",
+  "export_nation_code",
+  "declaration_number",
+  "declaration_reference_number",
+  "hs_code",
+  "agent_name",
+  "net_weight",
+  "invoice_foreign_currency_amount",
+  "column_break_mytx",
+  "settings",
+  "imported_item_status",
+  "imported_item_status_code",
+  "quantity_unit_code",
+  "packaging_unit_code",
+  "quantity",
+  "gross_weight"
+ ],
+ "fields": [
+  {
+   "fieldname": "item_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Item Name",
+   "unique": 1
+  },
+  {
+   "fieldname": "origin_nation_code",
+   "fieldtype": "Link",
+   "label": "Origin Nation Code",
+   "options": "Crystallised Smart Country"
+  },
+  {
+   "fieldname": "declaration_date",
+   "fieldtype": "Date",
+   "label": "Declaration Date"
+  },
+  {
+   "fieldname": "item_sequence",
+   "fieldtype": "Int",
+   "label": "Item Sequence"
+  },
+  {
+   "fieldname": "package",
+   "fieldtype": "Data",
+   "label": "Package"
+  },
+  {
+   "fieldname": "suppliers_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Supplier's Name"
+  },
+  {
+   "fieldname": "invoice_foreign_currency",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Invoice Foreign Currency",
+   "options": "Currency"
+  },
+  {
+   "fieldname": "invoice_foreign_currency_amount",
+   "fieldtype": "Float",
+   "in_list_view": 1,
+   "label": "Invoice Foreign Currency Amount",
+   "options": "invoice_foreign_currency"
+  },
+  {
+   "fieldname": "column_break_okps",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "task_code",
+   "fieldtype": "Data",
+   "label": "Task Code"
+  },
+  {
+   "fieldname": "export_nation_code",
+   "fieldtype": "Link",
+   "label": "Export Nation Code",
+   "options": "Crystallised Smart Country"
+  },
+  {
+   "fieldname": "declaration_number",
+   "fieldtype": "Data",
+   "label": "Declaration Number"
+  },
+  {
+   "fieldname": "hs_code",
+   "fieldtype": "Data",
+   "label": "HS Code"
+  },
+  {
+   "fieldname": "packaging_unit_code",
+   "fieldtype": "Link",
+   "label": "Packaging Unit Code",
+   "options": "Crystallised Smart Packaging Unit"
+  },
+  {
+   "fieldname": "quantity_unit_code",
+   "fieldtype": "Link",
+   "label": "Quantity Unit Code",
+   "options": "Crystallised Smart Unit Of Quantity"
+  },
+  {
+   "fieldname": "agent_name",
+   "fieldtype": "Data",
+   "label": "Agent Name"
+  },
+  {
+   "fieldname": "column_break_mytx",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "settings",
+   "fieldtype": "Link",
+   "label": "Settings",
+   "options": "Crystal ZRA Smart Invoice Settings"
+  },
+  {
+   "fieldname": "imported_item_status",
+   "fieldtype": "Link",
+   "label": "Imported Item Status",
+   "options": "Crystallised Smart Import Item Status"
+  },
+  {
+   "fieldname": "imported_item_status_code",
+   "fieldtype": "Data",
+   "label": "Imported Item Status Code"
+  },
+  {
+   "fieldname": "quantity",
+   "fieldtype": "Float",
+   "label": "Quantity"
+  },
+  {
+   "fieldname": "net_weight",
+   "fieldtype": "Float",
+   "label": "Net Weight"
+  },
+  {
+   "fieldname": "gross_weight",
+   "fieldtype": "Float",
+   "label": "Gross Weight"
+  },
+  {
+   "fieldname": "declaration_reference_number",
+   "fieldtype": "Data",
+   "label": "Declaration Reference Number"
+  },
+  {
+   "fieldname": "foreign_currency_exchange_rate",
+   "fieldtype": "Float",
+   "label": "Foreign Currency Exchange Rate"
+  }
+ ],
+ "grid_page_length": 50,
+ "in_create": 1,
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2025-11-19 00:58:24.715245",
+ "modified_by": "Administrator",
+ "module": "Ca Erpnext Zra",
+ "name": "Crystallised Smart Registered Import Item",
+ "naming_rule": "By fieldname",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

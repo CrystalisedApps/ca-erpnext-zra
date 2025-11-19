@@ -5,5 +5,5 @@
 from frappe.model.document import Document
 
 
-class CrystallisedSmartQuantityUnit(Document):
+class CrystallisedSmartUnitOfQuantity(Document):
 	pass

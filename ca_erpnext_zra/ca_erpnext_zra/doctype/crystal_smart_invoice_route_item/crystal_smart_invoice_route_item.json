@@ -7,16 +7,17 @@
  "editable_grid": 1,
  "engine": "InnoDB",
  "field_order": [
-  "url_path",
-  "last_request_date",
-  "column_break_vquj",
   "url_path_function",
+  "url_path",
+  "column_break_vquj",
+  "last_request_date",
   "description"
  ],
  "fields": [
   {
    "fieldname": "url_path",
    "fieldtype": "Data",
+   "in_list_view": 1,
    "label": "URL Path"
   },
   {
@@ -26,6 +27,7 @@
   {
    "fieldname": "url_path_function",
    "fieldtype": "Data",
+   "in_list_view": 1,
    "label": "URL Path Function"
   },
   {
@@ -36,6 +38,7 @@
   {
    "fieldname": "last_request_date",
    "fieldtype": "Datetime",
+   "in_list_view": 1,
    "label": "Last Request Date"
   }
  ],
@@ -43,7 +46,7 @@
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2025-09-14 13:30:29.798554",
+ "modified": "2025-11-18 17:39:44.784491",
  "modified_by": "Administrator",
  "module": "Ca Erpnext Zra",
  "name": "Crystal Smart Invoice Route Item",

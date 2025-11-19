@@ -5,5 +5,5 @@
 from frappe.tests.utils import FrappeTestCase
 
 
-class TestCrystallisedSmartPackingUnit(FrappeTestCase):
+class TestCrystallisedSmartPackagingUnit(FrappeTestCase):
 	pass

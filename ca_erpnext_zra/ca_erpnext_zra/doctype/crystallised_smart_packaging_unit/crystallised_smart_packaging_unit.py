@@ -5,5 +5,5 @@
 from frappe.model.document import Document
 
 
-class CrystallisedSmartCountries(Document):
+class CrystallisedSmartPackagingUnit(Document):
 	pass

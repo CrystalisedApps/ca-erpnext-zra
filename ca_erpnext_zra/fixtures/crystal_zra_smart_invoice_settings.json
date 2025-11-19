@@ -1,0 +1,33 @@
+[
+ {
+  "auto_create_branch_accounting_dimension": 1,
+  "bhfid": null,
+  "classification_codes_file": null,
+  "codes_refresh_frequency": "All",
+  "company_name": "Navari Demo",
+  "default_tax_rate": 0.0,
+  "default_taxation_type_code": null,
+  "default_warehouse": "Stores - ND",
+  "department": null,
+  "docstatus": 0,
+  "doctype": "Crystal ZRA Smart Invoice Settings",
+  "environment": "Sandbox",
+  "expires_in": 0,
+  "expiry_time": "2025-11-19 02:46:39.270879",
+  "is_active": 1,
+  "jwt": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VybmFtZSI6ImNhX2VycG5leHRfdXNlciIsInRwaW4iOiIxMDAyMTUyOTcwIiwiZXhwIjoxNzYzNTIzOTk5LCJpc3MiOiJWU0RDU2VydmVyIiwiYXVkIjoiQ3J5c3RhbGlzZWRBcHBzIn0.9cPWgVgKvl2uH4ynXO4Xw9E-4nDJI3c7OJ7V6S5Kv8c",
+  "max_allowed_revisions": 4,
+  "mode_of_payment": null,
+  "modified": "2025-11-19 00:46:39.271036",
+  "name": "5l9ckc9n65",
+  "notices_refresh_frequency": "All",
+  "password": "************************",
+  "purchase_auto_submission_enabled": 0,
+  "sales_auto_submission_enabled": 1,
+  "sandbox_environemnt": 1,
+  "server_url": "https://casmartinvoiceapi.crystalisedapps.com",
+  "stock_auto_submission_enabled": 0,
+  "tpin": "1002152970",
+  "username": "ca_erpnext_user"
+ }
+]

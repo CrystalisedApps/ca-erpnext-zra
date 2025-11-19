@@ -33,6 +33,7 @@
   {
    "fieldname": "zra_item_code",
    "fieldtype": "Data",
+   "in_list_view": 1,
    "label": "ZRA Item Code"
   }
  ],
@@ -40,7 +41,7 @@
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2025-11-11 13:07:32.159837",
+ "modified": "2025-11-18 09:56:20.689414",
  "modified_by": "Administrator",
  "module": "Ca Erpnext Zra",
  "name": "Smart Crystallised Mapping",

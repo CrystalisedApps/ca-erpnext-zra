@@ -8,17 +8,14 @@ app_license = "agpl-3.0"
 from .ca_erpnext_zra.doctype.doctype_names_mapping import ROUTES_TABLE_DOCTYPE_NAME
 
 
-
 fixtures = [
- {"dt": ROUTES_TABLE_DOCTYPE_NAME},
- {"dt": "Crystal ZRA Smart Invoice Settings"},
-{"dt": "File", "filters": [["file_name", "in", ["classification_codes.xlsx"]]]}
+	{"dt": ROUTES_TABLE_DOCTYPE_NAME},
 ]
 
 doctype_js = {
-    "Item": "public/js/item.js",
-    "Sales Invoice": "public/js/sales_invoice.js",
-    "Purchase Invoice": "public/js/purchase_invoice.js"
+	"Item": "public/js/item.js",
+	"Sales Invoice": "public/js/sales_invoice.js",
+	"Purchase Invoice": "public/js/purchase_invoice.js",
 }
 # Apps
 # ------------------
@@ -157,29 +154,26 @@ doc_events = {
 	# 	"on_update": "method",
 	# 	"on_cancel": "method",
 	# 	"on_trash": "method"
-	
-    "Sales Invoice": {
-        "before_save": ["ca_erpnext_zra.ca_erpnext_zra.overrides.server.shared_override.before_save"],
-        # FIX: Changed to a list format to ensure the hook registers correctly
-        "on_submit": ["ca_erpnext_zra.ca_erpnext_zra.overrides.server.sales_invoice_override.on_submit"] 
-        
-    },
-    "Item": {
-        "on_update": ["ca_erpnext_zra.ca_erpnext_zra.apis.item_api.perform_item_registration"],
-    },
-  
-      "Purchase Invoice": {
-          "before_save": ["ca_erpnext_zra.ca_erpnext_zra.overrides.server.shared_override.before_save"],
-        "on_submit": ["ca_erpnext_zra.ca_erpnext_zra.apis.purchase_api.send_purchase_details"]
-    }
+	"Sales Invoice": {
+		"before_save": ["ca_erpnext_zra.ca_erpnext_zra.overrides.server.shared_override.before_save"],
+		# FIX: Changed to a list format to ensure the hook registers correctly
+		"on_submit": ["ca_erpnext_zra.ca_erpnext_zra.overrides.server.sales_invoice_override.on_submit"],
+	},
+	"Item": {
+		"on_update": ["ca_erpnext_zra.ca_erpnext_zra.apis.item_api.perform_item_registration"],
+	},
+	"Purchase Invoice": {
+		"before_save": ["ca_erpnext_zra.ca_erpnext_zra.overrides.server.shared_override.before_save"],
+		"on_submit": ["ca_erpnext_zra.ca_erpnext_zra.apis.purchase_api.send_purchase_details"],
+	},
 }
 # Scheduled Tasks
 # ---------------
 
 scheduler_events = {
 	"all": [
-        "ca_erpnext_zra.ca_erpnext_zra.background_tasks.tasks.send_stock_information",
-		"ca_erpnext_zra.ca_erpnext_zra.background_tasks.tasks.send_item_inventory_information"
+		"ca_erpnext_zra.ca_erpnext_zra.background_tasks.tasks.send_stock_information",
+		"ca_erpnext_zra.ca_erpnext_zra.background_tasks.tasks.send_item_inventory_information",
 	],
 	# "daily": [
 	# 	"ca_erpnext_zra.tasks.daily"
@@ -270,4 +264,3 @@ scheduler_events = {
 # default_log_clearing_doctypes = {
 # 	"Logging DocType Name": 30  # days to retain logs
 # }
-

@@ -1,57 +1,57 @@
 {
  "actions": [],
+ "allow_import": 1,
  "allow_rename": 1,
  "autoname": "field:code",
- "creation": "2025-09-24 14:49:28.091742",
+ "creation": "2025-09-24 14:30:36.326225",
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
-  "class_code",
+  "country_details_section",
   "code",
   "code_name",
-  "column_break_fefp",
-  "user_defined_name_1",
+  "column_break_ohqq",
   "user_defined_code_1"
  ],
  "fields": [
   {
-   "fieldname": "class_code",
-   "fieldtype": "Data",
-   "label": "Class Code"
+   "fieldname": "country_details_section",
+   "fieldtype": "Section Break",
+   "label": "Country Details"
   },
   {
    "fieldname": "code",
    "fieldtype": "Data",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
    "label": "Code",
    "unique": 1
   },
   {
    "fieldname": "code_name",
    "fieldtype": "Data",
-   "label": "Code Name"
-  },
-  {
-   "fieldname": "column_break_fefp",
-   "fieldtype": "Column Break"
-  },
-  {
-   "fieldname": "user_defined_name_1",
-   "fieldtype": "Data",
-   "label": "User Defined Name 1"
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Code Name",
+   "unique": 1
   },
   {
    "fieldname": "user_defined_code_1",
    "fieldtype": "Data",
    "label": "User Defined Code 1"
+  },
+  {
+   "fieldname": "column_break_ohqq",
+   "fieldtype": "Column Break"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-09-25 00:59:27.724917",
+ "modified": "2025-11-18 23:23:29.951147",
  "modified_by": "Administrator",
  "module": "Ca Erpnext Zra",
- "name": "Crystallised Smart Quantity Unit",
+ "name": "Crystallised Smart Country",
  "naming_rule": "By fieldname",
  "owner": "Administrator",
  "permissions": [
