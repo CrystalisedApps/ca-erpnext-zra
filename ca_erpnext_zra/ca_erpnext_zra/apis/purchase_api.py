@@ -12,8 +12,27 @@ from ..handlers.purchase_handlers import purchase_search_on_success
 from ..doctype.doctype_names_mapping import REGISTERED_PURCHASES_DOCTYPE_NAME
 from datetime import datetime
 from ..handlers.purchase_handlers import get_or_create_supplier_from_smart, get_or_create_item_from_smart
-
+# from ..handlers.purchase_handlers import create_or_update_purchase_invoice_from_smart
 from frappe.utils import today, flt
+
+@frappe.whitelist()
+def approve_smart_purchase(name):
+    from ca_erpnext_zra.ca_erpnext_zra.apis.purchase_api import create_purchase_invoice_from_smart_request
+
+    doc = frappe.get_doc("Crystallised ZRA Smart Purchases", name)
+
+    doc.purchase_status = "Approved"
+    doc.pchsttscd = "02"
+    doc.save(ignore_permissions=True)
+
+    request_payload = frappe.as_json(doc.as_dict())
+
+    
+    create_purchase_invoice_from_smart_request(request_data=request_payload)
+
+    frappe.msgprint(f"Purchase {name} has been approved and a Purchase Invoice created.")
+    return True
+
 @frappe.whitelist()
 def create_purchase_invoice_from_smart_request(request_data: str) -> None:
     """
@@ -27,9 +46,12 @@ def create_purchase_invoice_from_smart_request(request_data: str) -> None:
     import json
     from frappe.utils import today, flt
 
-    # ---  Parse request ---
+            # Parse JSON
     data = json.loads(request_data) if isinstance(request_data, str) else request_data or {}
-    
+
+    # Ensure items list exists
+    if not isinstance(data.get("items"), list):
+        data["items"] = []
     # ---  Company context ---
     company_name = (
         data.get("company_name")
@@ -76,16 +98,25 @@ def create_purchase_invoice_from_smart_request(request_data: str) -> None:
             pi.custom_smart_purchase_id = smart_purchase_id
 
         else:
-            # 🧹 Draft but editable
+            # Draft but editable
             pi.reload()
             pi.set("items", [])
 
     else:
-        # 🆕 Create new invoice
+        #  Create new invoice
         pi = frappe.new_doc("Purchase Invoice")
         pi.custom_smart_purchase_id = smart_purchase_id
+        if "currency" in data:
+        # The "currency" key is only available when creating from Imported Item
+            pi.currency = data["currency"]
+            # pi.custom_source_registered_imported_item = data["name"]
+        else:
+            pi.custom_source_registered_purchase = data["name"]
 
-    # --- 5️⃣ Basic fields ---
+
+
+
+    # --- Basic fields ---
     pi.company = company_name
     pi.supplier = supplier_name
     pi.currency = data.get("currency", "ZMW")
@@ -97,7 +128,7 @@ def create_purchase_invoice_from_smart_request(request_data: str) -> None:
         frappe.db.get_value("Buying Settings", None, "price_list") or "Standard Buying"
     )
 
-    # --- 6️⃣ Warehouse ---
+    # --- Warehouse ---
     branch_name = data.get("branch") or data.get("branch_id")
     set_warehouse = None
 
@@ -123,7 +154,7 @@ def create_purchase_invoice_from_smart_request(request_data: str) -> None:
     pi.custom_smart_organisation = data.get("organisation")
     pi.custom_source_registered_purchase = data.get("name")
 
-    # --- 7️⃣ Expense account ---
+    # --- Expense account ---
     company_abbr = frappe.get_value("Company", company_name, "abbr")
     expense_account = (
         frappe.db.get_value(
@@ -239,15 +270,9 @@ def submit_smart_purchase_invoice(doc: Document) -> None:
         return
 
     try:
-        # Determine submission type
-        if doc.is_return:
-            route_key = "saveDebitNote"
-            payload = build_debit_note_payload(doc.name, company_setting.get("name"))
-            success_message = "Smart Debit Note submission queued successfully."
-        else:
-            route_key = "savePurchase"
-            payload = build_purchase_payload(doc.name, company_setting.get("name"))
-            success_message = "Smart Purchase Invoice submission queued successfully."
+        route_key = "savePurchase"
+        payload = build_purchase_payload(doc.name, company_setting.get("name"))
+        success_message = "Smart Purchase Invoice submission queued successfully."
 
         # Process API request
         process_request(
@@ -322,7 +347,7 @@ def perform_purchases_search(company: str) -> None:
             request_data=request_data,
             route_key="selectTrnsPurchaseSales",
             handler_function=purchase_search_on_success,
-            request_method="POST",  # ZRA requires POST for this endpoint
+            request_method="POST", 
             doctype=REGISTERED_PURCHASES_DOCTYPE_NAME,
         )
 

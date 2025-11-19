@@ -17,7 +17,7 @@
    "field_name": "from_warehouse",
    "idx": 0,
    "is_system_generated": 1,
-   "modified": "2025-10-01 11:24:16.072494",
+   "modified": "2025-11-17 08:52:14.135147",
    "modified_by": "Administrator",
    "module": null,
    "name": "Purchase Invoice Item-from_warehouse-hidden",
