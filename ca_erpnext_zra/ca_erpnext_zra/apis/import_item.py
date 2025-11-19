@@ -1,7 +1,8 @@
 import json
+from datetime import datetime
 
 import frappe
-from frappe.utils import now_datetime
+from frappe.utils import add_to_date
 
 from ..apis.api_processor import process_request
 from ..doctype.doctype_names_mapping import SETTINGS_DOCTYPE_NAME
@@ -25,12 +26,9 @@ def select_import_items_all_branches() -> None:
 		request_data = build_import_item_payload(cred)
 
 		_, last_req_date = get_route_path(route_key, "Crystal VSDC")
-		last_req_date = (
-			last_req_date.strftime("%Y%m%d%H%M%S")
-			if last_req_date
-			else now_datetime().strftime("%Y%m%d%H%M%S")
-		)
-		request_data.update({"lastReqDt": "20231215000000"})
+		request_date = add_to_date(datetime.now(), years=-1).strftime("%Y%m%d%H%M%S")
+		last_req_date = last_req_date.strftime("%Y%m%d%H%M%S") if last_req_date else request_date
+		request_data.update({"lastReqDt": last_req_date})
 		perform_import_item(request_data, cred.name, route_key)
 
 

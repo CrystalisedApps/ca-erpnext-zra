@@ -11,11 +11,8 @@ frappe.listview_settings[doctypeName] = {
 			frappe.call({
 				method: "ca_erpnext_zra.ca_erpnext_zra.apis.import_item.select_import_items_all_branches",
 				args: { company_name: company },
-				callback: function (r) {
-					if (r.message) {
-						frappe.msgprint(__("Import Items initiated successfully."));
-					}
-				},
+				callback: function (r) {},
+				error: function (err) {},
 			});
 		});
 	},
