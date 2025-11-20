@@ -1,11 +1,12 @@
 {
  "actions": [],
  "allow_rename": 1,
- "autoname": "field:item_name",
+ "autoname": "field:item_identifier",
  "creation": "2025-11-18 10:25:41.119630",
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
+  "item_identifier",
   "item_name",
   "origin_nation_code",
   "declaration_date",
@@ -38,8 +39,7 @@
    "fieldtype": "Data",
    "in_list_view": 1,
    "in_standard_filter": 1,
-   "label": "Item Name",
-   "unique": 1
+   "label": "Item Name"
   },
   {
    "fieldname": "origin_nation_code",
@@ -169,13 +169,24 @@
    "fieldname": "foreign_currency_exchange_rate",
    "fieldtype": "Float",
    "label": "Foreign Currency Exchange Rate"
+  },
+  {
+   "fieldname": "item_identifier",
+   "fieldtype": "Data",
+   "label": "Item Identifier",
+   "unique": 1
   }
  ],
  "grid_page_length": 50,
  "in_create": 1,
  "index_web_pages_for_search": 1,
- "links": [],
- "modified": "2025-11-19 00:58:24.715245",
+ "links": [
+  {
+   "link_doctype": "Item",
+   "link_fieldname": "custom_referenced_imported_item"
+  }
+ ],
+ "modified": "2025-11-20 23:26:11.963298",
  "modified_by": "Administrator",
  "module": "Ca Erpnext Zra",
  "name": "Crystallised Smart Registered Import Item",

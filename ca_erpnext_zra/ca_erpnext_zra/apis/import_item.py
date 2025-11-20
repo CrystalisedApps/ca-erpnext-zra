@@ -2,10 +2,11 @@ import json
 from datetime import datetime
 
 import frappe
+from frappe.model.document import Document
 from frappe.utils import add_to_date
 
 from ..apis.api_processor import process_request
-from ..doctype.doctype_names_mapping import SETTINGS_DOCTYPE_NAME
+from ..doctype.doctype_names_mapping import SETTINGS_DOCTYPE_NAME, COUNTRY_DOCTYPE_NAME
 from ..handlers.import_item_handler import imported_items_select_on_success
 from ..utils.payload_utils import build_import_item_payload
 from ..utils.routes_utils import get_route_path
@@ -41,3 +42,47 @@ def perform_import_item(request_data: str, settings_name: str, route_key: str):
 		doctype="Item",
 		settings_name=settings_name,
 	)
+
+
+@frappe.whitelist()
+def create_items_from_fetched_registered_imports(request_data: str) -> None:
+	data = json.loads(request_data)
+	if data["items"]:
+		items = data["items"]
+		for item in items:
+			get_or_create_item(item)
+
+
+def get_or_create_item(data: dict) -> Document:
+	if frappe.db.exists("Item", {"item_code": data["item_name"]}):
+		return frappe.get_doc("Item", {"item_code": data["item_name"]})
+	else:
+		new_item = frappe.new_doc("Item")
+		new_item.is_stock_item = 0  # Default to 0
+		new_item.item_code = data["item_name"]
+		new_item.item_name = data["item_name"]
+		new_item.item_group = "All Item Groups"
+		new_item.custom_smart_packaging_unit = data["packaging_unit_code"]
+		new_item.custom_smart_quantity_unit = data["quantity_unit_code"]
+		new_item.custom_hs_code = data["hs_code"]
+		new_item.custom_imported_item_task_code = data["task_code"]
+		# new_item.custom_unit_of_quantity = data.get("quantity_unit_code", None) or data["unit_of_quantity_code"]
+		# item_code = data.get("item_code", None)
+		new_item.custom_smart_country_of_origin_ = data["origin_nation_code"]
+		new_item.custom_smart_country_of_origin_name = (
+			frappe.get_doc(
+				COUNTRY_DOCTYPE_NAME,
+				{"code": data["origin_nation_code"]},
+				for_update=False,
+			).code_name
+			if data["origin_nation_code"]
+			else None
+		)
+		new_item.valuation_rate = data["unit_price"]
+
+		if "imported_item" in data:
+			new_item.is_stock_item = 1
+			new_item.custom_referenced_imported_item = data["imported_item"]
+
+		new_item.insert(ignore_mandatory=True, ignore_if_duplicate=True)
+		return new_item
