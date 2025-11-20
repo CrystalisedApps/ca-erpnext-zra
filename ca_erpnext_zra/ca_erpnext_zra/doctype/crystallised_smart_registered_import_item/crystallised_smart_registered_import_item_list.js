@@ -13,6 +13,8 @@ frappe.listview_settings[doctypeName] = {
 				args: { company_name: company },
 				callback: function (r) {},
 				error: function (err) {},
+				freeze: true,
+				freeze_message: __("Fetching Import Items..."),
 			});
 		});
 	},
