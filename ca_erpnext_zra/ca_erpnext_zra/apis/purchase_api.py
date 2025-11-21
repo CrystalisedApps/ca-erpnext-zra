@@ -328,15 +328,8 @@ def perform_purchases_search(company: str) -> None:
 		return
 
 	# Decrypt TPIN from Smart settings
-	tpin = (
-		get_decrypted_password(
-			"Crystal ZRA Smart Invoice Settings",
-			settings.name,
-			"tpin",
-			raise_exception=False,
-		)
-		or ""
-	)
+	tpin =settings.tpin
+	
 
 	# Default branch ID
 	bhf_id = settings.get("bhfid") or "000"
