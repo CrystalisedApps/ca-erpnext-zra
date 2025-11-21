@@ -32,7 +32,7 @@ def sync_vsdc_codes(settings_name: str, LastReqDt: str = None, **kwargs) -> dict
 	return response
 
 
-def handle_codes_response(response: dict | str, settings_name: str = None, **kwargs) -> None:
+def handle_codes_response(response: dict | str, settings_name: str | Name = None, **kwargs) -> None:
 	"""Parse SelectCodes response from Crystal VSDC and update ERPNext DocTypes."""
 	if isinstance(response, str):
 		response = json.loads(response)
@@ -53,7 +53,7 @@ def handle_codes_response(response: dict | str, settings_name: str = None, **kwa
 			},
 		},
 		"05": {
-			"doctype": "Crystallised Smart Countries",
+			"doctype": "Crystallised Smart Country",
 			"field_mapping": {
 				"cd": "code",
 				"cdNm": "code_name",
@@ -95,7 +95,7 @@ def handle_codes_response(response: dict | str, settings_name: str = None, **kwa
 			"parent_fields": {"cdCls": "class_code", "userDfnCd1": "user_defined_name_1"},
 		},
 		"10": {
-			"doctype": "Crystallised Smart Quantity Unit",
+			"doctype": "Crystallised Smart Unit Of Quantity",
 			"field_mapping": {
 				"cd": "code",
 				"cdNm": "code_name",
@@ -144,7 +144,7 @@ def handle_codes_response(response: dict | str, settings_name: str = None, **kwa
 			"parent_fields": {"cdCls": "class_code", "userDfnCd1": "user_defined_name_1"},
 		},
 		"17": {  # Packaging Units
-			"doctype": "Crystallised Smart Packing Unit",
+			"doctype": "Crystallised Smart Packaging Unit",
 			"field_mapping": {
 				"cd": "code",
 				"cdNm": "code_name",
@@ -458,7 +458,7 @@ def handle_codes_response(response: dict | str, settings_name: str = None, **kwa
 		doctype = config["doctype"]
 		field_mapping = config["field_mapping"]
 		unique_key = config["unique_key"]
-		parent_fields = config.get("parent_fields", {})
+		# parent_fields = config.get("parent_fields", {})
 
 		# Save parent info (ensures class metadata is captured)
 		# parent_doc = update_documents(
@@ -475,7 +475,7 @@ def handle_codes_response(response: dict | str, settings_name: str = None, **kwa
 		)
 
 
-def sync_item_codes(settings_name: str, LastReqDt: str = None, **kwargs) -> dict:
+def sync_item_codes(settings_name: str, LastReqDt: str | None = None, **kwargs) -> dict:
 	"""
 	Fetch item codes from Crystal VSDC and update them into custom DocTypes.
 	"""
@@ -497,7 +497,7 @@ def sync_item_codes(settings_name: str, LastReqDt: str = None, **kwargs) -> dict
 	return response
 
 
-def handle_item_codes_response(response: dict | str, settings_name: str = None, **kwargs) -> None:
+def handle_item_codes_response(response: dict | str, settings_name: str | None = None, **kwargs) -> None:
 	"""Parse Item Classification response from Crystal VSDC and update ERPNext DocType."""
 	if isinstance(response, str):
 		response = json.loads(response)

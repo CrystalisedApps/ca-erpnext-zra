@@ -1,69 +1,65 @@
 import frappe
-from .api_processor import process_request
-from ..doctype.doctype_names_mapping import SETTINGS_DOCTYPE_NAME
 from frappe.utils.password import get_decrypted_password
+
+from ..doctype.doctype_names_mapping import SETTINGS_DOCTYPE_NAME
+from .api_processor import process_request
+
 
 @frappe.whitelist()
 def initialize_device(settings_name: str = None) -> dict:
-    """
-    Initialize a device with Crystal VSDC servers.
+	"""
+	Initialize a device with Crystal VSDC servers.
 
-    Endpoint:
-        POST /api/v1/InitializationInfo/SelectInitInfo
+	Endpoint:
+	    POST /api/v1/InitializationInfo/SelectInitInfo
 
-    Args:
-        request_data (str | dict): JSON string or dict with keys:
-            - tpin (str): Taxpayer Identification Number
-            - bhfId (str): Branch ID
-            - dvcSrlNo (str): Device Serial Number
-        settings_name (str, optional): Crystal ZRA Smart Invoice Settings docname.
+	Args:
+	    request_data (str | dict): JSON string or dict with keys:
+	        - tpin (str): Taxpayer Identification Number
+	        - bhfId (str): Branch ID
+	        - dvcSrlNo (str): Device Serial Number
+	    settings_name (str, optional): Crystal ZRA Smart Invoice Settings docname.
 
-    Returns:
-        dict: Response from Crystal VSDC.
-    """
+	Returns:
+	    dict: Response from Crystal VSDC.
+	"""
 
-    settings_doc = frappe.get_doc(SETTINGS_DOCTYPE_NAME, settings_name)
+	settings_doc = frappe.get_doc(SETTINGS_DOCTYPE_NAME, settings_name)
 
-    tpin = (
-        get_decrypted_password(SETTINGS_DOCTYPE_NAME, settings_name, "tpin", raise_exception=False)
-        or ""
-    ) 
-    request_data={
-        "tpin": tpin,
-        "bhfId":"000",
-        "dvcSrlNo": settings_doc.get("device_serial_number") or f"{tpin}_VSDC",
-    }
-        
-        
-    
-    if not request_data:
-        frappe.throw("Request data required for device initialization")
-    return process_request(
-        request_data=request_data,
-        route_key="selectInitInfo",
-        handler_function=initialize_device_on_success,
-        request_method="POST",
-        doctype=SETTINGS_DOCTYPE_NAME,
-        settings_name=settings_name,
-    )
+	tpin = get_decrypted_password(SETTINGS_DOCTYPE_NAME, settings_name, "tpin", raise_exception=False) or ""
+	request_data = {
+		"tpin": tpin,
+		"bhfId": "000",
+		"dvcSrlNo": settings_doc.get("device_serial_number") or f"{tpin}_VSDC",
+	}
+
+	if not request_data:
+		frappe.throw("Request data required for device initialization")
+	return process_request(
+		request_data=request_data,
+		route_key="selectInitInfo",
+		handler_function=initialize_device_on_success,
+		request_method="POST",
+		doctype=SETTINGS_DOCTYPE_NAME,
+		settings_name=settings_name,
+	)
 
 
 def initialize_device_on_success(response: dict, **kwargs) -> dict:
-    """
-    Handle a successful device initialization response from Crystal VSDC.
-    Stores API keys if returned.
-    """
-    # Extract the result code from the nested Result structure
-    result_cd = response.get("Result", {}).get("resultCd")
-    
-    # Handle different result codes with specific messages
-    if result_cd == "902":
-        frappe.msgprint("ℹ Device already initialized with Crystal VSDC")
-    elif result_cd == "000":
-        frappe.msgprint(" Successfully initialized device with Crystal VSDC")
-    else:
-        # Fallback for other success cases or unknown result codes
-        frappe.msgprint(" Device initialization successful with Crystal VSDC")
+	"""
+	Handle a successful device initialization response from Crystal VSDC.
+	Stores API keys if returned.
+	"""
+	# Extract the result code from the nested Result structure
+	result_cd = response.get("Result", {}).get("resultCd")
 
-  
-    return response
+	# Handle different result codes with specific messages
+	if result_cd == "902":
+		frappe.msgprint("ℹ Device already initialized with Crystal VSDC")
+	elif result_cd == "000":
+		frappe.msgprint(" Successfully initialized device with Crystal VSDC")
+	else:
+		# Fallback for other success cases or unknown result codes
+		frappe.msgprint(" Device initialization successful with Crystal VSDC")
+
+	return response

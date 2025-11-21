@@ -1,5 +1,3 @@
-
-
 """
 Centralized mapping for all DocType names used in the ZRA VSDC integration.
 Using constants avoids hardcoding DocType strings throughout the codebase.
@@ -20,6 +18,5 @@ PACKAGING_UNIT_DOCTYPE_NAME = "Crystallised Smart Packaging Unit"
 UNIT_OF_QUANTITY_DOCTYPE_NAME = "Crystallised Smart Unit Of Quantity"
 IMPORTED_ITEMS_STATUS_DOCTYPE_NAME = "Crystallised Smart Import Item Status"
 SMART_CRYSTALLISED_MAPPING_DOCTYPE_NAME = "Smart Crystallised Mapping"
-REGISTERED_PURCHASES_DOCTYPE_NAME="Crystallised ZRA Smart Purchases"
+REGISTERED_PURCHASES_DOCTYPE_NAME = "Crystallised ZRA Smart Purchases"
 REGISTERED_PURCHASE_ITEM_CHILD = "Smart Registered Purchase Item"
-
