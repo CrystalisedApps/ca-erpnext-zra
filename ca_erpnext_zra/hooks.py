@@ -7,7 +7,6 @@ app_license = "agpl-3.0"
 
 from .ca_erpnext_zra.doctype.doctype_names_mapping import ROUTES_TABLE_DOCTYPE_NAME
 
-
 fixtures = [
 	{"dt": ROUTES_TABLE_DOCTYPE_NAME},
 ]

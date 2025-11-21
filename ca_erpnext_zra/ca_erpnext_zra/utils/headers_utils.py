@@ -1,72 +1,70 @@
 from datetime import datetime
+
 import frappe
 from frappe import _
 
 from .settings_utils import get_settings
- # refreshes token and updates settings
+
+# refreshes token and updates settings
 
 
-def build_headers(settings_name: str = None) -> dict[str, str] | None:
-    """
-    Build headers for Crystal Smart Invoice API requests.
-    Ensures access token is valid; refreshes if expired.
+def build_headers(settings_name: str | None = None) -> dict[str, str] | None:
+	"""
+	Build headers for Crystal Smart Invoice API requests.
+	Ensures access token is valid; refreshes if expired.
 
-    Args:
-        company_name (str): The company name.
-        branch_id (str, optional): The branch ID.
-        settings_name (str, optional): The ZRA Settings docname.
+	Args:
+	    company_name (str): The company name.
+	    branch_id (str, optional): The branch ID.
+	    settings_name (str, optional): The ZRA Settings docname.
 
-    Returns:
-        dict[str, str] | None: The headers including Authorization, Device ID, etc.
-    """
-    settings = get_settings(settings_name)
-    
-    if not settings:
-        return None
+	Returns:
+	    dict[str, str] | None: The headers including Authorization, Device ID, etc.
+	"""
+	settings = get_settings(settings_name)
 
-    jwt = settings.get("jwt")
-    token_expiry = settings.get("expiry_time")
+	if not settings:
+		return None
 
-    # Check if token is missing or expired
-    if (
-        not jwt
-        or not token_expiry
-        or (
-            datetime.strptime(str(token_expiry).split(".")[0], "%Y-%m-%d %H:%M:%S")
-            < datetime.now()
-        )
-    ):
-        # Call authenticate → refresh token and update settings
-        from ..apis.auth import authenticate 
-        new_settings = authenticate(settings.get("name"))
+	jwt = settings.get("jwt")
+	token_expiry = settings.get("expiry_time")
 
-        if not new_settings:
-                frappe.throw(
-                    "Failed to refresh token. Please check your Crystal VSDC integration settings.",
-                    frappe.AuthenticationError,
-                )
+	# Check if token is missing or expired
+	if (
+		not jwt
+		or not token_expiry
+		or (datetime.strptime(str(token_expiry).split(".")[0], "%Y-%m-%d %H:%M:%S") < datetime.now())
+	):
+		# Call authenticate → refresh token and update settings
+		from ..apis.auth import authenticate
 
-        
+		new_settings = authenticate(settings.get("name"))
 
-        # Use new token directly from updated settings
-        # settings.reload()
-        jwt = new_settings.get("jwt")
+		if not new_settings:
+			frappe.throw(
+				"Failed to refresh token. Please check your Crystal VSDC integration settings.",
+				frappe.AuthenticationError,
+			)
 
-    # Build base headers
-    headers = {
-        "Authorization": f"Bearer {jwt}",
-        "Content-Type": "application/json",
-        "Accept": "application/json",
-    }
+		# Use new token directly from updated settings
+		# settings.reload()
+		jwt = new_settings.get("jwt")
 
-    # Attach device_id if available
-    # device_id = settings.get("device_id")
-    # if device_id:
-    #     headers["Device-Id"] = device_id
+	# Build base headers
+	headers = {
+		"Authorization": f"Bearer {jwt}",
+		"Content-Type": "application/json",
+		"Accept": "application/json",
+	}
 
-    # Attach TIN if available
-    # taxpayer_pin = settings.get("taxpayer_pin")
-    # if taxpayer_pin:
-    #     headers["TIN"] = taxpayer_pin
+	# Attach device_id if available
+	# device_id = settings.get("device_id")
+	# if device_id:
+	#     headers["Device-Id"] = device_id
 
-    return headers
+	# Attach TIN if available
+	# taxpayer_pin = settings.get("taxpayer_pin")
+	# if taxpayer_pin:
+	#     headers["TIN"] = taxpayer_pin
+
+	return headers

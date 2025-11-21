@@ -1,5 +1,3 @@
-
-
 frappe.ui.form.on("Crystal ZRA Smart Invoice Settings", {
 	refresh(frm) {
 		// Ping Server Button
@@ -50,11 +48,15 @@ frappe.ui.form.on("Crystal ZRA Smart Invoice Settings", {
 			},
 			__("Smart Actions")
 		);
-frm.add_custom_button(
+		frm.add_custom_button(
 			__("Import Classification Codes"),
 			function () {
 				if (!frm.doc.classification_codes_file) {
-					frappe.msgprint(__("Please upload a CSV/Excel file in the field 'Classification Codes File' first."));
+					frappe.msgprint(
+						__(
+							"Please upload a CSV/Excel file in the field 'Classification Codes File' first."
+						)
+					);
 					return;
 				}
 
@@ -68,7 +70,9 @@ frm.add_custom_button(
 					callback: function (r) {
 						frappe.dom.unfreeze();
 						if (!r.exc) {
-							frappe.msgprint(__(`Import complete. ${r.message.inserted || 0} records added.`));
+							frappe.msgprint(
+								__(`Import complete. ${r.message.inserted || 0} records added.`)
+							);
 						}
 					},
 					error: function () {
@@ -125,7 +129,6 @@ frm.add_custom_button(
 					method: "ca_erpnext_zra.ca_erpnext_zra.apis.device.initialize_device",
 					args: {
 						settings_name: frm.doc.name,
-						
 					},
 					callback: function (r) {
 						frappe.dom.unfreeze();
