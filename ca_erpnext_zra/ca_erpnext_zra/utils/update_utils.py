@@ -1,20 +1,20 @@
-from collections.abc import Any, Callable, Optional, Union, dict, list
+from typing import Any, Callable, Dict, List, Optional, Union
 
 import frappe
 from frappe.model.document import Document
 
 
 def update_documents(
-	data: list[dict[str, Any]],
+	data: List[Dict[str, Any]],
 	doctype: str,
-	field_mapping: dict[str, str | tuple[str, Callable[[dict[str, Any]], Any]]],
-	unique_key: str | None = None,
-	parent: str | None = None,
+	field_mapping: Dict[str, Union[str, tuple[str, Callable[[Dict[str, Any]], Any]]]],
+	unique_key: Optional[str] = None,
+	parent: str = None,
 	parenttype: str | None = None,
 	parentfield: str | None = None,
 	return_docs: bool = False,
 	ignore_if_duplicate: bool = False,
-) -> list[Document] | None:
+) -> List[Document] | None:
 	"""
 	Generic helper to insert or update documents from API responses.
 

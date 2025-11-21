@@ -1,5 +1,5 @@
 import json
-from collections.abc import Any, Union, dict, list
+from typing import Any, Union, Dict, List
 
 
 def parse_response_data(

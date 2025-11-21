@@ -6,6 +6,10 @@ from frappe.model.document import Document
 from ..apis.api_processor import process_request
 from ..doctype.doctype_names_mapping import (
 	ITEM_CLASSIFICATIONS_DOCTYPE_NAME,
+	COUNTRY_DOCTYPE_NAME,
+	  PACKAGING_UNIT_DOCTYPE_NAME,
+	  UNIT_OF_QUANTITY_DOCTYPE_NAME
+
 )
 from ..utils.update_utils import update_documents
 
@@ -32,7 +36,7 @@ def sync_vsdc_codes(settings_name: str, LastReqDt: str = None, **kwargs) -> dict
 	return response
 
 
-def handle_codes_response(response: dict | str, settings_name: str | Name = None, **kwargs) -> None:
+def handle_codes_response(response: dict | str, settings_name: str = None, **kwargs) -> None:
 	"""Parse SelectCodes response from Crystal VSDC and update ERPNext DocTypes."""
 	if isinstance(response, str):
 		response = json.loads(response)
@@ -95,13 +99,16 @@ def handle_codes_response(response: dict | str, settings_name: str | Name = None
 			"parent_fields": {"cdCls": "class_code", "userDfnCd1": "user_defined_name_1"},
 		},
 		"10": {
-			"doctype": "Crystallised Smart Unit Of Quantity",
+			"doctype": UNIT_OF_QUANTITY_DOCTYPE_NAME,
 			"field_mapping": {
 				"cd": "code",
 				"cdNm": "code_name",
 				"userDfnCd1": "user_defined_code_1",
 			},
 			"unique_key": "code",
+			"parent_fields": {
+				"cdCls": "class_code",
+			},
 		},
 		"11": {
 			"doctype": "Crystallised Smart Sale Status",
@@ -144,7 +151,7 @@ def handle_codes_response(response: dict | str, settings_name: str | Name = None
 			"parent_fields": {"cdCls": "class_code", "userDfnCd1": "user_defined_name_1"},
 		},
 		"17": {  # Packaging Units
-			"doctype": "Crystallised Smart Packaging Unit",
+			"doctype": PACKAGING_UNIT_DOCTYPE_NAME,
 			"field_mapping": {
 				"cd": "code",
 				"cdNm": "code_name",
@@ -458,9 +465,9 @@ def handle_codes_response(response: dict | str, settings_name: str | Name = None
 		doctype = config["doctype"]
 		field_mapping = config["field_mapping"]
 		unique_key = config["unique_key"]
-		# parent_fields = config.get("parent_fields", {})
+		parent_fields = config.get("parent_fields", {})
 
-		# Save parent info (ensures class metadata is captured)
+		# # Save parent info (ensures class metadata is captured)
 		# parent_doc = update_documents(
 		#     [cls],  # use class-level dict
 		#     doctype,
@@ -475,7 +482,7 @@ def handle_codes_response(response: dict | str, settings_name: str | Name = None
 		)
 
 
-def sync_item_codes(settings_name: str, LastReqDt: str | None = None, **kwargs) -> dict:
+def sync_item_codes(settings_name: str, LastReqDt: str = None, **kwargs) -> dict:
 	"""
 	Fetch item codes from Crystal VSDC and update them into custom DocTypes.
 	"""
@@ -497,7 +504,7 @@ def sync_item_codes(settings_name: str, LastReqDt: str | None = None, **kwargs) 
 	return response
 
 
-def handle_item_codes_response(response: dict | str, settings_name: str | None = None, **kwargs) -> None:
+def handle_item_codes_response(response: dict | str, settings_name: str = None, **kwargs) -> None:
 	"""Parse Item Classification response from Crystal VSDC and update ERPNext DocType."""
 	if isinstance(response, str):
 		response = json.loads(response)

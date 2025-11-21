@@ -1,7 +1,8 @@
 import re
 
 # from .id_utils import get_vsdc_id
-from collections.abc import Any, Callable, dict
+
+from typing import Any, Callable,Dict
 from datetime import datetime
 
 import frappe
@@ -931,7 +932,11 @@ def build_invoice_payload(invoice: "Document", settings_name: str) -> dict:
 		tax_rate = float(item.get("custom_tax_rate") or 0)
 		vat_rate = fmt4(rate * tax_rate / 100)
 		vat_amt = fmt4(sply_amt * tax_rate / 100)
-
+		item_code = (
+					item.get("custom_smart_item_code")
+					or frappe.db.get_value("Item", item.item_code, "custom_smart_item_code")
+					or item.item_code
+				)
 		# Totals
 		tot_amt = fmt4(sply_amt - dc_amt + vat_amt)
 		tl_amt = tot_amt
@@ -953,7 +958,7 @@ def build_invoice_payload(invoice: "Document", settings_name: str) -> dict:
 		payload["itemList"].append(
 			{
 				"itemSeq": idx,
-				"itemCd": item.item_code,
+				"itemCd": item_code,
 				"itemNm": item.item_name,
 				"itemClsCd": class_code,
 				"qty": qty,
@@ -1020,7 +1025,20 @@ def build_credit_note_payload(doc, settings_name):
 	)
 
 	bhf_id = "000"
-
+	def extract_numeric(invoice_id: str) -> str:
+		"""
+		Extract the last numeric segment of an invoice ID that is not all zeros.
+		Example:
+			SI-INV-2025-00492 -> '492'
+			SI-INV-2025-00000 -> fallback to full string or None
+		"""
+		# Find all sequences of digits
+		matches = re.findall(r'\d+', invoice_id)
+		# Reverse iterate to find the first non-zero numeric string
+		for num in reversed(matches):
+			if int(num) != 0:
+				return str(int(num))  # Convert to remove leading zeros
+		return invoice_id  # fallback if all numbers are zerod
 	sales_dt = getdate(doc.posting_date).strftime("%Y%m%d")
 	now_str = now_datetime().strftime("%Y%m%d%H%M%S")
 
@@ -1041,7 +1059,7 @@ def build_credit_note_payload(doc, settings_name):
 	payload = {
 		"tpin": tpin,
 		"bhfId": bhf_id,
-		"orgInvcNo": int(original_invoice.custom_current_receipt_number),
+		"orgInvcNo": extract_numeric(original_invoice.name),
 		"cisInvcNo": doc.name,
 		"custTpin": customer.tax_id or "",
 		"custNm": doc.customer_name or "",
@@ -1098,7 +1116,11 @@ def build_credit_note_payload(doc, settings_name):
 		vat_amt = abs(fmt4(sply_amt * tax_rate / 100))
 		tot_amt = abs(fmt4(sply_amt - dc_amt + vat_amt))
 		tl_amt = tot_amt
-
+		item_code = (
+					item.get("custom_smart_item_code")
+					or frappe.db.get_value("Item", item.item_code, "custom_smart_item_code")
+					or item.item_code
+				)
 		vat_cat = get_vat_category(item)
 
 		# Update tax fields by category
@@ -1111,7 +1133,7 @@ def build_credit_note_payload(doc, settings_name):
 		payload["itemList"].append(
 			{
 				"itemSeq": idx,
-				"itemCd": item.item_code,
+				"itemCd": item_code,
 				"itemNm": item.item_name,
 				"itemClsCd": class_code,
 				"qty": qty,
