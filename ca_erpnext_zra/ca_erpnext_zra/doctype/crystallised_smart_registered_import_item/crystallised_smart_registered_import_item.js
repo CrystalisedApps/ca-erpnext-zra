@@ -5,11 +5,12 @@ const doctypeName = "Crystallised Smart Registered Import Item";
 
 frappe.ui.form.on(doctypeName, {
 	refresh: function (frm) {
-		const companyName = frappe.db.get_value(
+		const company_data = frappe.db.get_value(
 			"Crystal ZRA Smart Invoice Settings",
 			frm.doc.settings,
 			"company_name"
 		);
+
 		const item = [
 			{
 				item_classification_code: null,
@@ -65,7 +66,6 @@ frappe.ui.form.on(doctypeName, {
 						args: {
 							request_data: {
 								name: frm.doc.name,
-								company_name: companyName,
 								supplier_name: frm.doc.suppliers_name,
 								supplier_pin: null,
 								supplier_currency: frm.doc.invoice_foreign_currency,
@@ -99,7 +99,7 @@ frappe.ui.form.on(doctypeName, {
 							__("Create Purchase Invoice"),
 							function () {
 								frappe.call({
-									method: "ca_erpnext_zra.ca_erpnext_zra.utils.create_purchase_invoice.create_purchase_invoice_from_request",
+									method: "ca_erpnext_zra.ca_erpnext_zra.apis.purchase_invoice.create_purchase_invoice_from_request",
 									args: {
 										request_data: {
 											name: frm.doc.name,
@@ -114,17 +114,17 @@ frappe.ui.form.on(doctypeName, {
 											amount: frm.doc.invoice_foreign_currency_amount,
 											items: item,
 											task_code: frm.doc.task_code,
-											company_name: companyName,
+											company_data: company_data,
 										},
 									},
 									callback: (response) => {
-										frappe.msgprint(
-											"Purchase Invoice has been created. Please go to the created Invoice and provide required eTims Details."
-										);
+										frappe.msgprint("Purchase Invoice has been created.");
 									},
 									error: (error) => {
 										// Error Handling is Defered to the Server
 									},
+									freeze: true,
+									freeze_message: __("Creating Purchase Invoice..."),
 								});
 							},
 							__("Smart Actions")

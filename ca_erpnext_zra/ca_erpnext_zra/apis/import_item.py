@@ -59,16 +59,16 @@ def get_or_create_item(data: dict) -> Document:
 	else:
 		new_item = frappe.new_doc("Item")
 		new_item.is_stock_item = 0  # Default to 0
-		new_item.item_code = data["item_name"]
-		new_item.item_name = data["item_name"]
+		new_item.item_code = data.get("item_name")
+		new_item.item_name = data.get("item_name")
 		new_item.item_group = "All Item Groups"
-		new_item.custom_smart_packaging_unit = data["packaging_unit_code"]
-		new_item.custom_smart_quantity_unit = data["quantity_unit_code"]
-		new_item.custom_hs_code = data["hs_code"]
-		new_item.custom_imported_item_task_code = data["task_code"]
-		# new_item.custom_unit_of_quantity = data.get("quantity_unit_code", None) or data["unit_of_quantity_code"]
-		# item_code = data.get("item_code", None)
-		new_item.custom_smart_country_of_origin_ = data["origin_nation_code"]
+		new_item.custom_smart_packaging_unit = data.get("packaging_unit_code")
+		new_item.custom_smart_quantity_unit = data.get("quantity_unit_code")
+		new_item.custom_hs_code = data.get("hs_code")
+		new_item.custom_imported_item_task_code = data.get("task_code")
+		new_item.custom_imported_item_status = data.get("imported_item_status")
+		new_item.custom_imported_item_status_code = data.get("imported_item_status_code")
+		new_item.custom_smart_country_of_origin_ = data.get("origin_nation_code")
 		new_item.custom_smart_country_of_origin_name = (
 			frappe.get_doc(
 				COUNTRY_DOCTYPE_NAME,

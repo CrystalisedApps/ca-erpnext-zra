@@ -80,12 +80,13 @@ def _process_item_lookup(item_name: str, settings_name: str):
 	settings = frappe.get_doc("Crystal ZRA Smart Invoice Settings", settings_name)
 
 	# Extract required Smart API identifiers
-	tpin = (
-		get_decrypted_password(
-			"Crystal ZRA Smart Invoice Settings", settings.name, "tpin", raise_exception=False
-		)
-		or ""
-	)
+	# tpin = (
+	# 	get_decrypted_password(
+	# 		"Crystal ZRA Smart Invoice Settings", settings.name, "tpin", raise_exception=False
+	# 	)
+	# 	or ""
+	# )
+	tpin = settings.get("tpin")
 	bhf_id = settings.get("branch_id") or "000"  # Default branch
 	item_cd = item.get("custom_smart_item_code")
 
