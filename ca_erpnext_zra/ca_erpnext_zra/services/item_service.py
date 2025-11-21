@@ -162,7 +162,7 @@ def fetch_matching_items_on_success(response: dict, document_name: str, settings
 			existing_mapping = None  # explicitly set to None to trigger creation
 
 	# --- Build payload for registration/update ---
-	request_data = generate_vsdc_item_payload(item_doc.name)
+	request_data = generate_vsdc_item_payload(item_doc.name, settings_name)
 
 	# Decide route key based on existing mapping
 	route_key = "updateItem" if existing_mapping else "saveItem"

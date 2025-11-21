@@ -33,8 +33,7 @@
    "fieldtype": "Data",
    "in_list_view": 1,
    "in_standard_filter": 1,
-   "label": "Code Name",
-   "unique": 1
+   "label": "Code Name"
   },
   {
    "fieldname": "column_break_fefp",
@@ -54,7 +53,7 @@
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-11-18 23:22:29.739842",
+ "modified": "2025-11-21 16:21:31.367225",
  "modified_by": "Administrator",
  "module": "Ca Erpnext Zra",
  "name": "Crystallised Smart Unit Of Quantity",

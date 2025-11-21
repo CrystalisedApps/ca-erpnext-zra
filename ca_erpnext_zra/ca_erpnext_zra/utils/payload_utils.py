@@ -2,7 +2,7 @@ import re
 
 # from .id_utils import get_vsdc_id
 
-from typing import Any, Callable,Dict
+from typing import Any, Callable, Dict
 from datetime import datetime
 
 import frappe
@@ -761,7 +761,7 @@ def build_purchase_payload(docname: str, settings_name: str) -> dict:
 	return payload
 
 
-def generate_vsdc_item_payload(item_name: str) -> dict:
+def generate_vsdc_item_payload(item_name: str, settings_name: str) -> dict:
 	item = frappe.get_doc("Item", item_name)
 
 	def get_code(fieldname: str) -> str | None:
@@ -791,17 +791,17 @@ def generate_vsdc_item_payload(item_name: str) -> dict:
 
 		# Fetch first settings record
 
-	settings = frappe.get_all("Crystal ZRA Smart Invoice Settings", fields=["name"])
+	settings = frappe.get_doc("Crystal ZRA Smart Invoice Settings", settings_name)
 
-	tpin = ""
-	if settings:
-		settings_name = settings[0]["name"]
-		tpin = (
-			get_decrypted_password(
-				"Crystal ZRA Smart Invoice Settings", settings_name, "tpin", raise_exception=False
-			)
-			or ""
-		)
+	tpin = settings.get("tpin")
+	# if settings:
+	# 	settings_name = settings[0]["name"]
+	# 	tpin = (
+	# 		get_decrypted_password(
+	# 			"Crystal ZRA Smart Invoice Settings", settings_name, "tpin", raise_exception=False
+	# 		)
+	# 		or ""
+	# 	)
 	# --- Get BhfId from Settings ---
 	# bhf_id = frappe.db.get_single_value("Crystal ZRA Smart Invoice Settings", "branch_id") or "000"
 
@@ -933,10 +933,10 @@ def build_invoice_payload(invoice: "Document", settings_name: str) -> dict:
 		vat_rate = fmt4(rate * tax_rate / 100)
 		vat_amt = fmt4(sply_amt * tax_rate / 100)
 		item_code = (
-					item.get("custom_smart_item_code")
-					or frappe.db.get_value("Item", item.item_code, "custom_smart_item_code")
-					or item.item_code
-				)
+			item.get("custom_smart_item_code")
+			or frappe.db.get_value("Item", item.item_code, "custom_smart_item_code")
+			or item.item_code
+		)
 		# Totals
 		tot_amt = fmt4(sply_amt - dc_amt + vat_amt)
 		tl_amt = tot_amt
@@ -1025,6 +1025,7 @@ def build_credit_note_payload(doc, settings_name):
 	)
 
 	bhf_id = "000"
+
 	def extract_numeric(invoice_id: str) -> str:
 		"""
 		Extract the last numeric segment of an invoice ID that is not all zeros.
@@ -1033,12 +1034,13 @@ def build_credit_note_payload(doc, settings_name):
 			SI-INV-2025-00000 -> fallback to full string or None
 		"""
 		# Find all sequences of digits
-		matches = re.findall(r'\d+', invoice_id)
+		matches = re.findall(r"\d+", invoice_id)
 		# Reverse iterate to find the first non-zero numeric string
 		for num in reversed(matches):
 			if int(num) != 0:
 				return str(int(num))  # Convert to remove leading zeros
 		return invoice_id  # fallback if all numbers are zerod
+
 	sales_dt = getdate(doc.posting_date).strftime("%Y%m%d")
 	now_str = now_datetime().strftime("%Y%m%d%H%M%S")
 
@@ -1117,10 +1119,10 @@ def build_credit_note_payload(doc, settings_name):
 		tot_amt = abs(fmt4(sply_amt - dc_amt + vat_amt))
 		tl_amt = tot_amt
 		item_code = (
-					item.get("custom_smart_item_code")
-					or frappe.db.get_value("Item", item.item_code, "custom_smart_item_code")
-					or item.item_code
-				)
+			item.get("custom_smart_item_code")
+			or frappe.db.get_value("Item", item.item_code, "custom_smart_item_code")
+			or item.item_code
+		)
 		vat_cat = get_vat_category(item)
 
 		# Update tax fields by category

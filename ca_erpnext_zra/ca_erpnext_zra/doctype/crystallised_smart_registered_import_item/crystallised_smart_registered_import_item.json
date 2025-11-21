@@ -137,6 +137,8 @@
   {
    "fieldname": "imported_item_status",
    "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
    "label": "Imported Item Status",
    "options": "Crystallised Smart Import Item Status"
   },
@@ -184,9 +186,13 @@
   {
    "link_doctype": "Item",
    "link_fieldname": "custom_referenced_imported_item"
+  },
+  {
+   "link_doctype": "Purchase Invoice",
+   "link_fieldname": "custom_import_source_registered_purchase"
   }
  ],
- "modified": "2025-11-20 23:26:11.963298",
+ "modified": "2025-11-21 12:33:00.405375",
  "modified_by": "Administrator",
  "module": "Ca Erpnext Zra",
  "name": "Crystallised Smart Registered Import Item",

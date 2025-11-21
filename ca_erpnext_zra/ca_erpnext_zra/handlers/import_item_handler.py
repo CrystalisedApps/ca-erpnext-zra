@@ -70,86 +70,8 @@ def imported_items_select_on_success(response: dict, settings_name: str, **kwarg
 				"settings": settings_name,
 			}
 
-			# if existing_item:
-			# 	item_doc = frappe.get_doc(REGISTERED_IMPORTED_ITEM_DOCTYPE_NAME, existing_item)
-			# 	item_doc.update(response_data)
-			# 	item_doc.flags.ignore_mandatory = True
-			# 	item_doc.save(ignore_permissions=True)
-			# else:
-			# 	item_doc = frappe.get_doc({"doctype": REGISTERED_IMPORTED_ITEM_DOCTYPE_NAME, **response_data})
-			# 	item_doc.insert(ignore_permissions=True, ignore_mandatory=True, ignore_if_duplicate=True)
-
 			item_doc = frappe.get_doc({"doctype": REGISTERED_IMPORTED_ITEM_DOCTYPE_NAME, **response_data})
 			item_doc.insert(ignore_permissions=True, ignore_mandatory=True, ignore_if_duplicate=True)
-
-			# item_name = item.get("itemNm")
-			# if not item_name:
-			# 	continue
-
-			# item_code = f"{item.get('orgnNatCd')}{item.get('pkgUnitCd')}{item.get('qtyUnitCd')}"
-			# item_name = item.get("itemNm")
-
-			# if frappe.db.exists("Item", {"item_code": item_code}):
-			# 	product = frappe.get_doc("Item", {"item_code": item_code})
-			# else:
-			# 	product = frappe.new_doc("Item")
-			# 	product.item_code = item_code
-			# 	product.item_name = item_name
-			# 	default_item_group = frappe.get_all(
-			# 		"Item Group", filters={"is_group": 1}, fields=["name"], limit=1
-			# 	)
-			# 	product.item_group = default_item_group[0].name if default_item_group else "All Item Groups"
-			# 	product.flags.ignore_mandatory = True
-			# 	product.insert(ignore_permissions=True)
-
-			# product_name = None
-			# if frappe.db.exists(
-			# 	SMART_CRYSTALLISED_MAPPING_DOCTYPE_NAME,
-			# 	{"zra_item_code": item_name, "smart_setup": settings_name},
-			# ):
-			# 	product_name = frappe.db.get_value(
-			# 		SMART_CRYSTALLISED_MAPPING_DOCTYPE_NAME,
-			# 		{"zra_item_code": item_name, "smart_setup": settings_name},
-			# 		"parent",
-			# 		order_by="creation desc",
-			# 	)
-			# 	product = frappe.get_doc("Item", product_name)
-
-			# else:
-			# 	if frappe.db.exists("Item", {"item_code": item_name}):
-			# 		product = frappe.get_doc("Item", {"item_code": item_name})
-			# 	else:
-			# 		product = frappe.new_doc("Item")
-			# 		product.item_name = item_name
-			# 		product.item_code = item_name
-			# 		default_item_group = frappe.get_all(
-			# 			"Item Group", filters={"is_group": 1}, fields=["name"], limit=1
-			# 		)
-			# 		product.item_group = (
-			# 			default_item_group[0].name if default_item_group else "All Item Groups"
-			# 		)
-			# 		product.flags.ignore_mandatory = True
-			# 		product.insert(ignore_permissions=True)
-			# 	frappe.get_doc(
-			# 		{
-			# 			"doctype": SMART_CRYSTALLISED_MAPPING_DOCTYPE_NAME,
-			# 			"parent": product.name,
-			# 			"parenttype": "Item",
-			# 			"parentfield": "custom_smart_setup_mapping",
-			# 			"zra_item_code": item_name,
-			# 			"smart_setup": settings_name,
-			# 		}
-			# 	).insert(ignore_permissions=True)
-
-			# update_data = {
-			# 	"custom_referenced_imported_item": item_doc.name,
-			# 	"custom_imported_item_task_code": item_doc.task_code,
-			# 	"custom_hs_code": item_doc.hs_code,
-			# 	"custom_imported_item_status": item_doc.imported_item_status,
-			# 	"custom_imported_item_status_code": item_doc.imported_item_status_code,
-			# 	"is_stock_item": 1,
-			# }
-			# frappe.db.set_value("Item", product.name, update_data, update_modified=False)
 
 			counter += 1
 			if counter % batch_size == 0:
