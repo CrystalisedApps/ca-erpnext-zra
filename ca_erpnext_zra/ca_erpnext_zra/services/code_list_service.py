@@ -51,7 +51,7 @@ def handle_codes_response(response: dict | str, settings_name: str = None, **kwa
 		"04": {  # Taxation Types
 			"doctype": "Crystallised ZRA Smart Taxation Type",
 			"field_mapping": {"cd": "code", "cdNm": "code_name", "userDfnCd1": "user_defined_code_1"},
-			"unique_key": "c",
+			"unique_key": "code",
 			"parent_fields": {
 				"cdCls": "class_code",
 			},
@@ -106,9 +106,6 @@ def handle_codes_response(response: dict | str, settings_name: str = None, **kwa
 				"userDfnCd1": "user_defined_code_1",
 			},
 			"unique_key": "code",
-			"parent_fields": {
-				"cdCls": "class_code",
-			},
 		},
 		"11": {
 			"doctype": "Crystallised Smart Sale Status",
@@ -151,7 +148,7 @@ def handle_codes_response(response: dict | str, settings_name: str = None, **kwa
 			"parent_fields": {"cdCls": "class_code", "userDfnCd1": "user_defined_name_1"},
 		},
 		"17": {  # Packaging Units
-			"doctype": PACKAGING_UNIT_DOCTYPE_NAME,
+			"doctype": "Crystallised Smart Packaging Unit",
 			"field_mapping": {
 				"cd": "code",
 				"cdNm": "code_name",

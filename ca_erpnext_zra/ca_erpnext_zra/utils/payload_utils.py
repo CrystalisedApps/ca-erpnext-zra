@@ -1494,22 +1494,42 @@ def build_sales_payload(sales_invoice_name, company_tpin, user="Admin"):
 
 	return payload
 
-
 def generate_custom_item_code_smart(doc: Document) -> str:
-	prefix_parts = [
-		doc.get("Crystallised Smart Country") or "",
-		doc.get("custom_smart_item_type") or "",
-		doc.get("custom_smart_packaging_unit") or "",
-		doc.get("custom_smart_quantity_unit") or "",
-		doc.get("custom_smart_item_classification_code") or "",
-	]
-	prefix = "".join(prefix_parts)
-	if doc.get("custom_smart_item_code"):
-		existing_suffix = doc.custom_smart_item_code[-7:]
-	else:
-		# Find last code under same classification to increment suffix
-		last_code = frappe.db.sql(
-			"""
+    """
+    Generate smart item code in fixed format:
+        CC T PP QQ CCCC SSSSSSS
+        
+        CC  = Country (2 chars)
+        T   = Item type (1 char)
+        PP  = Packaging unit (2 chars)
+        QQ  = Qty unit (2 chars)
+        CCCC = Classification code (4 chars, padded)
+        SSSSSSS = Running sequence (7 digits)
+    """
+
+    # --- Extract fields ---
+    country = (doc.get("custom_smart_country_of_origin_") or "").upper().strip()[:2]
+    item_type = (doc.get("custom_smart_item_type") or "").upper().strip()[:1]
+    pkg_unit = (doc.get("custom_smart_packaging_unit") or "").upper().strip()[:2]
+    qty_unit = (doc.get("custom_smart_quantity_unit") or "").upper().strip()[:2]
+    class_code = (doc.get("custom_smart_item_classification_code") or "").strip()
+
+    # --- Enforce padding ---
+    country = country.ljust(2)
+    item_type = item_type.ljust(1)
+    pkg_unit = pkg_unit.ljust(2)
+    qty_unit = qty_unit.ljust(2,)
+    class_code = class_code.zfill(4)  # always 4 digits
+
+    # --- Build prefix ---
+    prefix = f"{country}{item_type}{pkg_unit}{qty_unit}{class_code}"
+
+    # --- Determine suffix ---
+    if doc.get("custom_smart_item_code"):
+        suffix = doc.custom_smart_item_code[-7:]
+    else:
+        last = frappe.db.sql(
+            """
             SELECT custom_smart_item_code
             FROM `tabItem`
             WHERE custom_smart_item_classification_code = %s
@@ -1517,27 +1537,28 @@ def generate_custom_item_code_smart(doc: Document) -> str:
             ORDER BY CAST(RIGHT(custom_smart_item_code, 7) AS UNSIGNED) DESC
             LIMIT 1
             """,
-			(doc.custom_smart_item_classification_code,),
-		)
+            (doc.custom_smart_item_classification_code,),
+        )
 
-		last_code = last_code[0][0] if last_code else None
-		if last_code:
-			try:
-				last_suffix = int(last_code[-7:])
-				existing_suffix = str(last_suffix + 1).zfill(7)
-			except ValueError:
-				existing_suffix = "0000001"
-		else:
-			existing_suffix = "0000001"
+        if last:
+            last_code = last[0][0]
+            try:
+                suffix = str(int(last_code[-7:]) + 1).zfill(7)
+            except:
+                suffix = "0000001"
+        else:
+            suffix = "0000001"
 
-	# Final smart item code
-	new_code = f"{prefix}{existing_suffix}"
+    # --- Final smart code ---
+    new_code = f"{prefix}{suffix}"
 
-	# Save it back to the Item if needed
-	doc.db_set("custom_smart_item_code", new_code, update_modified=False)
-	frappe.logger().info(f"[SMART] Generated Smart Code for {doc.name}: {new_code}")
+    # Save
+    doc.db_set("custom_smart_item_code", new_code, update_modified=False)
 
-	return new_code
+    frappe.logger().info(f"[SMART] Generated Smart Code: {new_code}")
+
+    return new_code
+
 
 
 def build_import_item_payload(settings: dict):
