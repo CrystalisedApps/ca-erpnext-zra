@@ -64,56 +64,83 @@ frappe.ui.form.on(doctypeName, {
 				},
 				__("Smart Actions")
 			);
-frappe.db.get_value(
-				"Item",
-				{ item_code: frm.doc.item_name },
-				["custom_item_registered", "name"],
-				(response) => {
-					if (parseInt(response.custom_item_registered) === 1) {
-						frm.add_custom_button(
-							__("Create Purchase Invoice"),
-							function () {
-								frappe.call({
-									method: "ca_erpnext_zra.ca_erpnext_zra.apis.purchase_invoice.create_purchase_invoice_from_request",
-									args: {
-										request_data: {
-											name: frm.doc.name,
-											supplier_invoice_no: null,
-											supplier_invoice_date: null,
-											supplier_name: frm.doc.suppliers_name,
-											supplier_currency: frm.doc.invoice_foreign_currency,
-											supplier_nation: frm.doc.origin_nation_code,
-											supplier_branch_id: null,
-											exchange_rate: frm.doc.foreign_currency_exchange_rate,
-											currency: frm.doc.invoice_foreign_currency,
-											amount: frm.doc.invoice_foreign_currency_amount,
-											items: item,
-											task_code: frm.doc.task_code,
-											company_data: company_data,
-										},
-									},
-									callback: (response) => {
-										frappe.msgprint("Purchase Invoice has been created.");
-									},
-									error: (error) => {
-										// Error Handling is Defered to the Server
-									},
-									freeze: true,
-									freeze_message: __("Creating Purchase Invoice..."),
-								});
-							},
-							__("Smart Actions")
-						);
-					} else {
-						frm.set_intro(
-							__(
-								"Item not registered yet. Please register it to allow creation of a Purchase Invoice."
-							),
-							"red"
-						);
-					}
-				}
-			);
+// -------------------------------------------------------------
+// 🔍 CHECK IF ALL ITEMS ARE REGISTERED
+// -------------------------------------------------------------
+frappe.call({
+    method: "frappe.client.get_list",
+    args: {
+        doctype: "Item",
+        filters: {
+            item_code: ["in", frm.doc.items.map(i => i.item_code)],
+        },
+        fields: ["name", "item_code", "custom_item_registered"],
+        limit_page_length: 999,
+    },
+    callback: function (res) {
+        let items = res.message || [];
+
+        // Count registered items
+        const unregistered_items = items.filter(
+            i => parseInt(i.custom_item_registered) !== 1
+        );
+
+        if (unregistered_items.length === 0) {
+            // -------------------------------------------------------------
+            //  All items registered → allow Purchase Invoice creation
+            // -------------------------------------------------------------
+            frm.add_custom_button(
+                __("Create Purchase Invoice"),
+                function () {
+                    frappe.call({
+                        method: "ca_erpnext_zra.ca_erpnext_zra.apis.purchase_api.create_purchase_invoice_from_smart_request",
+                        args: {
+                            request_data: {
+                            company_name: frm.doc.company,
+			          purchase_id: frm.doc.purchase_id,
+			          supplier_name: frm.doc.supplier_name,
+			          supplier_tpin: frm.doc.supplier_tpin,
+			          branch: frm.doc.branch,
+			          organisation: frm.doc.organisation,
+			          invoice_no: frm.doc.invoice_number,
+			          invoice_date: frm.doc.sales_date,
+			          items: frm.doc.items,
+
+			          // ZRA field mapping
+			          rcptTyCd: frm.doc.rcptTyCd,
+			          pchsTyCd: frm.doc.pchsTyCd,
+			          regTyCd: frm.doc.regTyCd,
+			          pchsSttsCd: frm.doc.pchsSttsCd,
+
+			          custom_receipt_type: frm.doc.custom_receipt_type,
+			          custom_registration_type: frm.doc.custom_registration_type,
+			          custom_purchase_type: frm.doc.custom_purchase_type,
+			          custom_purchase_status: frm.doc.custom_purchase_status,
+                            },
+                        },
+                        callback: () => {
+                            frappe.msgprint("Purchase Invoice has been created.");
+                        },
+                        freeze: true,
+                        freeze_message: __("Creating Purchase Invoice..."),
+                    });
+                },
+                __("Smart Actions")
+            );
+        } else {
+            // -------------------------------------------------------------
+            // Some items are NOT registered
+            // -------------------------------------------------------------
+            let item_list = unregistered_items.map(i => i.item_code).join(", ");
+
+            frm.set_intro(
+                __(`The following items are not registered. Please register them before creating a Purchase Invoice:<br><b>${item_list}</b>`),
+                "red"
+            );
+        }
+    },
+});
+
 			// // -------------------------------------------------------------
 			// // 🔹 3. CREATE PURCHASE INVOICE
 			// // -------------------------------------------------------------
@@ -155,16 +182,16 @@ frappe.db.get_value(
 			// -------------------------------------------------------------
 			// 🔹 4. FETCH SMART PURCHASE DETAILS FROM ZRA
 			// -------------------------------------------------------------
-			frm.add_custom_button(
-				__("Fetch Smart Purchase Details"),
-				() => {
-					frappe.call({
-						method: "ca_erpnext_zra.ca_erpnext_zra.apis.smart_invoices.fetch_smart_purchase_details",
-						args: { request_data: { id: frm.doc.name, company_name: companyName } },
-					});
-				},
-				__("Smart Actions")
-			);
+			// frm.add_custom_button(
+			// 	__("Fetch Smart Purchase Details"),
+			// 	() => {
+			// 		frappe.call({
+			// 			method: "ca_erpnext_zra.ca_erpnext_zra.apis.smart_invoices.fetch_smart_purchase_details",
+			// 			args: { request_data: { id: frm.doc.name, company_name: companyName } },
+			// 		});
+			// 	},
+			// 	__("Smart Actions")
+			// );
 
 			// -------------------------------------------------------------
 			// 🔹 5. APPROVE / REJECT PURCHASE

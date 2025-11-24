@@ -866,6 +866,7 @@ def build_invoice_payload(invoice: "Document", settings_name: str) -> dict:
 		"C1": ("taxblAmtC1", "taxAmtC1", "taxRtC1"),
 		"C2": ("taxblAmtC2", "taxAmtC2", "taxRtC2"),
 		"C3": ("taxblAmtC3", "taxAmtC3", "taxRtC3"),
+		"D": ("taxblAmtD", "taxAmtD", "taxRtD"),
 		"F": ("taxblAmtF", "taxAmtF", "taxRtF"),
 		"IPL1": ("taxblAmtIpl1", "taxAmtIpl1", "taxRtIpl1"),
 		"IPL2": ("taxblAmtIpl2", "taxAmtIpl2", "taxRtIpl2"),

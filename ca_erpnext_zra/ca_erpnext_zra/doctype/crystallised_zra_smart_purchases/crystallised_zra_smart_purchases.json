@@ -176,13 +176,8 @@
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
- "links": [
-  {
-   "link_doctype": "Purchase Invoice",
-   "link_fieldname": "custom_source_registered_purchase"
-  }
- ],
- "modified": "2025-11-24 08:55:00.751925",
+ "links": [],
+ "modified": "2025-11-24 16:15:38.273797",
  "modified_by": "Administrator",
  "module": "Ca Erpnext Zra",
  "name": "Crystallised ZRA Smart Purchases",

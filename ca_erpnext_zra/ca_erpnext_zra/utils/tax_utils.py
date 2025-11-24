@@ -72,6 +72,11 @@ def _apply_default_tax_from_settings(doc: "Document") -> None:
 
 def _set_taxation_type_codes(doc: "Document") -> None:
 	for item in doc.items:
+		if item.item_tax_template:
+			code = frappe.db.get_value("Item Tax Template", item.item_tax_template, "custom_taxation_type") 
+			if code:
+				item.custom_taxation_type = code
+				return
 		rate = float(getattr(item, "custom_tax_rate", 0) or 0)
 		if round(rate) == 16:
 			item.custom_taxation_type = "A"
