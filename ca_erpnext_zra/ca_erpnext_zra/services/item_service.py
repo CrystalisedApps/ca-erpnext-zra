@@ -41,7 +41,7 @@ def handle_registration_response(
 				return
 
 			# Find corresponding ERPNext Item
-			item_name = frappe.db.get_value("Item", {"item_code": item_code}, "name")
+			item_name = frappe.db.get_value("Item", {"custom_smart_item_code": item_code}, "name")
 			if not item_name:
 				frappe.log_error(f"[SMART] Item with code {item_code} not found", "Registration Handler")
 				return
@@ -159,14 +159,9 @@ def fetch_matching_items_on_success(response: dict, document_name: str, settings
 			frappe.logger().info(
 				f"[SMART] No existing ZRA item found for {item_doc.name}, creating new item."
 			)
-			existing_mapping = None  # explicitly set to None to trigger creation
-
-	# --- Build payload for registration/update ---
+			existing_mapping = None 
 	request_data = generate_vsdc_item_payload(item_doc.name, settings_name)
-
-	# Decide route key based on existing mapping
 	route_key = "updateItem" if existing_mapping else "saveItem"
-
 	frappe.enqueue(
 		process_request,
 		queue="default",

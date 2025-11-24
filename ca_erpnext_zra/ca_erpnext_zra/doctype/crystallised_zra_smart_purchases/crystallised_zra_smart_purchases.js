@@ -64,7 +64,56 @@ frappe.ui.form.on(doctypeName, {
 				},
 				__("Smart Actions")
 			);
-
+frappe.db.get_value(
+				"Item",
+				{ item_code: frm.doc.item_name },
+				["custom_item_registered", "name"],
+				(response) => {
+					if (parseInt(response.custom_item_registered) === 1) {
+						frm.add_custom_button(
+							__("Create Purchase Invoice"),
+							function () {
+								frappe.call({
+									method: "ca_erpnext_zra.ca_erpnext_zra.apis.purchase_invoice.create_purchase_invoice_from_request",
+									args: {
+										request_data: {
+											name: frm.doc.name,
+											supplier_invoice_no: null,
+											supplier_invoice_date: null,
+											supplier_name: frm.doc.suppliers_name,
+											supplier_currency: frm.doc.invoice_foreign_currency,
+											supplier_nation: frm.doc.origin_nation_code,
+											supplier_branch_id: null,
+											exchange_rate: frm.doc.foreign_currency_exchange_rate,
+											currency: frm.doc.invoice_foreign_currency,
+											amount: frm.doc.invoice_foreign_currency_amount,
+											items: item,
+											task_code: frm.doc.task_code,
+											company_data: company_data,
+										},
+									},
+									callback: (response) => {
+										frappe.msgprint("Purchase Invoice has been created.");
+									},
+									error: (error) => {
+										// Error Handling is Defered to the Server
+									},
+									freeze: true,
+									freeze_message: __("Creating Purchase Invoice..."),
+								});
+							},
+							__("Smart Actions")
+						);
+					} else {
+						frm.set_intro(
+							__(
+								"Item not registered yet. Please register it to allow creation of a Purchase Invoice."
+							),
+							"red"
+						);
+					}
+				}
+			);
 			// // -------------------------------------------------------------
 			// // 🔹 3. CREATE PURCHASE INVOICE
 			// // -------------------------------------------------------------
@@ -122,31 +171,31 @@ frappe.ui.form.on(doctypeName, {
 			// -------------------------------------------------------------
 
 			// Show buttons only in Pending or empty state
-			if (!frm.doc.custom_purchase_status || frm.doc.custom_purchase_status === "Pending") {
-				frm.add_custom_button(
-					__("Approve Purchase"),
-					() => {
-						frappe.call({
-							method: "ca_erpnext_zra.ca_erpnext_zra.apis.purchase_api.approve_smart_purchase",
-							args: { name: frm.doc.name },
-							callback: () => frm.reload_doc(),
-						});
-					},
-					__("Smart Workflow")
-				);
+			// if (!frm.doc.custom_purchase_status || frm.doc.custom_purchase_status === "Pending") {
+			// 	frm.add_custom_button(
+			// 		__("Approve Purchase"),
+			// 		() => {
+			// 			frappe.call({
+			// 				method: "ca_erpnext_zra.ca_erpnext_zra.apis.purchase_api.approve_smart_purchase",
+			// 				args: { name: frm.doc.name },
+			// 				callback: () => frm.reload_doc(),
+			// 			});
+			// 		},
+			// 		__("Smart Workflow")
+			// 	);
 
-				frm.add_custom_button(
-					__("Reject Purchase"),
-					() => {
-						frappe.call({
-							method: "ca_erpnext_zra.ca_erpnext_zra.apis.purchase_api.reject_smart_purchase",
-							args: { name: frm.doc.name },
-							callback: () => frm.reload_doc(),
-						});
-					},
-					__("Smart Workflow")
-				);
-			}
+			// 	frm.add_custom_button(
+			// 		__("Reject Purchase"),
+			// 		() => {
+			// 			frappe.call({
+			// 				method: "ca_erpnext_zra.ca_erpnext_zra.apis.purchase_api.reject_smart_purchase",
+			// 				args: { name: frm.doc.name },
+			// 				callback: () => frm.reload_doc(),
+			// 			});
+			// 		},
+			// 		__("Smart Workflow")
+			// 	);
+			// }
 		}
 	},
 });

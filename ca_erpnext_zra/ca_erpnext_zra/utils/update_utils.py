@@ -14,7 +14,7 @@ def update_documents(
 	parentfield: str | None = None,
 	return_docs: bool = False,
 	ignore_if_duplicate: bool = False,
-) -> List[Document] | None:
+) -> list[Document] | None:
 	"""
 	Generic helper to insert or update documents from API responses.
 
