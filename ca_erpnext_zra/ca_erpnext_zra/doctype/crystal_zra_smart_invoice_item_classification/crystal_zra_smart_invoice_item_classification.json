@@ -58,7 +58,7 @@
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-11-15 09:32:42.445118",
+ "modified": "2025-11-24 11:37:51.270191",
  "modified_by": "Administrator",
  "module": "Ca Erpnext Zra",
  "name": "Crystal ZRA Smart Invoice Item Classification",
@@ -79,7 +79,11 @@
   }
  ],
  "row_format": "Dynamic",
+ "search_fields": "item_cls_nm",
+ "show_title_field_in_link": 1,
  "sort_field": "modified",
  "sort_order": "DESC",
- "states": []
+ "states": [],
+ "title_field": "item_cls_nm",
+ "translated_doctype": 1
 }
