@@ -5,10 +5,15 @@ const doctypeName = "Crystallised Smart Registered Import Item";
 
 frappe.ui.form.on(doctypeName, {
 	refresh: function (frm) {
-		const company_data = frappe.db.get_value(
+		let company_name;
+
+		frappe.db.get_value(
 			"Crystal ZRA Smart Invoice Settings",
-			frm.doc.settings,
-			"company_name"
+			{ name: frm.doc.settings },
+			["company_name"],
+			(response) => {
+				company_name = response.company_name;
+			}
 		);
 
 		const item = [
@@ -95,44 +100,163 @@ frappe.ui.form.on(doctypeName, {
 				["custom_item_registered", "name"],
 				(response) => {
 					if (parseInt(response.custom_item_registered) === 1) {
-						frm.add_custom_button(
-							__("Create Purchase Invoice"),
-							function () {
-								frappe.call({
-									method: "ca_erpnext_zra.ca_erpnext_zra.apis.purchase_invoice.create_purchase_invoice_from_request",
-									args: {
-										request_data: {
-											name: frm.doc.name,
-											supplier_invoice_no: null,
-											supplier_invoice_date: null,
-											supplier_name: frm.doc.suppliers_name,
-											supplier_currency: frm.doc.invoice_foreign_currency,
-											supplier_nation: frm.doc.origin_nation_code,
-											supplier_branch_id: null,
-											exchange_rate: frm.doc.foreign_currency_exchange_rate,
-											currency: frm.doc.invoice_foreign_currency,
-											amount: frm.doc.invoice_foreign_currency_amount,
-											items: item,
-											task_code: frm.doc.task_code,
-											company_data: company_data,
+						if (frm.doc.imported_item_status == "Approved") {
+							frm.add_custom_button(
+								__("Create Purchase Invoice"),
+								function () {
+									frappe.call({
+										method: "ca_erpnext_zra.ca_erpnext_zra.apis.purchase_invoice.create_purchase_invoice_from_request",
+										args: {
+											request_data: {
+												name: frm.doc.name,
+												supplier_invoice_no: null,
+												supplier_invoice_date: null,
+												supplier_name: frm.doc.suppliers_name,
+												supplier_currency:
+													frm.doc.invoice_foreign_currency,
+												supplier_nation: frm.doc.origin_nation_code,
+												supplier_branch_id: null,
+												exchange_rate:
+													frm.doc.foreign_currency_exchange_rate,
+												currency: frm.doc.invoice_foreign_currency,
+												amount: frm.doc.invoice_foreign_currency_amount,
+												items: item,
+												task_code: frm.doc.task_code,
+												company_name: company_name,
+											},
 										},
-									},
-									callback: (response) => {
-										frappe.msgprint("Purchase Invoice has been created.");
-									},
-									error: (error) => {
-										// Error Handling is Defered to the Server
-									},
-									freeze: true,
-									freeze_message: __("Creating Purchase Invoice..."),
-								});
-							},
-							__("Smart Actions")
-						);
+										callback: (response) => {
+											frappe.msgprint("Purchase Invoice has been created.");
+										},
+										error: (error) => {
+											// Error Handling is Defered to the Server
+										},
+										freeze: true,
+										freeze_message: __("Creating Purchase Invoice..."),
+									});
+								},
+								__("Smart Actions")
+							);
+						}
+
+						// frm.add_custom_button(
+						// 	"Update Import Item",
+						// 	function () {
+						// 		frappe.call({
+						// 			method: "ca_erpnext_zra.ca_erpnext_zra.apis.purchase_invoice.update_registered_import_item",
+						// 			args: {
+						// 				request_data: [
+						// 					{
+						// 						name: frm.doc.name,
+						// 						settings_name: frm.doc.settings,
+						// 						item_name: frm.doc.item_name,
+						// 						task_code: frm.doc.task_code,
+						// 						declaration_date: frm.doc.declaration_date,
+						// 						item_sequence: frm.doc.item_sequence,
+						// 						hs_code: frm.doc.hs_code,
+						// 						imported_item_status_code:
+						// 							frm.doc.imported_item_status_code,
+						// 						modified_by: frm.doc.modified_by,
+						// 					},
+						// 				],
+						// 			},
+						// 			callback: (response) => {
+						// 				frappe.msgprint(
+						// 					"Update of Import Item(s) has been queued."
+						// 				);
+						// 			},
+						// 			error: (error) => {
+						// 				// Error Handling is Defered to the Server
+						// 			},
+						// 			freeze: true,
+						// 			freeze_message: __("Updating Import Item..."),
+						// 		});
+						// 	},
+						// 	__("Smart Actions")
+						// );
+						if (frm.doc.imported_item_status !== "Approved") {
+							frm.add_custom_button(
+								"Update Import Item",
+								function () {
+									// Create dialog with two options
+									const dialog = new frappe.ui.Dialog({
+										title: __("Select Import Item Status"),
+										fields: [
+											{
+												fieldname: "imported_item_status_code",
+												label: __("Import Item Status Code"),
+												fieldtype: "Select",
+												options: [
+													{ value: "Approved", label: __("Approved") },
+													{ value: "Cancelled", label: __("Cancelled") },
+												],
+												default:
+													frm.doc.imported_item_status_code ||
+													"Approved",
+												reqd: 1,
+											},
+										],
+										primary_action_label: __("Update"),
+										primary_action: function (values) {
+											dialog.hide();
+
+											frappe.call({
+												method: "ca_erpnext_zra.ca_erpnext_zra.apis.purchase_invoice.update_registered_import_item",
+												args: {
+													// request_data: [
+													// 	{
+													// 		name: frm.doc.name,
+													// 		settings_name: frm.doc.settings,
+													// 		item_name: frm.doc.item_name,
+													// 		task_code: frm.doc.task_code,
+													// 		declaration_date: frm.doc.declaration_date,
+													// 		item_sequence: frm.doc.item_sequence,
+													// 		hs_code: frm.doc.hs_code,
+													// 		imported_item_status_code:
+													// 			values.imported_item_status_code,
+
+													// 		modified_by: frm.doc.modified_by,
+													// 		document_name: frm.doc.name,
+													// 	},
+													// ],
+													request_data: {
+														name: frm.doc.name,
+														settings_name: frm.doc.settings,
+														item_name: frm.doc.item_name,
+														task_code: frm.doc.task_code,
+														declaration_date: frm.doc.declaration_date,
+														item_sequence: frm.doc.item_sequence,
+														hs_code: frm.doc.hs_code,
+														imported_item_status_code:
+															values.imported_item_status_code,
+
+														modified_by: frm.doc.modified_by,
+														document_name: frm.doc.name,
+													},
+												},
+												callback: (response) => {
+													frappe.msgprint(
+														"Update of Import Item(s) has been queued."
+													);
+												},
+												error: (error) => {
+													// Error Handling is Deferred to the Server
+												},
+												freeze: true,
+												freeze_message: __("Updating Import Item..."),
+											});
+										},
+									});
+
+									dialog.show();
+								},
+								__("Smart Actions")
+							);
+						}
 					} else {
 						frm.set_intro(
 							__(
-								"Item not registered yet. Please register it to allow creation of a Purchase Invoice."
+								"Item not registered yet. Please register it to allow Update of Import Item."
 							),
 							"red"
 						);

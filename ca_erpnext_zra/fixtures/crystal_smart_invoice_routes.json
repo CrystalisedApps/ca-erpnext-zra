@@ -2,7 +2,7 @@
  {
   "docstatus": 0,
   "doctype": "Crystal Smart Invoice Routes",
-  "modified": "2025-11-18 17:46:46.452864",
+  "modified": "2025-11-24 16:39:29.536520",
   "name": "saleq619bb",
   "route_table": [
    {
@@ -139,6 +139,15 @@
     "parenttype": "Crystal Smart Invoice Routes",
     "url_path": "/api/v1/ImportItemsInfo/selectImportItems",
     "url_path_function": "selectImports"
+   },
+   {
+    "description": null,
+    "last_request_date": null,
+    "parent": "saleq619bb",
+    "parentfield": "route_table",
+    "parenttype": "Crystal Smart Invoice Routes",
+    "url_path": "/api/v1/ImportItemsInfo/updateImportItems",
+    "url_path_function": "updateImports"
    }
   ],
   "vendor": "Crystal VSDC"

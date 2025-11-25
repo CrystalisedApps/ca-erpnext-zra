@@ -1,3 +1,4 @@
+import json
 from datetime import datetime
 
 import frappe
@@ -86,6 +87,20 @@ def imported_items_select_on_success(response: dict, settings_name: str, **kwarg
 
 	frappe.msgprint(
 		"Imported Items fetched successfully. Go to <b>Crystallised Smart Registered Import Item</b> Doctype for more information."
+	)
+
+
+def import_item_update_on_success(response: dict, document_name: str, **kwargs) -> None:
+	frappe.log_error("Import Item Update Response", document_name)
+	import_item_list = kwargs.get("payload", {}).get("importItemList", [])
+
+	status_code = import_item_list[0].get("imptItemSttsCd")
+	status_code_name = frappe.db.get_value(IMPORTED_ITEMS_STATUS_DOCTYPE_NAME, {"code": status_code}, "name")
+	frappe.log_error("KWARGS", f"{status_code} - {status_code_name}")
+	frappe.db.set_value(
+		REGISTERED_IMPORTED_ITEM_DOCTYPE_NAME,
+		document_name,
+		{"imported_item_status_code": status_code, "imported_item_status": status_code_name},
 	)
 
 
