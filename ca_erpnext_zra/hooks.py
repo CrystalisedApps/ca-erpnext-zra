@@ -156,15 +156,38 @@ doc_events = {
 	"Sales Invoice": {
 		"before_save": ["ca_erpnext_zra.ca_erpnext_zra.overrides.server.shared_override.before_save"],
 		# FIX: Changed to a list format to ensure the hook registers correctly
-		"on_submit": ["ca_erpnext_zra.ca_erpnext_zra.overrides.server.sales_invoice_override.on_submit"],
+		"on_submit": ["ca_erpnext_zra.ca_erpnext_zra.apis.stock_api.submit_inventory_wrapper",
+                "ca_erpnext_zra.ca_erpnext_zra.overrides.server.sales_invoice_override.on_submit"],
 	},
 	"Item": {
 		"on_update": ["ca_erpnext_zra.ca_erpnext_zra.apis.item_api.perform_item_registration"],
 	},
 	"Purchase Invoice": {
 		"before_save": ["ca_erpnext_zra.ca_erpnext_zra.overrides.server.shared_override.before_save"],
-		"on_submit": ["ca_erpnext_zra.ca_erpnext_zra.apis.purchase_api.send_purchase_details"],
+		"on_submit": ["ca_erpnext_zra.ca_erpnext_zra.apis.stock_api.submit_inventory_wrapper",
+                "ca_erpnext_zra.ca_erpnext_zra.apis.purchase_api.send_purchase_details"],
 	},
+    "Stock Entry": {
+        "on_submit": [
+            "ca_erpnext_zra.ca_erpnext_zra.apis.stock_api.submit_inventory_wrapper"
+        ],
+    },
+    "Stock Reconciliation": {
+        "on_submit": [
+            "ca_erpnext_zra.ca_erpnext_zra.apis.stock_api.submit_inventory_wrapper"
+        ],
+    },
+     "Stock Ledger Entry": {
+        "on_update": [
+			"ca_erpnext_zra.ca_erpnext_zra.apis.stock_api.submit_inventory_wrapper",
+                
+			],
+		"on_update_after_submit": [
+				"ca_erpnext_zra.ca_erpnext_zra.overrides.server.stock_ledger_entry.on_update",
+				
+			],
+},
+
 }
 # Scheduled Tasks
 # ---------------

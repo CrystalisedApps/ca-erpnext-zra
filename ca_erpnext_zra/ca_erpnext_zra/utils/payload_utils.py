@@ -938,6 +938,11 @@ def build_invoice_payload(invoice: "Document", settings_name: str) -> dict:
 			or frappe.db.get_value("Item", item.item_code, "custom_smart_item_code")
 			or item.item_code
 		)
+		rrp = (
+			item.get("standard_rate")
+			or frappe.db.get_value("Item", item.item_code, "standard_rate")
+			
+		)
 		# Totals
 		tot_amt = fmt4(sply_amt - dc_amt + vat_amt)
 		tl_amt = tot_amt
@@ -977,6 +982,7 @@ def build_invoice_payload(invoice: "Document", settings_name: str) -> dict:
 				"dcRt": dc_rt,
 				"bcd": item.barcode or "",
 				"vatCatCd": vat_cat,
+				"rrp": rrp
 			}
 		)
 

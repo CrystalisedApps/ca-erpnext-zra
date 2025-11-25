@@ -9,6 +9,7 @@ import frappe
 import requests
 from frappe.integrations.utils import create_request_log
 from frappe.model.document import Document
+from ..utils.routes_utils import update_last_request_date
 
 from ca_erpnext_zra.ca_erpnext_zra.utils.tax_utils import _recalculate_zra_amounts
 
@@ -95,6 +96,14 @@ class EndpointsBuilder(BaseEndpointsBuilder):
 	@url.setter
 	def url(self, val: str):
 		self._url = val
+
+	@property
+	def route_path(self) -> str | None:
+		return self._route_path
+
+	@route_path.setter
+	def route_path(self, new_route_path: str) -> None:
+		self._route_path = new_route_path
 
 	@property
 	def method(self):
@@ -223,7 +232,7 @@ class EndpointsBuilder(BaseEndpointsBuilder):
 				safe_raise(f"Unsupported HTTP method: {self._method}")
 
 			response_data = get_response_data(response)
-
+			update_last_request_date(datetime.now(), self._route_path)
 			if response.status_code in {200, 201}:
 				try:
 					frappe.db.set_value(
