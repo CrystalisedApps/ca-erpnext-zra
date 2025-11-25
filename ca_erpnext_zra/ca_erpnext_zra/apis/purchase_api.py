@@ -116,12 +116,21 @@ def create_purchase_invoice_from_smart_request(request_data: str) -> None:
 		#  Create new invoice
 		pi = frappe.new_doc("Purchase Invoice")
 		pi.custom_smart_purchase_id = smart_purchase_id
+		smart_doc_name = frappe.db.get_value(
+    "Crystallised ZRA Smart Purchases",
+    {"purchase_id": smart_purchase_id},
+    "name",
+)
+
+	
 		if "currency" in data:
 			# The "currency" key is only available when creating from Imported Item
 			pi.currency = data["currency"]
 			# pi.custom_source_registered_imported_item = data["name"]
 		else:
-			pi.custom_source_registered_purchase = data["name"]
+			if smart_doc_name:
+				pi.custom_source_registered_purchase = smart_doc_name
+
 
 	# --- Basic fields ---
 	pi.company = company_name
@@ -157,7 +166,7 @@ def create_purchase_invoice_from_smart_request(request_data: str) -> None:
 	pi.set_warehouse = set_warehouse
 	pi.custom_smart_branch = branch_name
 	pi.custom_smart_organisation = data.get("organisation")
-	pi.custom_source_registered_purchase = data.get("name")
+	
 
 	# --- Expense account ---
 	company_abbr = frappe.get_value("Company", company_name, "abbr")

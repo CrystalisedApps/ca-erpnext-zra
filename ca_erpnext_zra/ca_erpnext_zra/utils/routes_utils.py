@@ -61,19 +61,27 @@ def build_datetime_from_string(date_string: str, format: str = "%Y-%m-%d %H:%M:%
 
 	return date_object
 
-
 def update_last_request_date(
 	response_datetime: str,
 	route: str,
 	routes_table: str = ROUTES_TABLE_CHILD_DOCTYPE_NAME,
 ) -> None:
+
 	doc = frappe.get_doc(
 		routes_table,
 		{"url_path": route},
 		["*"],
 	)
 
-	doc.last_request_date = build_datetime_from_string(response_datetime, "%Y%m%d%H%M%S")
+	# Handle datetime or string input
+	if isinstance(response_datetime, datetime):
+		doc.last_request_date = response_datetime
+	else:
+		doc.last_request_date = build_datetime_from_string(
+			response_datetime,
+			"%Y%m%d%H%M%S"
+		)
 
 	doc.save()
 	frappe.db.commit()
+

@@ -2,7 +2,7 @@ import re
 from decimal import ROUND_DOWN, Decimal
 from functools import partial
 from typing import Literal
-
+from frappe.utils import getdate
 import frappe
 from erpnext.controllers.taxes_and_totals import get_itemised_tax_breakup_data
 from frappe.model.document import Document
@@ -186,6 +186,7 @@ def get_purchase_docs_items_details(items: list, all_present_items: list[Documen
 						"taxAmt": 0,
 						"totAmt": 0,
 						"vatCatCd": fetched_item.custom_vat_category_code,
+						# "vatCatCd": fetched_item.custom_vat_category_code,
 						# "taxblAmt": quantize_number(item.net_amount),
 						# "taxAmt": quantize_number(item.custom_tax_amount) or 0,
 						# "totAmt": quantize_number(item.net_amount + item.custom_tax_amount),

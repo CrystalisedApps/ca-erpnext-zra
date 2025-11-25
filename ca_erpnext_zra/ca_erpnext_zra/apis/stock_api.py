@@ -13,6 +13,83 @@ from ..utils.smart_api_utils import get_active_smart_settings, split_user_email
 from .api_processor import process_request
 
 
+
+@frappe.whitelist()
+def submit_inventory_wrapper(doc, method=None):
+    """
+    Wrapper to fetch Stock Ledger Entry info for items affected by a transaction
+    and submit residual quantity to ZRA.
+    Only submits for stock-affecting transactions.
+    """
+
+    if not getattr(doc, "name", None):
+        frappe.log_error("submit_inventory_wrapper called without valid doc", str(doc))
+        return
+
+    # Skip Sales/Purchase docs that do not update stock
+    if doc.doctype in ("Sales Invoice", "Purchase Invoice") and not getattr(doc, "update_stock", 0):
+        return
+
+    try:
+        # Determine items and warehouses affected
+        if hasattr(doc, "items") and doc.items:
+            for item_row in doc.items:
+                item_code = item_row.item_code
+                warehouse = getattr(item_row, "warehouse", None) or getattr(doc, "warehouse", None)
+
+                if not warehouse:
+                    continue  # skip items without a warehouse
+
+                # Fetch the latest Stock Ledger Entry for this item+warehouse
+                sle_info = frappe.db.sql(
+                    """
+                    SELECT 
+                        sle.name,
+                        sle.owner,
+                        sle.qty_after_transaction AS residual_qty,
+                        sle.item_code,
+                        i.custom_smart_item_code
+                    FROM `tabStock Ledger Entry` sle
+                    LEFT JOIN `tabItem` i ON i.item_code = sle.item_code
+                    WHERE sle.item_code = %s AND sle.warehouse = %s
+                    ORDER BY sle.posting_date DESC, sle.posting_time DESC, sle.creation DESC
+                    LIMIT 1
+                    """,
+                    (item_code, warehouse),
+                    as_dict=True,
+                )
+
+                if not sle_info:
+                    frappe.log_error(
+                        f"No Stock Ledger Entry found for item {item_code} in warehouse {warehouse}",
+                        "submit_inventory_wrapper"
+                    )
+                    continue
+
+                sle = sle_info[0]
+
+                # Prepare payload data
+                data = {
+                    "name": sle.name,
+                    "owner": sle.owner,
+                    "residual_qty": sle.residual_qty or 0,
+                    "item_code": sle.item_code,
+                    "smart_item_code": sle.custom_smart_item_code,
+                }
+
+                # Call existing submit_inventory
+                submit_inventory(data)
+
+        else:
+            frappe.log_error(f"No items found in document {doc.name}", "submit_inventory_wrapper")
+
+    except Exception as e:
+        frappe.log_error(
+            f"Error in submit_inventory_wrapper for document {getattr(doc, 'name', 'Unknown')}",
+            str(e)
+        )
+
+
 @frappe.whitelist()
 def submit_inventory(data, method=None):
 	"""
@@ -139,7 +216,7 @@ def inventory_error_handler(
 #             document_name=doc.name,
 #         )
 
-#         frappe.logger().info(f"✅ Successfully queued sales submission for {doc.name}")
+#         frappe.logger().info(f"Successfully queued sales submission for {doc.name}")
 
 #        # --- Enqueue async stock sync job ---
 #         frappe.enqueue(
@@ -151,7 +228,7 @@ def inventory_error_handler(
 #             now=False  # async
 #         )
 
-#         frappe.logger().info(f"🧭 Enqueued stock sync job for {company_name}")
+#         frappe.logger().info(f" Enqueued stock sync job for {company_name}")
 
 #     except Exception:
 #         frappe.log_error(
@@ -186,7 +263,7 @@ def inventory_error_handler(
 #         elif doc.actual_qty < 0:
 #             route_key = "SaveStockMaster"    # outgoing or adjustment → SaveStockMaster
 #         else:
-#             frappe.logger().info(f"⚠️ Skipping zero-qty SLE {doc.name}")
+#             frappe.logger().info(f" Skipping zero-qty SLE {doc.name}")
 #             return
 
 #         # Build full item data (esp. for SaveStockItems)
