@@ -39,48 +39,56 @@
    "fieldtype": "Data",
    "in_list_view": 1,
    "in_standard_filter": 1,
-   "label": "Item Name"
+   "label": "Item Name",
+   "read_only": 1
   },
   {
    "fieldname": "origin_nation_code",
    "fieldtype": "Link",
    "label": "Origin Nation Code",
-   "options": "Crystallised Smart Country"
+   "options": "Crystallised Smart Country",
+   "read_only": 1
   },
   {
    "fieldname": "declaration_date",
    "fieldtype": "Date",
-   "label": "Declaration Date"
+   "label": "Declaration Date",
+   "read_only": 1
   },
   {
    "fieldname": "item_sequence",
    "fieldtype": "Int",
-   "label": "Item Sequence"
+   "label": "Item Sequence",
+   "read_only": 1
   },
   {
    "fieldname": "package",
    "fieldtype": "Data",
-   "label": "Package"
+   "label": "Package",
+   "read_only": 1
   },
   {
    "fieldname": "suppliers_name",
    "fieldtype": "Data",
    "in_list_view": 1,
-   "label": "Supplier's Name"
+   "label": "Supplier's Name",
+   "read_only": 1
   },
   {
    "fieldname": "invoice_foreign_currency",
    "fieldtype": "Link",
    "in_list_view": 1,
    "label": "Invoice Foreign Currency",
-   "options": "Currency"
+   "options": "Currency",
+   "read_only": 1
   },
   {
    "fieldname": "invoice_foreign_currency_amount",
    "fieldtype": "Float",
    "in_list_view": 1,
    "label": "Invoice Foreign Currency Amount",
-   "options": "invoice_foreign_currency"
+   "options": "invoice_foreign_currency",
+   "read_only": 1
   },
   {
    "fieldname": "column_break_okps",
@@ -89,40 +97,47 @@
   {
    "fieldname": "task_code",
    "fieldtype": "Data",
-   "label": "Task Code"
+   "label": "Task Code",
+   "read_only": 1
   },
   {
    "fieldname": "export_nation_code",
    "fieldtype": "Link",
    "label": "Export Nation Code",
-   "options": "Crystallised Smart Country"
+   "options": "Crystallised Smart Country",
+   "read_only": 1
   },
   {
    "fieldname": "declaration_number",
    "fieldtype": "Data",
-   "label": "Declaration Number"
+   "label": "Declaration Number",
+   "read_only": 1
   },
   {
    "fieldname": "hs_code",
    "fieldtype": "Data",
-   "label": "HS Code"
+   "label": "HS Code",
+   "read_only": 1
   },
   {
    "fieldname": "packaging_unit_code",
    "fieldtype": "Link",
    "label": "Packaging Unit Code",
-   "options": "Crystallised Smart Packaging Unit"
+   "options": "Crystallised Smart Packaging Unit",
+   "read_only": 1
   },
   {
    "fieldname": "quantity_unit_code",
    "fieldtype": "Link",
    "label": "Quantity Unit Code",
-   "options": "Crystallised Smart Unit Of Quantity"
+   "options": "Crystallised Smart Unit Of Quantity",
+   "read_only": 1
   },
   {
    "fieldname": "agent_name",
    "fieldtype": "Data",
-   "label": "Agent Name"
+   "label": "Agent Name",
+   "read_only": 1
   },
   {
    "fieldname": "column_break_mytx",
@@ -132,7 +147,8 @@
    "fieldname": "settings",
    "fieldtype": "Link",
    "label": "Settings",
-   "options": "Crystal ZRA Smart Invoice Settings"
+   "options": "Crystal ZRA Smart Invoice Settings",
+   "read_only": 1
   },
   {
    "fieldname": "imported_item_status",
@@ -140,42 +156,50 @@
    "in_list_view": 1,
    "in_standard_filter": 1,
    "label": "Imported Item Status",
-   "options": "Crystallised Smart Import Item Status"
+   "options": "Crystallised Smart Import Item Status",
+   "read_only": 1
   },
   {
    "fieldname": "imported_item_status_code",
    "fieldtype": "Data",
-   "label": "Imported Item Status Code"
+   "label": "Imported Item Status Code",
+   "read_only": 1
   },
   {
    "fieldname": "quantity",
    "fieldtype": "Float",
-   "label": "Quantity"
+   "label": "Quantity",
+   "read_only": 1
   },
   {
    "fieldname": "net_weight",
    "fieldtype": "Float",
-   "label": "Net Weight"
+   "label": "Net Weight",
+   "read_only": 1
   },
   {
    "fieldname": "gross_weight",
    "fieldtype": "Float",
-   "label": "Gross Weight"
+   "label": "Gross Weight",
+   "read_only": 1
   },
   {
    "fieldname": "declaration_reference_number",
    "fieldtype": "Data",
-   "label": "Declaration Reference Number"
+   "label": "Declaration Reference Number",
+   "read_only": 1
   },
   {
    "fieldname": "foreign_currency_exchange_rate",
    "fieldtype": "Float",
-   "label": "Foreign Currency Exchange Rate"
+   "label": "Foreign Currency Exchange Rate",
+   "read_only": 1
   },
   {
    "fieldname": "item_identifier",
    "fieldtype": "Data",
    "label": "Item Identifier",
+   "read_only": 1,
    "unique": 1
   }
  ],
@@ -192,7 +216,7 @@
    "link_fieldname": "custom_import_source_registered_purchase"
   }
  ],
- "modified": "2025-11-21 12:33:00.405375",
+ "modified": "2025-11-25 09:58:30.750796",
  "modified_by": "Administrator",
  "module": "Ca Erpnext Zra",
  "name": "Crystallised Smart Registered Import Item",
