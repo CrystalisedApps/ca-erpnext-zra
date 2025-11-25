@@ -32,6 +32,7 @@ def create_purchase_invoice_from_request(request_data: str) -> None:
 	# Create the Purchase Invoice
 	purchase_invoice = frappe.new_doc("Purchase Invoice")
 	purchase_invoice.supplier = supplier or data["supplier_name"]
+	purchase_invoice.company = data["company_name"]
 	purchase_invoice.update_stock = 1
 	purchase_invoice.bill_no = data["supplier_invoice_no"]
 	purchase_invoice.bill_date = data["supplier_invoice_date"]
@@ -96,9 +97,7 @@ def validate_mapping_and_registration_of_items(items):
 def validation_message(item_code):
 	item_doc = frappe.get_doc("Item", item_code)
 
-	if item_doc.custom_referenced_imported_item and (
-		item_doc.custom_item_registered == 0 or item_doc.custom_imported_item_submitted == 0
-	):
+	if item_doc.custom_referenced_imported_item and (item_doc.custom_item_registered == 0):
 		item_link = get_link_to_form("Item", item_doc.name)
 		frappe.throw(f"Register or submit the item: {item_link}")
 

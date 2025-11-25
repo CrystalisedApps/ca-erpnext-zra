@@ -29,12 +29,7 @@ def on_update(doc: Document, method: str | None = None) -> None:
 		frappe.log_error("ZRA Settings Missing", f"No Smart Invoice settings for {company}")
 		return
 
-	tpin = (
-		get_decrypted_password(
-			"Crystal ZRA Smart Invoice Settings", settings.name, "tpin", raise_exception=False
-		)
-		or ""
-	)
+	tpin = settings.tpin
 
 	# Base payload
 	payload = {
@@ -190,7 +185,7 @@ def get_purchase_docs_items_details(items: list, all_present_items: list[Documen
 						"taxblAmt": 0,
 						"taxAmt": 0,
 						"totAmt": 0,
-						# "vatCatCd": fetched_item.custom_vat_category_code,
+						"vatCatCd": fetched_item.custom_vat_category_code,
 						# "taxblAmt": quantize_number(item.net_amount),
 						# "taxAmt": quantize_number(item.custom_tax_amount) or 0,
 						# "totAmt": quantize_number(item.net_amount + item.custom_tax_amount),
