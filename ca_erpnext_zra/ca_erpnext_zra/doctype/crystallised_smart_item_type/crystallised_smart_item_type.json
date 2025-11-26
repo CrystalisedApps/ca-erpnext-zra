@@ -48,7 +48,7 @@
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-09-24 15:19:05.153708",
+ "modified": "2025-11-26 14:16:20.675002",
  "modified_by": "Administrator",
  "module": "Ca Erpnext Zra",
  "name": "Crystallised Smart Item Type",
@@ -69,7 +69,11 @@
   }
  ],
  "row_format": "Dynamic",
+ "search_fields": "code_name",
+ "show_title_field_in_link": 1,
  "sort_field": "modified",
  "sort_order": "DESC",
- "states": []
+ "states": [],
+ "title_field": "code_name",
+ "translated_doctype": 1
 }

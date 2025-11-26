@@ -21,7 +21,7 @@ def purchase_search_on_success(response: dict, **kwargs) -> None:
 			message=f"No purchases found in response: {response}", title="Smart Purchase Fetch Empty"
 		)
 		return
-
+	frappe.msgprint("Smart purchase fetch request sent successfully.")
 	for sale in sales_list:
 		created_record = create_purchase_from_smart_search_details(sale)
 
