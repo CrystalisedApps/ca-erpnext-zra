@@ -3,7 +3,7 @@ from functools import partial
 
 import frappe
 from frappe.model.document import Document
-
+from ..utils.smart_api_utils import get_max_submission_attempts
 from ..apis.api_processor import process_request
 from ..apis.stock_api import submit_inventory
 from ..handlers.error_handler import handle_errors
@@ -30,6 +30,8 @@ def send_item_inventory_information(*args, **kwargs) -> None:
             sle.owner,
             sle.custom_inventory_submitted_successfully,
             sle.qty_after_transaction AS residual_qty,
+			sle.custom_submission_tries,
+			sle.company,
             sle.warehouse,
             "000" AS branch_id,
             i.item_code AS item_code,                     -- ✔ correct: true ERPNext item code
@@ -49,6 +51,9 @@ def send_item_inventory_information(*args, **kwargs) -> None:
 
 	for sle in sles:
 		response = json.dumps(sle)
+		max_tries = get_max_submission_attempts("Stock Ledger Entry", company=sle.company)
+		if sle.custom_submission_tries and int(sle.custom_submission_tries) >= max_tries:
+			return
 
 		try:
 			submit_inventory(response)
@@ -66,7 +71,9 @@ def send_stock_information(*args, **kwargs) -> None:
 	)
 	for entry in all_stock_ledger_entries:
 		doc = frappe.get_doc("Stock Ledger Entry", entry.name, for_update=False)
-
+		max_tries = get_max_submission_attempts("Stock Ledger Entry", company=doc.company)
+		if doc.custom_submission_tries and int(doc.custom_submission_tries) >= max_tries:
+			return
 		try:
 			on_update(doc, method=None)
 

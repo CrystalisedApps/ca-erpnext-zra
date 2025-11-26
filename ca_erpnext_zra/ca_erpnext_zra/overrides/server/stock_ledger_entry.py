@@ -19,7 +19,7 @@ def on_update(doc: Document, method: str | None = None) -> None:
 
 	company_name = doc.company
 	vendor = ""
-
+	
 	all_items = frappe.db.get_all("Item", ["*"])  # Get all items for details
 	record = frappe.get_doc(doc.voucher_type, doc.voucher_no)
 	series_no = sar_no = int(re.sub(r"\D", "", doc.name)[-5:]) or 1
@@ -240,30 +240,38 @@ def get_notes_docs_items_details(items: list[Document], all_present_items: list[
 def stock_mvt_submission_on_success(response: dict, document_name: str, **kwargs) -> None:
 	frappe.db.set_value("Stock Ledger Entry", document_name, {"custom_submitted_successfully": 1})
 
-
 def on_error(
-	response: dict | str,
-	url: str | None = None,
-	doctype: str | None = None,
-	document_name: str | None = None,
-	**kwargs,
+    response: dict | str,
+    url: str | None = None,
+    doctype: str | None = None,
+    document_name: str | None = None,
+    **kwargs,
 ) -> None:
-	"""Base "on-error" callback.
+    """Base 'on-error' callback with custom_submission_tries tracking."""
 
-	Args:
-	    response (dict | str): The remote response
-	    url (str | None, optional): The remote address. Defaults to None.
-	    doctype (str | None, optional): The doctype calling the remote address. Defaults to None.
-	    document_name (str | None, optional): The document calling the remote address. Defaults to None.
-	    integration_reqeust_name (str | None, optional): The created Integration Request document name. Defaults to None.
-	"""
-	handle_errors(
-		response,
-		route=url,
-		doctype=doctype,
-		document_name=document_name,
-	)
+    if doctype and document_name:
+        try:
+            # Fetch current counter directly from DB
+            current_tries = frappe.db.get_value(doctype, document_name, "custom_submission_tries") or 0
+            # Increment counter
+            frappe.db.set_value(doctype, document_name, "custom_submission_tries", current_tries + 1)
+            frappe.db.commit()
+        except Exception:
+            frappe.log_error(
+                title=f"Failed to increment custom_submission_tries for {doctype} {document_name}",
+                message=frappe.get_traceback()
+            )
 
+    # Log the error after updating counter
+    handle_errors(
+        response,
+        route=url,
+        doctype=doctype,
+        document_name=document_name,
+    )
+
+
+   
 
 def get_stock_recon_movement_items_details(records: list, all_items: list) -> list[dict]:
 	items_list = []

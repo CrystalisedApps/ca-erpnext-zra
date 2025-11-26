@@ -1,5 +1,5 @@
 from typing import Any
-
+from .settings_utils import get_settings
 import frappe
 
 
@@ -148,3 +148,32 @@ def get_or_create_link(doctype: str, field_name: str, value: str) -> str:
 			message=f"Error in {doctype} - {value}: {e}",
 		)
 		return None
+
+def get_max_submission_attempts(doctype: str = "Sales Invoice", company: str = None) -> int:
+    # Fetch the active setting for the company
+    setting_name = frappe.db.get_value(
+        "Crystal ZRA Smart Invoice Settings",
+        {"company_name": company, "is_active": 1},
+        "name"
+    )
+
+    if not setting_name:
+        return 3
+
+    # Retrieve the setting by name
+    settings = get_settings(setting_name) 
+    if not settings:
+        return 3
+
+    if doctype == "Sales Invoice":
+        tries = settings.get("maximum_sales_information_submission_attempts", 3)
+    elif doctype == "Purchase Invoice":
+        tries = settings.get("maximum_purchase_information_submission_attempts", 3)
+    elif doctype == "Stock Ledger Entry":
+        tries = settings.get("max_allowed_revisions", 3)
+    else:
+        tries = 3  
+
+    return tries
+
+

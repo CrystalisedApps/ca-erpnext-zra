@@ -164,18 +164,35 @@ def submit_inventory_on_success(response, document_name, **kwargs):
 
 
 def inventory_error_handler(
-	response: dict | str,
-	url: str | None = None,
-	doctype: str | None = None,
-	document_name: str | None = None,
-	**kwargs,
-):
-	handle_errors(
-		response,
-		route=url,
-		doctype=doctype,
-		document_name=document_name,
-	)
+    response: dict | str,
+    url: str | None = None,
+    doctype: str | None = None,
+    document_name: str | None = None,
+    **kwargs,
+) -> None:
+    """Error handler that increments custom_submission_tries for a document."""
+
+    if doctype and document_name:
+        try:
+            # Fetch current counter directly from DB
+            current_tries = frappe.db.get_value(doctype, document_name, "custom_submission_tries") or 0
+            # Increment counter
+            frappe.db.set_value(doctype, document_name, "custom_submission_tries", current_tries + 1)
+            frappe.db.commit()
+        except Exception:
+            frappe.log_error(
+                title=f"Failed to increment custom_submission_tries for {doctype} {document_name}",
+                message=frappe.get_traceback()
+            )
+
+    # Log the error
+    handle_errors(
+        response,
+        route=url,
+        doctype=doctype,
+        document_name=document_name,
+    )
+
 
 
 # @frappe.whitelist()

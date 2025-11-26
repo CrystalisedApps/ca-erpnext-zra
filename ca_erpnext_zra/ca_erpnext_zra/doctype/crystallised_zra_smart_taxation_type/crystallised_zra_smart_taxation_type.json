@@ -42,7 +42,7 @@
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-11-24 10:43:59.985050",
+ "modified": "2025-11-26 14:14:29.469933",
  "modified_by": "Administrator",
  "module": "Ca Erpnext Zra",
  "name": "Crystallised ZRA Smart Taxation Type",
@@ -63,7 +63,11 @@
   }
  ],
  "row_format": "Dynamic",
+ "search_fields": "code_name",
+ "show_title_field_in_link": 1,
  "sort_field": "modified",
  "sort_order": "DESC",
- "states": []
+ "states": [],
+ "title_field": "code_name",
+ "translated_doctype": 1
 }

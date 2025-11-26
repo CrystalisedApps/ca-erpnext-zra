@@ -1,13 +1,13 @@
 import json
 from datetime import datetime
-
+from frappe.utils import add_to_date
 import frappe
 from frappe.model.document import Document
 
 # from ..handlers.purchase_handlers import create_or_update_purchase_invoice_from_smart
 from frappe.utils import flt, now_datetime, today
 from frappe.utils.password import get_decrypted_password
-
+from ..utils.routes_utils import get_route_path
 from ca_erpnext_zra.ca_erpnext_zra.utils.smart_api_utils import get_active_smart_settings
 
 from ..apis.api_processor import process_request
@@ -324,45 +324,54 @@ def send_purchase_details(doc, method=None) -> None:
 	"""
 	submit_smart_purchase_invoice(doc)
 
-
 @frappe.whitelist()
 def perform_purchases_search(company: str) -> None:
-	"""
-	Fetch purchases from ZRA Smart Invoice System for a given company.
-	"""
-	# Get active Smart settings for the company
-	settings = get_settings(company)
-	if not settings:
-		frappe.log_error("ZRA Settings Missing", f"No Smart Invoice settings found for {company}")
-		return
+    """
+    Fetch purchases from ZRA Smart Invoice System for a given company.
+    """
+    # Get active Smart settings for the company
+    settings = get_settings(company)
+    if not settings:
+        frappe.log_error("ZRA Settings Missing", f"No Smart Invoice settings found for {company}")
+        return
 
-	# Decrypt TPIN from Smart settings
-	tpin =settings.tpin
-	
+    # Decrypt TPIN from Smart settings
+    tpin = settings.tpin
 
-	# Default branch ID
-	bhf_id = settings.get("bhfid") or "000"
-	last_req_dt = datetime.now().strftime("%Y%m%d%H%M%S")
-	# Prepare request payload (required by ZRA API)
-	request_data = {
-		"Tpin": tpin,
-		"BhfId": bhf_id,
-		"LastReqDt": "20231215000000",
-	}
+    # Default branch ID
+    bhf_id = settings.get("bhfid") or "000"
 
-	try:
-		process_request(
-			request_data=request_data,
-			route_key="selectTrnsPurchaseSales",
-			handler_function=purchase_search_on_success,
-			request_method="POST",
-			doctype=REGISTERED_PURCHASES_DOCTYPE_NAME,
-		)
+    # Default request date (1 year back)
+    request_date = add_to_date(datetime.now(), years=-1).strftime("%Y%m%d%H%M%S")
 
-		frappe.msgprint("Smart purchase fetch request sent successfully.")
-	except Exception as e:
-		frappe.log_error(frappe.get_traceback(), "Smart Purchase Fetch Failed")
-		frappe.throw(f"Error fetching purchases from ZRA: {e}")
+    # Fetch the last_request_date saved for this route
+    _, last_req_date = get_route_path("selectTrnsPurchaseSales", "Crystal VSDC")
+    if last_req_date:
+        last_req_dt = last_req_date.strftime("%Y%m%d%H%M%S")
+    else:
+        last_req_dt = request_date
+
+    # Prepare request payload (required by ZRA API)
+    request_data = {
+        "Tpin": tpin,
+        "BhfId": bhf_id,
+        "LastReqDt": last_req_dt,
+    }
+
+    try:
+        process_request(
+            request_data=request_data,
+            route_key="selectTrnsPurchaseSales",
+            handler_function=purchase_search_on_success,
+            request_method="POST",
+            doctype=REGISTERED_PURCHASES_DOCTYPE_NAME,
+        )
+
+        frappe.msgprint("Smart purchase fetch request sent successfully.")
+
+    except Exception as e:
+        frappe.log_error(frappe.get_traceback(), "Smart Purchase Fetch Failed")
+        frappe.throw(f"Error fetching purchases from ZRA: {e}")
 
 
 @frappe.whitelist()
