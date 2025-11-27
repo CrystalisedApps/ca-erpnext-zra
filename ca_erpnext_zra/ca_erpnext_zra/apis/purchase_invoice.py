@@ -20,6 +20,7 @@ def create_purchase_invoice_from_request(request_data: str) -> None:
 		supplier = get_or_create_supplier(data).name
 
 	if frappe.db.exists("Purchase Invoice", {"custom_import_source_registered_purchase": data["name"]}):
+		frappe.throw("Purchase Invoice already exists for this registered import.")
 		return
 
 	all_existing_items = {item["name"]: item for item in frappe.db.get_all("Item", ["*"])}
@@ -254,7 +255,7 @@ def update_registered_import_item(request_data: str) -> None:
 		job_name=f"update_imported_items_{data.get('task_code')}",
 		request_data=final_payload,
 		route_key="updateImports",
-		# request_method="POST",
+		request_method="POST",
 		handler_function=import_item_update_on_success,
 		doctype=REGISTERED_IMPORTED_ITEM_DOCTYPE_NAME,
 		document_name=data.get("name"),
