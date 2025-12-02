@@ -12,6 +12,8 @@ This app provides a secure and standardized way for businesses to interact with 
 -  Retrieval of **Standard Codes** (classification, VAT, excise, packaging, etc.)  
 -  **Item Registration**: save ERPNext items with ZRA Smart API  
 - **Sales Management**: Manages the full Sales lifecycle
+- **Purchase Management** Manage the full purchase lifecycle in compliance with Zambia regulations
+- **Import Management** Integrate with ERPNext Purchase and Stock modules for imported items
 - **Stock Adjustment**: Handles real-time stock synchronization with ZRA
 -  **Background Jobs** for async API calls  
 -  **Integration Request Logs** for request/response traceability  
@@ -34,18 +36,34 @@ bench migrate
 Then configure the app inside **ERPNext**:
 
 1. Go to **Crystal ZRA Smart Invoice Settings** in ERPNext  
-2. Enter your **TPIN**, **Branch ID (BhfId)**, and **API credentials**  
+2. Enter your **Company**, **Server URL**, **TPIN**, and **API credentials(Auth Details)**  
 3. Save and mark settings as **Active**  
 
 ---
 
 ## Features & Workflow
 
+### 1. Device Initialization  
 
-### 1. Authentication
+Before interacting with ZRA’s Smart Invoice system, the ERPNext instance must be initialized as a registered VSDC device.
+This process associates your business TPIN and Branch ID (BhfId) with ZRA’s infrastructure.
+
+- **Endpoint**: `InitializeDevice`  
+- **ERPNext DocType**: `Crystal ZRA Smart Invoice Settings`  
+
+![alt text](image-3.png)
+This need to be done only once from Crystal ZRA Smart Invoice Settings using the smart action Initialize Device 
+
+---
+
+### 2. Authentication
 
 The authentication module manages secure access to the **Crystal ZRA Smart Invoice API** using **JWT (JSON Web Tokens)**.  
 It ensures that all API requests to ZRA are authorized and compliant with security standards.
+
+![alt text](image-2.png)
+
+Note: An expired token or empty value triggers autamatic authentication when the user makes a request
 
 ####  Key Capabilities:
 - Automated login using `/api/v1/Users/GetToken`
@@ -73,23 +91,15 @@ It ensures that all API requests to ZRA are authorized and compliant with securi
 ```
 
 
-### 2. Device Initialization  
 
-Before interacting with ZRA’s Smart Invoice system, the ERPNext instance must be initialized as a registered VSDC device.
-This process associates your business TPIN and Branch ID (BhfId) with ZRA’s infrastructure.
-
-- **Endpoint**: `InitializeDevice`  
-- **ERPNext DocType**: `Crystal ZRA Smart Invoice Settings`  
-
-![alt text](image-3.png)
-
----
 
 ### 3. Retrieval of Standard Codes  
 
-To correctly classify items, ZRA requires standard codes such as:  
+![alt text](image-5.png)
 
-- **Item Classification Codes** (`itemClsCd`)  
+
+To correctly classify items, ZRA requires standard codes such as:  
+  
 - **Item Type Codes** (`itemTyCd`)  
 - **Packaging Unit Codes**  
 - **Quantity Unit Codes**  
@@ -102,6 +112,10 @@ These codes are retrieved from the **Smart API** and stored in **custom ERPNext 
 ---
 
 ### 4. Item Classification Codes  
+
+![alt text](image-6.png)
+
+Note: At the moment the API responds with only 1000 codes. You need to import the rest using Data import tool
 
 ERPNext **Items** are linked to **Crystallised Smart doctypes**, where each field references a standard code from ZRA.  
 
@@ -116,10 +130,23 @@ For example:
 
 
 ---
-![alt text](image-1.png)
-### 4. Saving Items (Item Management)  
 
+### 4. Saving Items (Item Management)  
+![alt text](image-1.png)
 Once Items are properly configured, they can be **registered with Smart Zambia**.  
+
+The following fields need to be filled for saving an item successfully:
+- `Smart Item Classification Code`  
+- `Smart Item Type`  
+- `Smart VAT Category Code`
+- `Smart Country Of Origin` 
+- `Smart Packaging Unit`  
+- `Smart Quantity Unit` 
+The saving of an item happens automatically on saving or updating the item on our ERPNext. Incase this doesn't due to any reason, the smart action button Register(Item) does the same.
+
+![alt text](image-8.png)
+The item shown here has already been successfully registered.
+
 
 #### 🔹 Payload Builder  
 
@@ -156,11 +183,19 @@ We build a **ZRA-compliant payload** from ERPNext Item data.
 ---
 
 ### 5. Sales Management
-Manages the full Sales Record (SAR) lifecycle: saving and issuing invoices through the ZRA Smart Invoice system.
+Manages the complete Sales Record lifecycle — from saving a sale to issuing invoices through the ZRA Smart Invoice platform.
+
+The system supports the seamless creation and submission of sales for items already registered and authorized with ZRA. When a Sales Invoice is submitted in ERPNext, all details are automatically transmitted to the Smart Invoice system for signing.
+
+If the automatic submission fails for any reason, the “Send Invoice” smart action allows you to manually resend the invoice for signing.
+
+In addition, the module supports generating and saving both Credit Notes and Debit Notes linked to an existing sale.
+![alt text](image-10.png)
+![alt text](image-9.png)
 
 #### Key Capabilities:
 
--Automatically builds and sends Sales Invoice and Credit Notes payloads
+-Automatically builds and sends Sales Invoice,Credit Notes and Debit Notes payloads
 
 - Integrates with /SalesInformation/SaveSales for sales save
 
@@ -169,10 +204,50 @@ Manages the full Sales Record (SAR) lifecycle: saving and issuing invoices throu
 
 ---
 
-### 6. Stock Adjustment
-Handles real-time stock synchronization with ZRA when:
+### 6. Purchase Management
 
-Goods are sold.
+#### Purchase Processing Workflow
+![alt text](image-11.png)
+The purchase process begins with the user fetching registered purchases from the ZRA system.
+
+![alt text](image-12.png)
+For each approved purchase, you can generate a Purchase Invoice after completing the required setup steps—this includes creating the supplier and creating/registering the item if it does not already exist.
+
+The system also supports purchases from suppliers who are not registered with the authority.
+In such cases, the user simply creates the supplier in the system and proceeds to create a standard Purchase Invoice without requiring ZRA registration.
+
+### 7. Import Management
+Import Processing Workflow
+![alt text](image-13.png)
+
+Similar to the purchase process, import handling begins with the user retrieving raised imports from ASYCUDA.
+![alt text](image-14.png)
+For each imported item that requires acknowledgement(Update Import Item), the user must first create and register the item, marking it as an Imported Item.
+Once the item is registered, the user can proceed to generate a Purchase Invoice linked to that import entry 
+
+### 8. Stock Adjustment
+Stock Synchronization
+
+The system handles real-time stock synchronization with ZRA, ensuring that all inventory movements remain consistent with the authority’s records.
+
+Stock updates can originate from:
+
+- Stock Entry
+
+- Stock Reconciliation
+
+- Purchase Transactions
+
+- Sales Transactions
+
+All stock movements are monitored through the Stock Ledger Entry, where the system checks the corresponding Voucher Type to determine the nature of the transaction.
+
+When an item is created with an opening stock value, the system automatically generates a Material Receipt stock entry.
+
+Additionally, all stock activity—including approved purchases, imports, sales, and other adjustment entries—is submitted periodically every 4 minutes, along with updated quantity balances, to maintain continuous synchronization with ZRA.
+![alt text](image-7.png)
+
+
 
 #### Key Capabilities:
 
@@ -237,12 +312,21 @@ bench migrate
 | 2  | `/CodeData/selectCodes`          | Smart Standard Codes (custom doctypes) | Retrieves classification, unit, and tax codes   |
 | 3  | `/ItemsClassInformation/selectItemsClass`     | Smart Item Classification Codes        | Fetches valid item classification codes (itemClsCd) |
 | 4  | `/ItemInformation/saveItem` (Item Management)| Item                                   | Registers ERPNext items in Smart Zambia system  |
-| 5  | `/SalesInformation/SaveSales` (Sales Management)| Normal Sales Invoice                                   | Accepts invoice information, customized to a particular invoicing system and submits it to ZRA
+| 5 | `/ItemInformation/updateItem` | Item | Update specific product item details |
+| 6 | `/ItemInformation/selectItem` | Item | Retrieves details of a product item based on the provided Item code |
+| 7 | `/PurchaseInformation/selectTrnsPurchaseSales` (Purchase Management) | Retrieves all purchases made by a another business using smart invoice system |
+| 8 | `/PurchaseInformation/savePurchase` | Utilized to approve or reject all purchases made by a business from suppliers  
+| 9  | `/SalesInformation/SaveSales` (Sales Management)| Normal Sales Invoice                                   | Accepts invoice information, customized to a particular invoicing system and submits it to ZRA
   |
-| 6  | `/SalesInformation/SaveCreditNote` (Sales Management)| Credit Note                                   | Accepts credit invoice information and submits it to ZRA  |
-| 7  | `/SalesInformation/SelectInvoice` (Sales Management)| Sales Invoice                                   | Takes a SelectInvoice query and returns the invoice that exists in the ZRA environment  |
-| 8  | `/StockItemInformation/SaveStockItems` ()| Stock Item Information                                   | Add stock items that have been recorded from approved sales to Smart Invoice.  |
-| 9  | `/Users/GetToken` (User)|                                    | Logs in a user to auth system using the username and password  |
+| 10  | `/SalesInformation/SaveCreditNote` (Sales Management)| Credit Note                                   | Accepts credit invoice information and submits it to ZRA  |
+| 11  | `/SalesInformation/SelectInvoice` (Sales Management)| Sales Invoice                                   | Takes a SelectInvoice query and returns the invoice that exists in the ZRA environment  |
+| 12 | `/SalesInformation/SaveDebitNote` | Sales | Accepts debit invoice information and submits it to ZRA
+| 13  | `/StockItemInformation/SaveStockItems` (Stock Adjustment)| Stock Item Information                                   | Add stock items that have been recorded from approved sales to Smart Invoice.  |
+| 14 | `/ImportItemsInfo/SelectImportItems` | Import Management  |Retrieves a list of imported items saved on Smart Invoice from ASYCUDA. |
+| 15 | `/ImportItemsInfo/UpdateImportItem` |  Used to acknowledge, or disregard imported items received from Smart Invoice which were declared on ASYCUDA. |
+| 16 | `/StockItemInformation/SaveStockMaster` | Stock | This endpoint is used to update stock quantities for items that have been recorded from approved purchases, imports, sales, and different types of stock movement adjustments. |
+| 17  | `/Users/GetToken` (User)|                                    | Logs in a user to auth system using the username and password  |
+
 ### Contributing
 
 This app uses `pre-commit` for code formatting and linting. Please [install pre-commit](https://pre-commit.com/#installation) and enable it for this repository:
