@@ -18,6 +18,8 @@
   "column_break_xogn",
   "is_active",
   "auto_create_branch_accounting_dimension",
+  "section_break_unkd",
+  "organisation_mapping",
   "section_break_uzrw",
   "default_warehouse",
   "department",
@@ -279,12 +281,22 @@
    "fieldname": "classification_codes_file",
    "fieldtype": "Attach",
    "label": "Classification Codes File"
+  },
+  {
+   "fieldname": "section_break_unkd",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "organisation_mapping",
+   "fieldtype": "Table",
+   "label": "Organisation Mapping",
+   "options": "Smart Settings Organisation Mapping"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-11-18 23:58:07.969004",
+ "modified": "2025-11-27 13:55:10.090429",
  "modified_by": "Administrator",
  "module": "Ca Erpnext Zra",
  "name": "Crystal ZRA Smart Invoice Settings",

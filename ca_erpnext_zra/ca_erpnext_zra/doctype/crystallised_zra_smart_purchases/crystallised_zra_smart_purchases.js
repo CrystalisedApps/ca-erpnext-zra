@@ -65,7 +65,7 @@ frappe.ui.form.on(doctypeName, {
 				__("Smart Actions")
 			);
 // -------------------------------------------------------------
-// 🔍 CHECK IF ALL ITEMS ARE REGISTERED
+// CHECK IF ALL ITEMS ARE REGISTERED
 // -------------------------------------------------------------
 frappe.call({
     method: "frappe.client.get_list",

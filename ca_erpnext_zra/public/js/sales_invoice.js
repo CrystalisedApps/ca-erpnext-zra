@@ -68,22 +68,22 @@ frappe.ui.form.on(parentDoctype, {
 		}
 
 		// --- Verify and Fix Button ---
-		frm.add_custom_button(
-			__("Verify Submission and Fix if Incorrect"),
-			function () {
-				executeVSDCAction("Verify Submission", activeSetting, (settings_name) => ({
-					method: "ca_erpnext_zra.ca_erpnext_zra.apis.invoice_processor.verify_vsdc_invoice",
-					args: {
-						document_name: frm.doc.name,
-						invoice_type: "Sales Invoice",
-						settings_name: settings_name,
-						company: frm.doc.company,
-					},
-					success_msg: "Verification and correction queued",
-				}));
-			},
-			__("Smart Actions")
-		);
+		// frm.add_custom_button(
+		// 	__("Verify Submission and Fix if Incorrect"),
+		// 	function () {
+		// 		executeVSDCAction("Verify Submission", activeSetting, (settings_name) => ({
+		// 			method: "ca_erpnext_zra.ca_erpnext_zra.apis.invoice_processor.verify_vsdc_invoice",
+		// 			args: {
+		// 				document_name: frm.doc.name,
+		// 				invoice_type: "Sales Invoice",
+		// 				settings_name: settings_name,
+		// 				company: frm.doc.company,
+		// 			},
+		// 			success_msg: "Verification and correction queued",
+		// 		}));
+		// 	},
+		// 	__("Smart Actions")
+		// );
 	},
 });
 

@@ -58,15 +58,15 @@ frappe.ui.form.on(itemDoctypeName, {
 					__("Smart Actions")
 				);
 
-				if (frm.doc.is_stock_item && mappedCompanies.length) {
-					frm.add_custom_button(
-						__("Submit Item Inventory (Smart)"),
-						function () {
-							showCompanySelectionModal(frm, "submit_inventory", mappedCompanies);
-						},
-						__("Smart Actions")
-					);
-				}
+				// if (frm.doc.is_stock_item && mappedCompanies.length) {
+				// 	frm.add_custom_button(
+				// 		__("Submit Item Inventory (Smart)"),
+				// 		function () {
+				// 			showCompanySelectionModal(frm, "submit_inventory", mappedCompanies);
+				// 		},
+				// 		__("Smart Actions")
+				// 	);
+				// }
 			}
 		}
 	},
@@ -143,9 +143,9 @@ function executeSmartItemAction(frm, actionType, settingsName) {
 			method = "ca_erpnext_zra.ca_erpnext_zra.apis.item_api.perform_item_registration";
 			break;
 
-		case "submit_inventory":
-			method = "ca_erpnext_zra.ca_erpnext_zra.apis.item_api.submit_inventory";
-			break;
+		// case "submit_inventory":
+		// 	method = "ca_erpnext_zra.ca_erpnext_zra.apis.item_api.submit_inventory";
+		// 	break;
 
 		default:
 			frappe.msgprint(__("Unknown action type."));

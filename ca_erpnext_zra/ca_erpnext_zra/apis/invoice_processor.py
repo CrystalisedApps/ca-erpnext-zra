@@ -4,7 +4,6 @@ from frappe.utils.password import get_decrypted_password
 
 from ca_erpnext_zra.ca_erpnext_zra.apis.api_processor import process_request
 
-from ..handlers.invoice_handler import update_invoice_info, verify_and_fix_invoice_info
 from ..utils.payload_utils import (  # keep payload logic modular
 	build_credit_note_payload,
 	build_debit_note_payload,
@@ -241,28 +240,28 @@ def get_vsdc_invoice_details(
 	)
 
 
-@frappe.whitelist()
-def verify_vsdc_invoice(
-	id: str = None,
-	document_name: str = None,
-	invoice_type: str = "Sales Invoice",
-	settings_name: str = None,
-	company: str = None,
-):
-	"""
-	Verify and correct invoice details between ERPNext and
-	ZRA Smart Invoice (Crystal VSDC) system.
-	"""
-	invoice = frappe.get_doc(invoice_type, document_name)
+# @frappe.whitelist()
+# def verify_vsdc_invoice(
+# 	id: str = None,
+# 	document_name: str = None,
+# 	invoice_type: str = "Sales Invoice",
+# 	settings_name: str = None,
+# 	company: str = None,
+# ):
+# 	"""
+# 	Verify and correct invoice details between ERPNext and
+# 	ZRA Smart Invoice (Crystal VSDC) system.
+# 	"""
+# 	invoice = frappe.get_doc(invoice_type, document_name)
 
-	reference_number = invoice.name  # or use custom reference getter if needed
+# 	reference_number = invoice.name  # or use custom reference getter if needed
 
-	_process_vsdc_invoice_request(
-		id=id,
-		document_name=document_name,
-		invoice_type=invoice_type,
-		settings_name=settings_name,
-		company=company,
-		handler_function=verify_and_fix_invoice_info,
-		reference_number=reference_number,
-	)
+# 	_process_vsdc_invoice_request(
+# 		id=id,
+# 		document_name=document_name,
+# 		invoice_type=invoice_type,
+# 		settings_name=settings_name,
+# 		company=company,
+# 		handler_function=verify_and_fix_invoice_info,
+# 		reference_number=reference_number,
+# 	)
