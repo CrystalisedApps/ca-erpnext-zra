@@ -3,13 +3,13 @@ from frappe.utils import now_datetime
 from frappe.utils.password import get_decrypted_password
 
 from ca_erpnext_zra.ca_erpnext_zra.apis.api_processor import process_request
-
+from ..utils.settings_utils import get_settings
 from ..utils.payload_utils import (  # keep payload logic modular
 	build_credit_note_payload,
 	build_debit_note_payload,
 	build_invoice_payload,
 )
-
+from ..handlers.invoice_handler import update_invoice_info
 
 @frappe.whitelist()
 def _process_vsdc_invoice_request(
@@ -151,7 +151,7 @@ def get_vsdc_invoice_details(
 	frappe.log_error(
 		title="VSDC Invoice Details Debug",
 		message=f"""
-        🔎 get_vsdc_invoice_details() called with:
+         get_vsdc_invoice_details() called with:
         - document_name: {document_name}
         - invoice_type: {invoice_type}
         - settings_name: {settings_name}
@@ -175,30 +175,21 @@ def get_vsdc_invoice_details(
 
 	# --- Sanity check ---
 	if not document_name:
-		frappe.throw("❌ Missing document_name in get_vsdc_invoice_details()")
+		frappe.throw(" Missing document_name in get_vsdc_invoice_details()")
 
 	# Fetch invoice
 	invoice = frappe.get_doc(invoice_type, document_name)
 
 	# Fetch first active settings record
-	settings = frappe.get_all(
-		"Crystal ZRA Smart Invoice Settings", fields=["name"], filters={"is_active": 1}, limit=1
-	)
+	settings = get_settings(settings_name)
 
 	if not settings:
 		frappe.throw("No active Crystal ZRA Smart Invoice Settings found.")
 
-	settings_name = settings[0]["name"]
-	settings_doc = frappe.get_doc("Crystal ZRA Smart Invoice Settings", settings_name)
-
+	
 	# Decrypt TPIN
 
-	tpin = (
-		get_decrypted_password(
-			"Crystal ZRA Smart Invoice Settings", settings_name, "tpin", raise_exception=False
-		)
-		or ""
-	)
+	tpin = settings.get("tpin")
 
 	# Build payload
 	payload = {

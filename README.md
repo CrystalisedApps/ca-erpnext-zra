@@ -184,7 +184,7 @@ We build a **ZRA-compliant payload** from ERPNext Item data.
 
 ### 5. Sales Management
 Manages the complete Sales Record lifecycle — from saving a sale to issuing invoices through the ZRA Smart Invoice platform.
-
+![alt text](image-15.png)
 The system supports the seamless creation and submission of sales for items already registered and authorized with ZRA. When a Sales Invoice is submitted in ERPNext, all details are automatically transmitted to the Smart Invoice system for signing.
 
 If the automatic submission fails for any reason, the “Send Invoice” smart action allows you to manually resend the invoice for signing.

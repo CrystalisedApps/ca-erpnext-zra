@@ -8,6 +8,8 @@
  "field_order": [
   "smart_setup",
   "zra_item_code",
+  "branch",
+  "branch_code",
   "column_break_hsfp",
   "is_active"
  ],
@@ -35,13 +37,29 @@
    "fieldtype": "Data",
    "in_list_view": 1,
    "label": "ZRA Item Code"
+  },
+  {
+   "fieldname": "branch",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Branch",
+   "options": "Branch"
+  },
+  {
+   "fetch_from": "branch.custom_branch_code",
+   "fieldname": "branch_code",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Branch Code"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2025-11-18 09:56:20.689414",
+ "modified": "2025-12-03 13:16:12.982891",
  "modified_by": "Administrator",
  "module": "Ca Erpnext Zra",
  "name": "Smart Crystallised Mapping",
