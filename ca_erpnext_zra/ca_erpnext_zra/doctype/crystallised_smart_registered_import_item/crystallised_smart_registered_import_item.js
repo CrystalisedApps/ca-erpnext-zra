@@ -100,7 +100,10 @@ frappe.ui.form.on(doctypeName, {
 				["custom_item_registered", "name"],
 				(response) => {
 					if (parseInt(response.custom_item_registered) === 1) {
-						if (frm.doc.imported_item_status == "Approved") {
+						if (
+							frm.doc.imported_item_status == "Approved" ||
+							frm.doc.imported_item_status == 3
+						) {
 							frm.add_custom_button(
 								__("Create Purchase Invoice"),
 								function () {
