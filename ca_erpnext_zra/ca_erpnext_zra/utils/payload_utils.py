@@ -9,7 +9,7 @@ import frappe
 from frappe.model.document import Document
 from frappe.utils import cint, cstr, flt, get_datetime, getdate, now, now_datetime
 from frappe.utils.password import get_decrypted_password
-
+from ..utils.settings_utils import get_settings
 from .tax_utils import calculate_tax
 
 
@@ -761,7 +761,7 @@ def build_purchase_payload(docname: str, settings_name: str) -> dict:
 	return payload
 
 
-def generate_vsdc_item_payload(item_name: str, settings_name: str) -> dict:
+def generate_vsdc_item_payload(item_name: str,bhfid, settings_name: str) -> dict:
 	item = frappe.get_doc("Item", item_name)
 
 	def get_code(fieldname: str) -> str | None:
@@ -807,7 +807,7 @@ def generate_vsdc_item_payload(item_name: str, settings_name: str) -> dict:
 
 	payload = {
 		"tpin": tpin,
-		"bhfid": "000",
+		"bhfid": bhfid,
 		"itemCd": item.custom_smart_item_code,  # Generate a custom smart_item_code
 		"itemClsCd": get_code("custom_smart_item_classification_code"),
 		"itemTyCd": item.custom_smart_item_type,
@@ -850,7 +850,9 @@ def fmt4(value):
 
 def build_invoice_payload(invoice: "Document", settings_name: str) -> dict:
 	# settings = frappe.get_doc("Crystal ZRA Smart Invoice Settings", settings_name)
-	tpin = get_decrypted_password("Crystal ZRA Smart Invoice Settings", settings_name, "tpin") or ""
+	
+	settings = get_settings(settings_name)
+	tpin = settings.get("tpin")
 	bhf_id = "000"
 
 	# Dates

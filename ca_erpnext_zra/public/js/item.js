@@ -4,7 +4,7 @@ frappe.ui.form.on(itemDoctypeName, {
 	refresh: async function (frm) {
 		if (frm.is_new()) return;
 
-		// 🔹 Fetch Smart compliance data for this item
+		//  Fetch Smart compliance data for this item
 		const { message: data } = await frappe.call({
 			method: "ca_erpnext_zra.ca_erpnext_zra.utils.smart_api_utils.get_smart_action_data",
 			args: {
@@ -79,9 +79,14 @@ frappe.ui.form.on(itemDoctypeName, {
 
 // 🔹 Helper: Get company name from settings
 function getCompanyName(allSettings, settingName) {
-	const match = allSettings.find((s) => s.name === settingName);
-	return match ? match.company : "Unknown";
+    const match = allSettings.find((s) =>
+        s.name === settingName || 
+        s.settings_name === settingName ||
+        s.setup === settingName
+    );
+    return match ? match.company : "Unknown";
 }
+
 
 // 🔹 Company selection modal
 async function showCompanySelectionModal(frm, actionType, availableSettings) {
@@ -93,10 +98,10 @@ async function showCompanySelectionModal(frm, actionType, availableSettings) {
 	}
 
 	// If only one company available → skip dialog
-	if (availableSettings.length === 1) {
-		executeSmartItemAction(frm, actionType, availableSettings[0].name);
-		return;
-	}
+	// if (availableSettings.length === 1) {
+	// 	executeSmartItemAction(frm, actionType, availableSettings[0].name);
+	// 	return;
+	// }
 
 	const options = availableSettings.map((setting) => ({
 		label: `${setting.company} (${setting.name})`,
@@ -110,16 +115,26 @@ async function showCompanySelectionModal(frm, actionType, availableSettings) {
 				label: __("Select Smart Setup"),
 				fieldname: "selected_settings_name",
 				fieldtype: "Select",
-				options: options,
+				options: options.map(o => `${o.label}`),
 				reqd: 1,
 				default: options[0]?.value || null,
 			},
+						{
+				label: __("Branch"),
+				fieldname: "selected_branch",
+				fieldtype: "Link",
+				options: "Branch",
+				reqd: 1,
+			}
 		],
 		primary_action_label: __("Proceed"),
 		primary_action: (data) => {
 			const selectedSettingName = data.selected_settings_name;
+			// const selectedBranch = data.selected_branch || null;
+    		const selectedBranch = dialog.get_value("selected_branch") || null;
+
 			dialog.hide();
-			executeSmartItemAction(frm, actionType, selectedSettingName);
+			executeSmartItemAction(frm, actionType, selectedSettingName, selectedBranch);
 		},
 	});
 
@@ -127,7 +142,7 @@ async function showCompanySelectionModal(frm, actionType, availableSettings) {
 }
 
 // 🔹 Execute Smart API call per selected company
-function executeSmartItemAction(frm, actionType, settingsName) {
+function executeSmartItemAction(frm, actionType, settingsName, branch) {
 	let method;
 
 	switch (actionType) {
@@ -159,6 +174,7 @@ function executeSmartItemAction(frm, actionType, settingsName) {
 			item_name: frm.doc.item_name,
 			item_code: frm.doc.item_code,
 			settings_name: settingsName,
+			branch: branch,
 		},
 
 		callback: () => {

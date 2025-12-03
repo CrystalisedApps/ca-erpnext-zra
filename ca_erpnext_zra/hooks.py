@@ -160,8 +160,8 @@ doc_events = {
                 "ca_erpnext_zra.ca_erpnext_zra.overrides.server.sales_invoice_override.on_submit"],
 	},
 	"Item": {
-        # "validate": ["ca_erpnext_zra.ca_erpnext_zra.overrides.server.item_overrides.validate"],
-		"on_update": ["ca_erpnext_zra.ca_erpnext_zra.apis.item_api.perform_item_registration"],
+        "validate": ["ca_erpnext_zra.ca_erpnext_zra.overrides.server.item_overrides.validate"],
+		 "on_update": ["ca_erpnext_zra.ca_erpnext_zra.overrides.server.item_overrides.on_update"],
 	},
 	"Purchase Invoice": {
 		"before_save": ["ca_erpnext_zra.ca_erpnext_zra.overrides.server.shared_override.before_save"],
