@@ -147,7 +147,7 @@ def get_vsdc_invoice_details(
 	Fetch and refresh Crystal VSDC (ZRA Smart Invoice) details for a Sales Invoice,
 	using the centralized `process_request` API wrapper.
 	"""
-	# --- 🔍 Debug Logging: confirm arguments ---
+	# ---  Debug Logging: confirm arguments ---
 	frappe.log_error(
 		title="VSDC Invoice Details Debug",
 		message=f"""
