@@ -144,5 +144,21 @@ frappe.ui.form.on("Crystal ZRA Smart Invoice Settings", {
 			},
 			__("Smart Actions")
 		);
+
+		frm.trigger("setWarehouseQuery");
+	},
+
+	company_name: function (frm) {
+		frm.trigger("setWarehouseQuery");
+	},
+
+	setWarehouseQuery(frm) {
+		frm.set_query("default_import_warehouse", function () {
+			return {
+				filters: {
+					company: frm.doc.company_name,
+				},
+			};
+		});
 	},
 });
