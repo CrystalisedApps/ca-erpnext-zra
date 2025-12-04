@@ -121,28 +121,51 @@ frappe.ui.form.on("Crystal ZRA Smart Invoice Settings", {
 		);
 
 		// Initialize Device Button
-		frm.add_custom_button(
-			__("Initialize Device"),
-			function () {
-				frappe.dom.freeze(__("Initializing Device... Please Wait"));
-				frappe.call({
-					method: "ca_erpnext_zra.ca_erpnext_zra.apis.device.initialize_device",
-					args: {
-						settings_name: frm.doc.name,
-					},
-					callback: function (r) {
-						frappe.dom.unfreeze();
-						if (!r.exc) {
-							frappe.msgprint(__("Device initialization successful."));
-							frm.reload_doc();
-						}
-					},
-					error: function (err) {
-						frappe.dom.unfreeze();
-					},
-				});
-			},
-			__("Smart Actions")
-		);
+// Initialize Device Button with Branch Selection
+frm.add_custom_button(
+    __("Initialize Device"),
+    function () {
+        // Create dialog to select branch
+        let d = new frappe.ui.Dialog({
+            title: __("Select Branch for Device Initialization"),
+            fields: [
+                {
+                    fieldtype: "Link",
+                    fieldname: "branch",
+                    label: __("Branch"),
+                    options: "Branch",
+                    reqd: 1
+                }
+            ],
+            primary_action_label: __("Initialize"),
+            primary_action(values) {
+                d.hide();
+                frappe.dom.freeze(__("Initializing Device… Please Wait"));
+
+                frappe.call({
+                    method: "ca_erpnext_zra.ca_erpnext_zra.apis.device.initialize_device",
+                    args: {
+                        settings_name: frm.doc.name,
+                        branch: values.branch
+                    },
+                    callback: function (r) {
+                        frappe.dom.unfreeze();
+                        if (!r.exc) {
+                            frappe.msgprint(__("Device initialization successful."));
+                            frm.reload_doc();
+                        }
+                    },
+                    error: function () {
+                        frappe.dom.unfreeze();
+                    },
+                });
+            }
+        });
+
+        d.show();
+    },
+    __("Smart Actions")
+);
+
 	},
 });

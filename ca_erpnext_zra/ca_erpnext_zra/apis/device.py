@@ -3,10 +3,10 @@ from frappe.utils.password import get_decrypted_password
 
 from ..doctype.doctype_names_mapping import SETTINGS_DOCTYPE_NAME
 from .api_processor import process_request
-
+from ..utils.settings_utils import get_settings
 
 @frappe.whitelist()
-def initialize_device(settings_name: str = None) -> dict:
+def initialize_device(settings_name: str = None, branch: str=None) -> dict:
 	"""
 	Initialize a device with Crystal VSDC servers.
 
@@ -23,14 +23,24 @@ def initialize_device(settings_name: str = None) -> dict:
 	Returns:
 	    dict: Response from Crystal VSDC.
 	"""
+	if not branch:
+		frappe.throw("Branch is required for device initialization")
+	branch_doc = frappe.get_doc("Branch", branch)
+	branch_code = branch_doc.get("custom_branch_code")
+	device_serial = branch_doc.get("custom_smart_device_serial_no")
+	if not branch_code:
+		frappe.throw(f"Branch '{branch}' is missing Branch Code (custom_branch_code)")
 
-	settings_doc = frappe.get_doc(SETTINGS_DOCTYPE_NAME, settings_name)
+	if not device_serial:
+		frappe.throw(f"Branch '{branch}' is missing Device Serial Number (custom_device_serial_no)")
 
-	tpin = get_decrypted_password(SETTINGS_DOCTYPE_NAME, settings_name, "tpin", raise_exception=False) or ""
+	settings = get_settings(settings_name)
+
+	tpin = settings.get("tpin")
 	request_data = {
 		"tpin": tpin,
-		"bhfId": "000",
-		"dvcSrlNo": settings_doc.get("device_serial_number") or f"{tpin}_VSDC",
+		"bhfId": branch_code,
+		"dvcSrlNo": device_serial or f"{tpin}_VSDC",
 	}
 
 	if not request_data:
@@ -42,24 +52,50 @@ def initialize_device(settings_name: str = None) -> dict:
 		request_method="POST",
 		doctype=SETTINGS_DOCTYPE_NAME,
 		settings_name=settings_name,
+        branch=branch
 	)
 
 
-def initialize_device_on_success(response: dict, **kwargs) -> dict:
-	"""
-	Handle a successful device initialization response from Crystal VSDC.
-	Stores API keys if returned.
-	"""
-	# Extract the result code from the nested Result structure
-	result_cd = response.get("Result", {}).get("resultCd")
+def initialize_device_on_success(response: dict, settings_name=None, branch=None, **kwargs) -> dict:
+    result = response.get("Result", {})
+    result_cd = result.get("resultCd")
+    bhfId = result.get("bhfId")
 
-	# Handle different result codes with specific messages
-	if result_cd == "902":
-		frappe.msgprint("ℹ Device already initialized with Crystal VSDC")
-	elif result_cd == "000":
-		frappe.msgprint(" Successfully initialized device with Crystal VSDC")
-	else:
-		# Fallback for other success cases or unknown result codes
-		frappe.msgprint(" Device initialization successful with Crystal VSDC")
+    # Message handling...
+    if result_cd == "902":
+        frappe.msgprint("ℹ Device already initialized with Crystal VSDC")
+    elif result_cd == "000":
+        frappe.msgprint(" Successfully initialized device with Crystal VSDC")
+    else:
+        frappe.msgprint(" Device initialization successful with Crystal VSDC")
 
-	return response
+    # --- Save mapping ---
+    if settings_name and branch:
+        branch_doc = frappe.get_doc("Branch", branch)
+
+        parent = settings_name
+        parenttype = "Crystal ZRA Smart Invoice Settings"
+        parentfield = "organisation_mapping"
+
+        exists = frappe.db.exists(
+            "Smart Settings Organisation Mapping",
+            {"parent": parent, "branch": branch}
+        )
+
+        if exists:
+            frappe.db.set_value("Smart Settings Organisation Mapping", exists, {
+                "branch_code": branch_doc.custom_branch_code,
+                "device_no": branch_doc.custom_smart_device_serial_no,
+            })
+        else:
+            frappe.get_doc({
+                "doctype": "Smart Settings Organisation Mapping",
+                "parent": parent,
+                "parenttype": parenttype,
+                "parentfield": parentfield,
+                "branch": branch,
+                "branch_code": branch_doc.custom_branch_code,
+                "device_no": branch_doc.custom_smart_device_serial_no,
+            }).insert(ignore_permissions=True)
+
+    return response
