@@ -119,22 +119,22 @@ async function showCompanySelectionModal(frm, actionType, availableSettings) {
 				reqd: 1,
 				default: options[0]?.value || null,
 			},
-						{
-				label: __("Branch"),
-				fieldname: "selected_branch",
-				fieldtype: "Link",
-				options: "Branch",
-				reqd: 1,
-			}
+			// 			{
+			// 	label: __("Branch"),
+			// 	fieldname: "selected_branch",
+			// 	fieldtype: "Link",
+			// 	options: "Branch",
+			// 	reqd: 1,
+			// }
 		],
 		primary_action_label: __("Proceed"),
 		primary_action: (data) => {
 			const selectedSettingName = data.selected_settings_name;
 			// const selectedBranch = data.selected_branch || null;
-    		const selectedBranch = dialog.get_value("selected_branch") || null;
+    		// const selectedBranch = dialog.get_value("selected_branch") || null;
 
 			dialog.hide();
-			executeSmartItemAction(frm, actionType, selectedSettingName, selectedBranch);
+			executeSmartItemAction(frm, actionType, selectedSettingName);
 		},
 	});
 
@@ -142,7 +142,7 @@ async function showCompanySelectionModal(frm, actionType, availableSettings) {
 }
 
 // 🔹 Execute Smart API call per selected company
-function executeSmartItemAction(frm, actionType, settingsName, branch) {
+function executeSmartItemAction(frm, actionType, settingsName) {
 	let method;
 
 	switch (actionType) {
@@ -174,7 +174,7 @@ function executeSmartItemAction(frm, actionType, settingsName, branch) {
 			item_name: frm.doc.item_name,
 			item_code: frm.doc.item_code,
 			settings_name: settingsName,
-			branch: branch,
+		
 		},
 
 		callback: () => {

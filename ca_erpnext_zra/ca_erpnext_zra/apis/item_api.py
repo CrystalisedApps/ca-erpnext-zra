@@ -108,14 +108,6 @@ def _process_item_lookup(item_name: str,branch_code: str, branch: str, settings_
 	# Fetch Item and settings
 	item = frappe.get_doc("Item", item_name)
 	settings = frappe.get_doc("Crystal ZRA Smart Invoice Settings", settings_name)
-
-	# Extract required Smart API identifiers
-	# tpin = (
-	# 	get_decrypted_password(
-	# 		"Crystal ZRA Smart Invoice Settings", settings.name, "tpin", raise_exception=False
-	# 	)
-	# 	or ""
-	# )
 	tpin = settings.get("tpin")
 	if branch_code:
 		bhf_id = branch_code
@@ -124,9 +116,7 @@ def _process_item_lookup(item_name: str,branch_code: str, branch: str, settings_
 		bhf_id = frappe.db.get_value("Branch", branch, "custom_branch_code") or "000"
 	else:
 		bhf_id = "000"
-	# bhf_id = settings.get("branch_id") or "000"  # Default branch
 	item_cd = item.get("custom_smart_item_code")
-
 	if not (tpin and item_cd):
 		frappe.log_error(
 			title="[SMART] Missing Required Data for selectItem",

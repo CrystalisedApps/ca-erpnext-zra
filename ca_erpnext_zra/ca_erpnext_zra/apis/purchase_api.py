@@ -164,7 +164,7 @@ def create_purchase_invoice_from_smart_request(request_data: str) -> None:
 		)
 
 	pi.set_warehouse = set_warehouse
-	pi.custom_smart_branch = branch_name
+	pi.branch = branch_name
 	pi.custom_smart_organisation = data.get("organisation")
 	
 
@@ -323,35 +323,52 @@ def send_purchase_details(doc, method=None) -> None:
 	Manually trigger Smart submission for a Purchase Invoice or Debit Note.
 	"""
 	submit_smart_purchase_invoice(doc)
+@frappe.whitelist()
+def get_branches_for_company(company):
+    return frappe.db.get_all(
+        "Branch",
+        filters={"custom_company": company},
+        fields=["name"]
+    )
 
 @frappe.whitelist()
-def perform_purchases_search(company: str) -> None:
+def perform_purchases_search(company: str, branch: str = None) -> None:
     """
     Fetch purchases from ZRA Smart Invoice System for a given company.
     """
-    # Get active Smart settings for the company
+
+    # Resolve branch BHF ID
+    if branch:
+        bhf_id = frappe.db.get_value("Branch", branch, "custom_branch_code") or "000"
+    else:
+        bhf_id = "000"
+
+    # Load settings
     settings = get_settings(company)
     if not settings:
-        frappe.log_error("ZRA Settings Missing", f"No Smart Invoice settings found for {company}")
+        frappe.log_error(
+            "ZRA Settings Missing",
+            f"No Smart Invoice settings found for {company}"
+        )
         return
 
-    # Decrypt TPIN from Smart settings
+    # Decrypt TPIN from settings
     tpin = settings.tpin
 
-    # Default branch ID
-    bhf_id = settings.get("bhfid") or "000"
+    # Override with settings BHF ID only if branch-specific not provided
+    bhf_id = bhf_id or settings.get("bhfid") or "000"
 
     # Default request date (1 year back)
     request_date = add_to_date(datetime.now(), years=-1).strftime("%Y%m%d%H%M%S")
 
-    # Fetch the last_request_date saved for this route
-    _, last_req_date = get_route_path("selectTrnsPurchaseSales", "Crystal VSDC")
+    # Fetch last request date saved for this route
+    _, last_req_date = get_route_path("selectTrnsPurchaseSales", "Crstal VSDC")
     if last_req_date:
         last_req_dt = last_req_date.strftime("%Y%m%d%H%M%S")
     else:
         last_req_dt = request_date
 
-    # Prepare request payload (required by ZRA API)
+    # Prepare request payload
     request_data = {
         "Tpin": tpin,
         "BhfId": bhf_id,
@@ -365,6 +382,7 @@ def perform_purchases_search(company: str) -> None:
             handler_function=purchase_search_on_success,
             request_method="POST",
             doctype=REGISTERED_PURCHASES_DOCTYPE_NAME,
+			branch=branch
         )
 
         frappe.msgprint("Smart purchase fetch request sent successfully.")
