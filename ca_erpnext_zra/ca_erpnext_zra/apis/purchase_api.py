@@ -362,7 +362,7 @@ def perform_purchases_search(company: str, branch: str = None) -> None:
     request_date = add_to_date(datetime.now(), years=-1).strftime("%Y%m%d%H%M%S")
 
     # Fetch last request date saved for this route
-    _, last_req_date = get_route_path("selectTrnsPurchaseSales", "Crstal VSDC")
+    _, last_req_date = get_route_path("selectTrnsPurchaseSales", "Crystal VSDC")
     if last_req_date:
         last_req_dt = last_req_date.strftime("%Y%m%d%H%M%S")
     else:
