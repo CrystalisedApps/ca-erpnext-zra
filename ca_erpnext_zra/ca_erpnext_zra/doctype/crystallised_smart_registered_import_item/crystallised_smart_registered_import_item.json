@@ -26,6 +26,7 @@
   "invoice_foreign_currency_amount",
   "column_break_mytx",
   "settings",
+  "company",
   "imported_item_status",
   "imported_item_status_code",
   "quantity_unit_code",
@@ -201,6 +202,13 @@
    "label": "Item Identifier",
    "read_only": 1,
    "unique": 1
+  },
+  {
+   "fetch_from": "settings.company_name",
+   "fieldname": "company",
+   "fieldtype": "Link",
+   "label": "Company",
+   "options": "Company"
   }
  ],
  "grid_page_length": 50,
@@ -216,7 +224,7 @@
    "link_fieldname": "custom_import_source_registered_purchase"
   }
  ],
- "modified": "2025-11-25 09:58:30.750796",
+ "modified": "2025-12-04 16:44:28.086849",
  "modified_by": "Administrator",
  "module": "Ca Erpnext Zra",
  "name": "Crystallised Smart Registered Import Item",

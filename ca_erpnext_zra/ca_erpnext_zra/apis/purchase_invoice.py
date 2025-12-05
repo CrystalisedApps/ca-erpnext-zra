@@ -39,6 +39,7 @@ def create_purchase_invoice_from_request(request_data: str) -> None:
 	purchase_invoice.bill_date = data["supplier_invoice_date"]
 	purchase_invoice.custom_import_source_registered_purchase = data["name"]
 	purchase_invoice.custom_smart_purchase_id = data["name"]
+	purchase_invoice.credit_to = data.get("creditors_account")
 	if "currency" in data:
 		# The "currency" key is only available when creating from Imported Item
 		purchase_invoice.currency = data["currency"]
@@ -105,89 +106,6 @@ def validation_message(item_code):
 	elif not item_doc.custom_referenced_imported_item and item_doc.custom_item_registered == 0:
 		item_link = get_link_to_form("Item", item_doc.name)
 		frappe.throw(f"Register the item: {item_link}")
-
-
-# @frappe.whitelist()
-# def update_registered_import_item(request_data: str) -> None:
-# 	data = json.loads(request_data)
-
-# 	grouped_items = {}
-
-# 	for item in data:
-# 		grouped_items.setdefault(
-# 			(item.get("task_code"), item.get("declaration_date"), item.get("settings_name")), []
-# 		).append(item)
-
-# 	if not grouped_items:
-# 		frappe.throw("No import items to update.")
-# 		return
-
-# 	for (task_code, declaration_date, settings_name), items in grouped_items.items():
-# 		tpin = frappe.db.get_value(SETTINGS_DOCTYPE_NAME, settings_name, "tpin")
-
-# 		if not tpin:
-# 			frappe.log_error(
-# 				f"TPIN not found in {SETTINGS_DOCTYPE_NAME} {settings_name}.", "Update Registered Import Item"
-# 			)
-# 			continue
-
-# 		item_payload = []
-
-# 		base_payload = {
-# 			"tpin": tpin,
-# 			"taskCd": task_code,
-# 			"bhfId": "000",
-# 			"dclDe": datetime.strptime(declaration_date, "%Y-%m-%d").strftime("%Y%m%d"),
-# 		}
-
-# 		for item in items:
-# 			try:
-# 				item_doc = frappe.db.get_value(
-# 					"Item",
-# 					{"item_code": item.get("item_name")},
-# 					[
-# 						"custom_smart_item_classification_code",
-# 						"custom_smart_item_code",
-# 						"custom_hs_code",
-# 					],
-# 					as_dict=True,
-# 				)
-# 				if not item_doc:
-# 					continue
-
-# 				item_payload.append(
-# 					{
-# 						"itemSeq": item.get("item_sequence"),
-# 						"hsCd": item.get("hs_code") or item_doc.custom_hs_code,
-# 						"itemClsCd": item_doc.custom_smart_item_classification_code,
-# 						"itemCd": item_doc.custom_smart_item_code,
-# 						"imptItemSttsCd": 3 if item.get("imported_item_status_code") == "Approved" else 4,
-# 						"remark": None,
-# 						"modrNm": item.get("modified_by"),
-# 						"modrId": item.get("modified_by").split("@")[0] or "Admin",
-# 					}
-# 				)
-# 			except Exception as e:
-# 				frappe.log_error("Error processing item for Import Update:", str(e))
-
-# 		if not item_payload:
-# 			continue
-
-# 		final_payload = {**base_payload, "importItemList": item_payload}
-
-# 		frappe.enqueue(
-# 			process_request,
-# 			queue="long",
-# 			timeout=60,
-# 			is_async=True,
-# 			job_name=f"update_imported_items_{task_code}",
-# 			request_data=final_payload,
-# 			route_key="updateImports",
-# 			request_method="POST",
-# 			handler_function=import_item_update_on_success,
-# 			doctype=REGISTERED_IMPORTED_ITEM_DOCTYPE_NAME,
-# 			settings_name=settings_name,
-# 		)
 
 
 @frappe.whitelist()

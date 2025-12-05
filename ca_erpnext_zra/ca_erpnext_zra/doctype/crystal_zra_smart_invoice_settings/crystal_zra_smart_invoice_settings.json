@@ -42,6 +42,8 @@
   "mode_of_payment",
   "default_taxation_type_code",
   "default_tax_rate",
+  "imports_defaults_section",
+  "default_import_warehouse",
   "auth_details_tab",
   "username",
   "password",
@@ -291,12 +293,23 @@
    "fieldtype": "Table",
    "label": "Organisation Mapping",
    "options": "Smart Settings Organisation Mapping"
+  },
+  {
+   "fieldname": "imports_defaults_section",
+   "fieldtype": "Section Break",
+   "label": "Imports Defaults"
+  },
+  {
+   "fieldname": "default_import_warehouse",
+   "fieldtype": "Link",
+   "label": "Default Import Warehouse",
+   "options": "Warehouse"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-11-27 13:55:10.090429",
+ "modified": "2025-12-04 12:58:42.487982",
  "modified_by": "Administrator",
  "module": "Ca Erpnext Zra",
  "name": "Crystal ZRA Smart Invoice Settings",
