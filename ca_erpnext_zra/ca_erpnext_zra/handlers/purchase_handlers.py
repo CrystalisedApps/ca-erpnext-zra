@@ -13,7 +13,7 @@ from ..doctype.doctype_names_mapping import (
 )
 
 
-def purchase_search_on_success(response: dict, **kwargs) -> None:
+def purchase_search_on_success(response: dict, branch=None, **kwargs) -> None:
 	sales_list = response.get("Result", {}).get("data", {}).get("saleList", [])
 
 	if not sales_list:
@@ -23,13 +23,13 @@ def purchase_search_on_success(response: dict, **kwargs) -> None:
 		return
 	frappe.msgprint("Smart purchase fetch request sent successfully.")
 	for sale in sales_list:
-		created_record = create_purchase_from_smart_search_details(sale)
+		created_record = create_purchase_from_smart_search_details(sale,branch)
 
 		for item in sale.get("itemList", []):
 			create_and_link_purchase_item(item, created_record)
 
 
-def create_purchase_from_smart_search_details(fetched_purchase: dict) -> str:
+def create_purchase_from_smart_search_details(fetched_purchase: dict, branch=None) -> str:
 	"""
 	Create or update a 'Smart Registered Purchase' document in ERPNext.
 	Items are handled separately by create_and_link_purchase_item().
@@ -74,6 +74,7 @@ def create_purchase_from_smart_search_details(fetched_purchase: dict) -> str:
 	doc.supplier_invoice_no = fetched_purchase.get("spplrInvcNo")
 	doc.payment_type_code = fetched_purchase.get("pmtTyCd")
 	doc.remark = fetched_purchase.get("remark")
+	doc.branch = branch
 
 	# Dates
 	try:

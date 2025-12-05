@@ -155,21 +155,48 @@ def fetch_matching_items_on_success(response: dict, document_name: str, settings
 			)
 			existing_mapping = None 
 	
-	request_data = generate_vsdc_item_payload(item_doc.name,bhfid, settings_name)
-	route_key = "updateItem" if existing_mapping else "saveItem"
-	frappe.enqueue(
-		process_request,
-		queue="default",
-		doctype="Item",
-		request_data=request_data,
-		route_key=route_key,
-		handler_function=handle_registration_response,
-		request_method="POST",
-		branch=branch,
-		settings_name=settings_name,
-	)
+	
+	branch_mappings = get_all_branch_mappings(settings_name)
+
+	for row in branch_mappings:
+		branch_bhfid = row["bhfid"]
+		branch_name = row["branch"]
+
+		frappe.logger().info(f"[SMART] Registering item {document_name} for branch {branch_name} (bhfId={branch_bhfid})")
+
+		request_data = generate_vsdc_item_payload(
+			item_doc.name,
+			branch_bhfid,
+			settings_name
+		)
+
+		route_key = "updateItem" if existing_mapping else "saveItem"
+
+		frappe.enqueue(
+			process_request,
+			queue="default",
+			doctype="Item",
+			request_data=request_data,
+			route_key=route_key,
+			handler_function=handle_registration_response,
+			request_method="POST",
+			branch=branch_name,
+			settings_name=settings_name,
+		)
 
 
 def item_archive_on_success(response: dict | None = None, **kwargs):
 	"""Placeholder for archive callback"""
 	pass
+def get_all_branch_mappings(settings_name: str) -> list[dict]:
+	"""Return all branch → bhfid mappings from Smart Settings."""
+	settings = frappe.get_doc("Crystal ZRA Smart Invoice Settings", settings_name)
+
+	return [
+		{
+			"branch": row.branch,
+			"bhfid": row.branch_code,
+			"device_no": row.device_no,
+		}
+		for row in settings.organisation_mapping
+	]

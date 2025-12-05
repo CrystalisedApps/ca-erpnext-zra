@@ -18,6 +18,8 @@
   "purchase_status",
   "regtycd",
   "registration_type",
+  "column_break_dihd",
+  "branch",
   "section_break_rrhh",
   "receipt_type",
   "supplier_branch_id",
@@ -172,12 +174,21 @@
    "fieldname": "purchase_type",
    "fieldtype": "Data",
    "label": "Purchase Type"
+  },
+  {
+   "fieldname": "column_break_dihd",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "branch",
+   "fieldtype": "Data",
+   "label": "Branch"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-11-24 16:15:38.273797",
+ "modified": "2025-12-05 16:29:42.025826",
  "modified_by": "Administrator",
  "module": "Ca Erpnext Zra",
  "name": "Crystallised ZRA Smart Purchases",
