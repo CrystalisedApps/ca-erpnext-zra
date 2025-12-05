@@ -1277,3 +1277,40 @@ def generate_custom_item_code_smart(doc: Document) -> str:
 
 def build_import_item_payload(settings: dict):
 	return {"company_name": settings.company, "tpin": settings.tpin, "bhfId": settings.get("bhf_id", "000")}
+
+
+def get_branch_code_from_sle(sle: dict) -> str:
+    """Return branch code from the document that generated the SLE."""
+
+    voucher_type = sle.get("voucher_type")
+    voucher_no = sle.get("voucher_no")
+
+    if not voucher_type or not voucher_no:
+        return "001"
+
+    if not frappe.db.exists(voucher_type, voucher_no):
+        return "001"
+
+    doc = frappe.get_doc(voucher_type, voucher_no)
+
+    # Branch may appear under different fieldnames
+    branch_name = (
+        getattr(doc, "branch", None)
+        or getattr(doc, "custom_branch", None)
+        or getattr(doc, "branch_id", None)
+        or None
+    )
+
+    if not branch_name:
+        return "001"
+
+    # Fetch Branch master to get ZRA branch code
+    branch_doc = frappe.get_doc("Branch", branch_name)
+
+    branch_code = (
+        getattr(branch_doc, "custom_branch_code", None)
+        or getattr(branch_doc, "custom_branch_code", None)
+        or "001"
+    )
+
+    return str(branch_code).zfill(3)

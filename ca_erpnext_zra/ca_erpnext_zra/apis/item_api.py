@@ -137,7 +137,7 @@ def _process_item_lookup(item_name: str,branch_code: str, branch: str, settings_
 	# Build the expected Smart Zambia API request payload
 	request_data = {"tpin": tpin, "bhfId": bhf_id, "itemCd": item_cd}
 
-	frappe.logger().info(f"[SMART] 🔍 Looking up existing Smart item: {request_data}")
+	frappe.logger().info(f"[SMART]  Looking up existing Smart item: {request_data}")
 
 	# Enqueue Smart API call
 	frappe.enqueue(

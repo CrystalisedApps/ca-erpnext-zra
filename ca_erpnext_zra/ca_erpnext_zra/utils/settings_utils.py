@@ -3,33 +3,50 @@ import frappe
 SETTINGS_DOCTYPE_NAME = "Crystal ZRA Smart Invoice Settings"
 
 
-def get_settings(settings_name: str | None = None) -> dict | None:
-	"""Fetch Crystal ZRA Smart Invoice integration settings.
+def get_settings(settings_name: str | None = None, company: str | None = None) -> dict | None:
+    """
+    Fetch Crystal ZRA Smart Invoice Settings.
 
-	- If settings_name is given and valid → return that doc
-	- Otherwise, return the first active settings
-	"""
+    Priority:
+        1. Fetch by settings_name (exact match)
+        2. Fetch by company (company_name)
+        3. Fallback to first active settings
 
-	# If a specific settings doc is requested
-	if settings_name:
-		try:
-			if frappe.db.exists(SETTINGS_DOCTYPE_NAME, settings_name):
-				return frappe.get_doc(SETTINGS_DOCTYPE_NAME, settings_name).as_dict()
-		except Exception:
-			pass  # fall through to fallback
+    Returns:
+        dict | None: Settings doc as dict
+    """
 
-	# Otherwise → fallback to first active settings
-	settings = frappe.get_all(
-		SETTINGS_DOCTYPE_NAME,
-		filters={"is_active": 1},
-		fields=["name", "company_name", "tpin", "server_url", "sales_auto_submission_enabled"],
-		limit=1,
-	)
+    # 1. Try fetch using explicit settings name
+    if settings_name:
+        try:
+            if frappe.db.exists(SETTINGS_DOCTYPE_NAME, settings_name):
+                return frappe.get_doc(SETTINGS_DOCTYPE_NAME, settings_name).as_dict()
+        except Exception:
+            pass
 
-	if settings:
-		return settings[0]
+    # 2. Try fetch using company name
+    if company:
+        settings_by_company = frappe.get_all(
+            SETTINGS_DOCTYPE_NAME,
+            filters={"company_name": company, "is_active": 1},
+            fields=["name"],
+            limit=1,
+        )
+        if settings_by_company:
+            return frappe.get_doc(SETTINGS_DOCTYPE_NAME, settings_by_company[0].name).as_dict()
 
-	return None
+    # 3. Fallback → first active settings
+    settings = frappe.get_all(
+        SETTINGS_DOCTYPE_NAME,
+        filters={"is_active": 1},
+        fields=["name"],
+        limit=1,
+    )
+    if settings:
+        return frappe.get_doc(SETTINGS_DOCTYPE_NAME, settings[0].name).as_dict()
+
+    return None
+
 
 
 def get_server_url(

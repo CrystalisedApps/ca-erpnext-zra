@@ -9,6 +9,7 @@ from ..apis.stock_api import submit_inventory
 from ..handlers.error_handler import handle_errors
 from ..overrides.server.stock_ledger_entry import on_update
 from ..services.code_list_service import sync_item_codes, sync_vsdc_codes
+from ..utils.payload_utils import get_branch_code_from_sle
 
 
 @frappe.whitelist()
@@ -28,12 +29,13 @@ def send_item_inventory_information(*args, **kwargs) -> None:
             SELECT
             sle.name AS name,
             sle.owner,
+			sle.voucher_type,
+			sle.voucher_no,
             sle.custom_inventory_submitted_successfully,
             sle.qty_after_transaction AS residual_qty,
 			sle.custom_submission_tries,
 			sle.company,
             sle.warehouse,
-            "000" AS branch_id,
             i.item_code AS item_code,                     -- ✔ correct: true ERPNext item code
             i.custom_smart_item_code AS smart_item_code   -- ✔ renamed to avoid overwriting item_code
         FROM `tabStock Ledger Entry` sle
@@ -50,6 +52,7 @@ def send_item_inventory_information(*args, **kwargs) -> None:
 		return
 
 	for sle in sles:
+		sle["branch_id"] = get_branch_code_from_sle(sle)
 		response = json.dumps(sle)
 		max_tries = get_max_submission_attempts("Stock Ledger Entry", company=sle.company)
 		if sle.custom_submission_tries and int(sle.custom_submission_tries) >= max_tries:

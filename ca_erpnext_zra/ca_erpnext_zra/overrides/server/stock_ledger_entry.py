@@ -22,6 +22,20 @@ def on_update(doc: Document, method: str | None = None) -> None:
 	
 	all_items = frappe.db.get_all("Item", ["*"])  # Get all items for details
 	record = frappe.get_doc(doc.voucher_type, doc.voucher_no)
+	# ---------------------------
+	# Fetch BHF ID from Branch
+	# ---------------------------
+	bhf_id = "001"
+	branch_field = None
+
+	# Some doctypes use "branch", others use accounting dimensions like "cost_center"
+	if hasattr(record, "branch") and record.branch:
+		branch_field = record.branch
+	if branch_field:
+		bhf_id = frappe.db.get_value("Branch", branch_field, "custom_branch_code")
+
+	
+
 	series_no = sar_no = int(re.sub(r"\D", "", doc.name)[-5:]) or 1
 	company = doc.company
 	settings = get_settings(company)
@@ -34,7 +48,7 @@ def on_update(doc: Document, method: str | None = None) -> None:
 	# Base payload
 	payload = {
 		"tpin": tpin,
-		"bhfId": "000",
+		"bhfId": bhf_id,
 		"sarNo": series_no,
 		"orgSarNo": series_no,
 		"regTyCd": "M",
