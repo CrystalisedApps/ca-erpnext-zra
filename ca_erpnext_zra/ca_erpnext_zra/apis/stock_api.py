@@ -92,64 +92,79 @@ def submit_inventory_wrapper(doc, method=None):
 
 @frappe.whitelist()
 def submit_inventory(data, method=None):
-	"""
-	Enqueue residual quantity submission to ZRA Smart Invoice
-	when a Stock Ledger Entry is updated/submitted.
-	"""
-	# If data arrives as a JSON string, convert it to dict
-	if isinstance(data, str):
-		try:
-			data = json.loads(data)
-		except Exception:
-			frappe.throw("Invalid JSON payload for submit_inventory")
-	# Get active Smart Invoice settings
-	settings = _get_single_smart_settings()
-	if not settings:
-		frappe.log_error("ZRA Settings Missing", "No active Smart Invoice settings found")
-		return
+    """
+    Submit residual stock quantities to ZRA Smart Invoice
+    after SLE (Stock Ledger Entry) submission.
+    """
 
-	# Decrypt TPIN
-	tpin = (
-		get_decrypted_password(
-			"Crystal ZRA Smart Invoice Settings", settings["name"], "tpin", raise_exception=False
-		)
-		or ""
-	)
+    # Accept JSON string or dict
+    if isinstance(data, str):
+        try:
+            data = json.loads(data)
+        except Exception:
+            frappe.throw("Invalid JSON payload for submit_inventory")
 
-	branch_id = getattr(settings, "branch_id", "000") or "000"
+    # --------------------------------------------
+    # 1. Fetch settings using the Company in the SLE
+    # --------------------------------------------
+    company = data.get("company")
+    if not company:
+        frappe.throw("Company is required to determine Smart Invoice settings.")
 
-	# Build payload
-	payload = {
-		"tpin": tpin,
-		"bhfId": branch_id,
-		"regrId": split_user_email(data["owner"]),
-		"regrNm": data["owner"],
-		"modrId": split_user_email(data["owner"]),
-		"modrNm": data["owner"],
-		"stockItemList": [
-			{
-				"itemCd": data["smart_item_code"],  # ZRA smart code
-				"rsdQty": data["residual_qty"],
-			}
-		],
-	}
+    settings = get_settings(company=company)
+    if not settings:
+        frappe.throw(f"No active Smart Invoice settings found for company: {company}")
 
-	# Success callback
-	success_handler = partial(submit_inventory_on_success, document_name=data["name"])
+    # --------------------------------------------
+    # 2. Decrypt TPIN
+    # --------------------------------------------
+    tpin = settings.get("tpin")
 
-	# Enqueue async job
-	frappe.enqueue(
-		process_request,
-		queue="default",
-		is_async=True,
-		request_data=payload,
-		route_key="saveStockMaster",  # or the correct endpoint for ZRA
-		handler_function=success_handler,
-		request_method="POST",
-		doctype="Stock Ledger Entry",
-		document_name=data["name"],
-		error_callback=inventory_error_handler,
-	)
+    # --------------------------------------------
+    # 3. Get branch code from Accounting Dimension
+    #    (custom_accounting_dimension field on SLE)
+    # --------------------------------------------
+    branch_code = data.get("branch_id") 
+    # Guarantee branch code is a string
+    branch_code = str(branch_code).zfill(3)
+
+    # --------------------------------------------
+    # 4. Build payload for ZRA
+    # --------------------------------------------
+    payload = {
+        "tpin": tpin,
+        "bhfId": branch_code,   # <-- BRANCH CODE INCLUDED
+        "regrId": split_user_email(data["owner"]),
+        "regrNm": data["owner"],
+        "modrId": split_user_email(data["owner"]),
+        "modrNm": data["owner"],
+        "stockItemList": [
+            {
+                "itemCd": data["smart_item_code"],  # Smart Item Code from ZRA
+                "rsdQty": data["residual_qty"],
+            }
+        ],
+    }
+
+    # Success callback
+    success_handler = partial(submit_inventory_on_success, document_name=data["name"])
+
+    # --------------------------------------------
+    # 5. Enqueue async API request
+    # --------------------------------------------
+    frappe.enqueue(
+        process_request,
+        queue="default",
+        is_async=True,
+        request_data=payload,
+        route_key="saveStockMaster",
+        handler_function=success_handler,
+        request_method="POST",
+        doctype="Stock Ledger Entry",
+        document_name=data["name"],
+        error_callback=inventory_error_handler,
+    )
+
 
 
 def _get_single_smart_settings():
@@ -313,7 +328,7 @@ def inventory_error_handler(
 #             now=False,
 #         )
 
-#         frappe.logger().info(f"📦 Enqueued ZRA sync for SLE {doc.name} ({route_key})")
+#         frappe.logger().info(f" Enqueued ZRA sync for SLE {doc.name} ({route_key})")
 
 #     except Exception:
 #         frappe.log_error(

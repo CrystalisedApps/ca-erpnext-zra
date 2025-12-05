@@ -167,6 +167,8 @@ class EndpointsBuilder(BaseEndpointsBuilder):
 		doctype: Document | str | None = None,
 		document_name: str | None = None,
 		retrying: bool = False,
+		 bhfid: str | None = None, 
+		 branch: str | None = None
 	) -> Optional[Union[dict, str, bytes]]:
 		# Validate required pieces
 		missing = []
@@ -251,6 +253,8 @@ class EndpointsBuilder(BaseEndpointsBuilder):
 							document_name=document_name,
 							doctype=doctype,
 							payload=self._payload,
+							bhfid=bhfid,
+							branch=branch,
 							settings_name=self._settings.name if self._settings else None,
 						)
 					except Exception:
@@ -288,6 +292,8 @@ class EndpointsBuilder(BaseEndpointsBuilder):
 							doctype=doctype,
 							document_name=document_name,
 							payload=self._payload,
+							bhfid=bhfid,
+							branch=branch,
 							settings_name=self._settings.name if self._settings else None,
 						)
 					except Exception:

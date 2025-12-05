@@ -13,12 +13,12 @@ from ..utils.payload_utils import (
 	generate_vsdc_item_payload,
 )
 from ..utils.smart_api_utils import get_active_smart_settings
-
+from ..utils.settings_utils import get_settings
 
 @frappe.whitelist()
-def perform_item_registration(doc, method=None) -> dict | None:
+def perform_item_registration(doc, settings_name=None, branch=None,branch_code=None, method=None) -> dict | None:
 	import json
-
+	# frappe.throw(str(branch))
 	# Handle both dict or string inputs (from frontend or hooks)
 	if isinstance(doc, str):
 		doc = json.loads(doc)
@@ -33,7 +33,7 @@ def perform_item_registration(doc, method=None) -> dict | None:
 	item = frappe.get_doc("Item", docname)
 
 	# Get the settings
-	settings = _get_single_smart_settings()
+	settings = get_settings(settings_name)
 	if not settings:
 		frappe.throw(_("No active Smart API Settings found."))
 
@@ -45,14 +45,42 @@ def perform_item_registration(doc, method=None) -> dict | None:
 		return None
 
 	missing_fields = validate_required_fields(item)
+	
 	if missing_fields:
 		frappe.msgprint(_("Missing required fields: {0}").format(", ".join(missing_fields)), alert=True)
 		return None
+	if hasattr(item, "has_value_changed"):
+		is_tax_type_changed = item.has_value_changed("custom_vat_category_code")
+	else:
+		is_tax_type_changed = True  # Assume changed if dict
+
+	if item.custom_vat_category_code and is_tax_type_changed:
+		relevant_tax_templates = frappe.get_all(
+            "Item Tax Template",
+            filters={"custom_taxation_type": item.custom_vat_category_code},
+            fields=["name"]
+        )
+
+		if relevant_tax_templates:
+            # Clear existing taxes
+			item.set("taxes", [])
+
+            # Append correctly
+			for template in relevant_tax_templates:
+				# frappe.throw(str(template))
+				item.append("taxes", {
+                    "item_tax_template": template.name
+                })
+
+        # Save to persist
+		# item.save(ignore_permissions=True)
 
 	# Generate Smart Item code code if missing
 	if not item.custom_smart_item_code:
 		generate_and_set_smart_code(item)
-
+	 
+	# item.save(ignore_permissions=True)
+	# frappe.db.commit()
 	# Step 1: Enqueue async GET to check if item already exists remotely
 	frappe.enqueue(
 		"ca_erpnext_zra.ca_erpnext_zra.apis.item_api._process_item_lookup",
@@ -60,6 +88,8 @@ def perform_item_registration(doc, method=None) -> dict | None:
 		job_name=f"[SMART] Lookup existing item {item.name}",
 		timeout=300,
 		item_name=item.name,
+		branch_code=branch_code,
+		branch=branch,
 		settings_name=settings_name,
 	)
 
@@ -71,7 +101,7 @@ def perform_item_registration(doc, method=None) -> dict | None:
 
 
 @frappe.whitelist()
-def _process_item_lookup(item_name: str, settings_name: str):
+def _process_item_lookup(item_name: str,branch_code: str, branch: str, settings_name: str):
 	"""Search for existing Smart Zambia item before registration (selectItem)."""
 	from ..apis.api_processor import process_request
 
@@ -87,7 +117,14 @@ def _process_item_lookup(item_name: str, settings_name: str):
 	# 	or ""
 	# )
 	tpin = settings.get("tpin")
-	bhf_id = settings.get("branch_id") or "000"  # Default branch
+	if branch_code:
+		bhf_id = branch_code
+	elif branch:
+        # Fetch the branch code from the Branch DocType
+		bhf_id = frappe.db.get_value("Branch", branch, "custom_branch_code") or "000"
+	else:
+		bhf_id = "000"
+	# bhf_id = settings.get("branch_id") or "000"  # Default branch
 	item_cd = item.get("custom_smart_item_code")
 
 	if not (tpin and item_cd):
@@ -100,7 +137,7 @@ def _process_item_lookup(item_name: str, settings_name: str):
 	# Build the expected Smart Zambia API request payload
 	request_data = {"tpin": tpin, "bhfId": bhf_id, "itemCd": item_cd}
 
-	frappe.logger().info(f"[SMART] 🔍 Looking up existing Smart item: {request_data}")
+	frappe.logger().info(f"[SMART]  Looking up existing Smart item: {request_data}")
 
 	# Enqueue Smart API call
 	frappe.enqueue(
@@ -114,26 +151,27 @@ def _process_item_lookup(item_name: str, settings_name: str):
 		doctype="Item",
 		document_name=item.name,
 		settings_name=settings_name,
+		bhfid=bhf_id,
+		branch=branch,
 		error_callback=fetch_matching_items_on_success,
+		
+		
 	)
 
 
 @frappe.whitelist()
-def fetch_item_details(item_code: str, settings_name: str = None) -> None:
+def fetch_item_details(item_code: str, branch: str,settings_name: str = None) -> None:
 	"""Fetch Item details from Smart Zambia API."""
-	settings = _get_single_smart_settings()
+	settings = get_settings(settings_name)
 	if not settings:
 		frappe.throw(_("No active Smart API Settings found"))
 
-	tpin = (
-		get_decrypted_password(
-			"Crystal ZRA Smart Invoice Settings", settings["name"], "tpin", raise_exception=False
-		)
-		or ""
-	)
+	tpin =settings.tpin
+	branch_code = frappe.db.get_value("Branch", branch, "custom_branch_code") or "000"
+
 	payload = {
 		"tpin": tpin,
-		"bhfId": "000",
+		"bhfId": branch_code or "000",
 		"itemCd": item_code,
 	}
 
@@ -250,7 +288,7 @@ def _get_single_smart_settings() -> dict | None:
 	"""Helper to return the single Smart settings dict or None."""
 	settings = get_active_smart_settings()
 	# settings = frappe.get_all("Crystal ZRA Smart Invoice Settings", fields=["name","company_name","tpin", "server_url"])
-	return settings[0] if settings else None
+	return settings if settings else None
 
 
 def is_item_eligible_for_registration(item) -> bool:
@@ -258,7 +296,7 @@ def is_item_eligible_for_registration(item) -> bool:
 	return not (item.get("custom_prevent_smart_registration") or item.disabled)
 
 
-def item_search_on_success(response: dict, settings_name: str, **kwargs) -> None:
+def item_search_on_success(response: dict,branch: str, settings_name: str, **kwargs) -> None:
 	"""
 	Handles item search response from the ZRA Smart Invoice system.
 	Creates or updates Item records in ERPNext based on ZRA item data.
@@ -283,7 +321,7 @@ def item_search_on_success(response: dict, settings_name: str, **kwargs) -> None
 				# Check for existing mapping
 				existing_item = frappe.db.get_value(
 					"Smart Crystallised Mapping",
-					{"zra_item_code": zra_item_code, "smart_setup": settings_name},
+					{"zra_item_code": zra_item_code, "branch": branch, "smart_setup": settings_name},
 					"parent",
 					order_by="creation desc",
 				)
@@ -385,7 +423,7 @@ def item_search_on_success(response: dict, settings_name: str, **kwargs) -> None
 					frappe.db.set_value(
 						"Smart Crystallised Mapping",
 						existing_mapping,
-						{"zra_item_code": zra_item_code},
+						{"zra_item_code": zra_item_code, "branch": branch},
 					)
 				else:
 					frappe.get_doc(
@@ -396,6 +434,7 @@ def item_search_on_success(response: dict, settings_name: str, **kwargs) -> None
 							"parentfield": "custom_smart_setup_mapping",
 							"zra_item_code": zra_item_code,
 							"smart_setup": settings_name,
+							"branch": branch
 						}
 					).insert(ignore_permissions=True)
 

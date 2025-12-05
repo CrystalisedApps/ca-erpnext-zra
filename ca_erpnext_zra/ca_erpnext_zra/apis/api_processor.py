@@ -24,6 +24,9 @@ def process_request(
 	error_callback: Callable = None,
 	settings_name: str = None,
 	company: str = None,
+    bhfid=None,
+	branch=None,
+
 	document_name: str = None,
 ) -> str | dict | None:
 	"""
@@ -82,6 +85,8 @@ def process_request(
 			document_name,
 			error_callback,
 			settings,
+			bhfid=bhfid,
+			branch=branch
 		)
 	else:
 		return f"Failed to process {route_key}. Missing required configuration."
@@ -167,6 +172,9 @@ def execute_request(
 	document_name: str,
 	error_callback: Callable = None,
 	settings: dict = None,
+	bhfid: str | None = None,
+	branch: str | None =None
+	
 ) -> str | dict | None:
 	"""
 	Executes a remote call against Crystal VSDC.
@@ -195,6 +203,8 @@ def execute_request(
 		response = endpoints_builder.make_remote_call(
 			doctype=doctype,
 			document_name=document_name,
+			 bhfid=bhfid,
+			 branch=branch
 		)
 
 		if isinstance(response, dict) and "next" in response and response.get("next") != url:

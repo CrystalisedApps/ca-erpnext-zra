@@ -5,106 +5,100 @@ from ..utils.response_utils import parse_response_data
 
 
 def handle_registration_response(
-	response,
-	request_data=None,
-	document_name=None,
-	doctype=None,
-	payload=None,
-	settings_name=None,
+    response,
+    request_data=None,
+    document_name=None,
+    doctype=None,
+    payload=None,
+    settings_name=None,
+    branch=None,
+    bhfid=None
 ):
-	"""
-	Handles ZRA Smart Invoice item registration (POST/PATCH) response.
-	Links the registered itemCd to local Item via Smart Crystallised Mapping.
-	"""
-	frappe.logger().info(f"[SMART] Registration Response: {frappe.as_json(response)}")
+    """
+    Handles ZRA Smart Invoice item registration (POST/PATCH) response.
+    Links the registered itemCd to local Item via Smart Crystallised Mapping.
+    """
+    frappe.logger().info(f"[SMART] Registration Response: {frappe.as_json(response)}")
 
-	try:
-		# Safely unpack ZRA response
-		is_success = response.get("IsSuccess")
-		result = response.get("Result") or {}
-		result_cd = result.get("resultCd")
-		result_data = result.get("data") or {}
+    try:
+        is_success = response.get("IsSuccess")
+        result = response.get("Result") or {}
+        result_cd = result.get("resultCd")
+        result_data = result.get("data") or {}
 
-		# Proceed only on successful registration
-		if is_success and result_cd == "000":
-			# Determine item code
-			item_code = (
-				(payload or {}).get("itemCd")
-				or (request_data or {}).get("itemCd")
-				or result_data.get("itemCd")
-			)
+        if is_success and result_cd == "000":
+            # Determine item code
+            item_code = (
+                (payload or {}).get("itemCd")
+                or (request_data or {}).get("itemCd")
+                or result_data.get("itemCd")
+            )
 
-			if not item_code:
-				frappe.log_error(
-					"[SMART] Missing itemCd in payload/request_data/response", "Registration Handler"
-				)
-				return
+            if not item_code:
+                frappe.log_error(
+                    "[SMART] Missing itemCd in payload/request_data/response", "Registration Handler"
+                )
+                return
 
-			# Find corresponding ERPNext Item
-			item_name = frappe.db.get_value("Item", {"custom_smart_item_code": item_code}, "name")
-			if not item_name:
-				frappe.log_error(f"[SMART] Item with code {item_code} not found", "Registration Handler")
-				return
+            # Find ERPNext Item
+            item_name = frappe.db.get_value(
+                "Item", {"custom_smart_item_code": item_code}, "name"
+            )
+            if not item_name:
+                frappe.log_error(
+                    f"[SMART] Item with code {item_code} not found", "Registration Handler"
+                )
+                return
 
-			# Extract ZRA item code (fallback to item_code)
-			zra_item_code = result_data.get("itemCd") or result.get("ItemCd") or item_code
+            zra_item_code = result_data.get("itemCd") or result.get("ItemCd") or item_code
 
-			# Update or append Smart Crystallised Mapping
-			item_doc = frappe.get_doc("Item", item_name)
-			found = False
+            # Load the item doc
+            item_doc = frappe.get_doc("Item", item_name)
+            found = False
 
-			for row in item_doc.get("custom_smart_setup_mapping", []):
-				if row.smart_setup == settings_name:
-					frappe.db.set_value(
-						"Smart Crystallised Mapping",
-						row.name,
-						{"zra_item_code": zra_item_code},
-					)
-					found = True
-					break
+            # Update existing mapping in-memory
+            for row in item_doc.get("custom_smart_setup_mapping", []):
+                if row.smart_setup == settings_name:
+                    row.zra_item_code = zra_item_code
+                    row.branch = branch
+                    found = True
+                    break
 
-			if not found:
-				item_doc.append(
-					"custom_smart_setup_mapping",
-					{
-						"smart_setup": settings_name,
-						"zra_item_code": zra_item_code,
-					},
-				)
-				item_doc.save(ignore_permissions=True)
+            # Append new mapping if not found
+            if not found:
+                item_doc.append(
+                    "custom_smart_setup_mapping",
+                    {
+                        "smart_setup": settings_name,
+                        "zra_item_code": zra_item_code,
+                        "branch": branch,
+                    },
+                )
 
-			# Mark as registered
-			frappe.db.set_value("Item", item_name, "custom_item_registered", 1)
-			frappe.db.commit()
+            #  Set registered checkbox before saving
+            item_doc.custom_item_registered = 1
+            item_doc.save(ignore_permissions=True)
+            frappe.db.commit()
 
-			frappe.logger().info(f"[SMART] Registered: {item_code} → ZRA Code: {zra_item_code}")
+            frappe.logger().info(
+                f"[SMART] Registered: {item_code} → ZRA Code: {zra_item_code} | Branch: {branch}"
+            )
 
-			# # Enqueue inventory sync if applicable
-			# if getattr(item_doc, "is_stock_item", False):
-			#     frappe.enqueue(
-			#         "ca_erpnext_zra.ca_erpnext_zra.apis.item_api.submit_inventory",
-			#         item_name=item_name,
-			#         queue="long",
-			#     )
-
-		else:
-			frappe.log_error(
-				title="[SMART] Registration Failed",
-				message=f"Response: {frappe.as_json(response)}\nPayload: {payload}",
-			)
-
-	except Exception as e:
-		frappe.log_error(frappe.get_traceback(), f"[SMART] Failed to process registration response: {e}")
+    except Exception as e:
+        frappe.log_error(
+            frappe.get_traceback(), f"[SMART] Failed to process registration response: {e}"
+        )
 
 
-def fetch_matching_items_on_success(response: dict, document_name: str, settings_name: str, **kwargs) -> None:
+def fetch_matching_items_on_success(response: dict, document_name: str, settings_name: str, bhfid,branch, **kwargs) -> None:
 	"""
 	Handles Smart Zambia (ZRA) item search response.
 	Checks for matching items, archives duplicates if found,
 	and registers or creates the ERPNext Item accordingly.
 	"""
 	from ..apis.api_processor import process_request
-
+	
+	frappe.logger().info(f"[SMART] Callback received BHFID: {bhfid}")
 	items = parse_response_data(response, list)
 	item_doc = frappe.get_doc("Item", document_name)
 
@@ -113,7 +107,7 @@ def fetch_matching_items_on_success(response: dict, document_name: str, settings
 		(
 			row.zra_item_code
 			for row in item_doc.get("custom_smart_setup_mapping", [])
-			if row.smart_setup == settings_name
+				if row.smart_setup == settings_name
 		),
 		None,
 	)
@@ -160,7 +154,8 @@ def fetch_matching_items_on_success(response: dict, document_name: str, settings
 				f"[SMART] No existing ZRA item found for {item_doc.name}, creating new item."
 			)
 			existing_mapping = None 
-	request_data = generate_vsdc_item_payload(item_doc.name, settings_name)
+	
+	request_data = generate_vsdc_item_payload(item_doc.name,bhfid, settings_name)
 	route_key = "updateItem" if existing_mapping else "saveItem"
 	frappe.enqueue(
 		process_request,
@@ -170,6 +165,7 @@ def fetch_matching_items_on_success(response: dict, document_name: str, settings
 		route_key=route_key,
 		handler_function=handle_registration_response,
 		request_method="POST",
+		branch=branch,
 		settings_name=settings_name,
 	)
 

@@ -9,7 +9,7 @@ import frappe
 from frappe.model.document import Document
 from frappe.utils import cint, cstr, flt, get_datetime, getdate, now, now_datetime
 from frappe.utils.password import get_decrypted_password
-
+from ..utils.settings_utils import get_settings
 from .tax_utils import calculate_tax
 
 
@@ -116,7 +116,6 @@ def build_debit_note_payload(docname: str, settings_name: str | None = None) -> 
 	 - Omitted items
 	 - Customer Debit Note required
 
-	Replaces the original Purchase-Invoice-based logic.
 	"""
 
 	# ------------------
@@ -125,25 +124,25 @@ def build_debit_note_payload(docname: str, settings_name: str | None = None) -> 
 	doc = frappe.get_doc("Sales Invoice", docname)
 
 	tpin = ""
-	bhf_id = "000"
+	branch_code = "000" 
+	try:
+		if hasattr(doc, "branch") and doc.branch:
+			branch_doc = frappe.get_doc("Branch", doc.branch)
+			branch_code = branch_doc.get("custom_branch_code") or "000"
+	except Exception as e:
+		frappe.log_error(f"Failed to fetch branch code: {e}", "Branch Code Error")
 
+	
 	if not settings_name:
 		settings_record = frappe.get_all("Crystal ZRA Smart Invoice Settings", fields=["name"], limit=1)
 		if settings_record:
 			settings_name = settings_record[0]["name"]
 
 	if settings_name:
-		settings_doc = frappe.get_doc("Crystal ZRA Smart Invoice Settings", settings_name)
-		tpin = (
-			get_decrypted_password(
-				"Crystal ZRA Smart Invoice Settings",
-				settings_name,
-				"tpin",
-				raise_exception=False,
-			)
-			or ""
-		)
-		bhf_id = cstr(getattr(settings_doc, "branch_id", "000")) or "000"
+		settings = get_settings(settings_name)
+		tpin = settings.get("tpin")
+		
+		
 
 	user = frappe.session.user or "admin"
 
@@ -220,7 +219,7 @@ def build_debit_note_payload(docname: str, settings_name: str | None = None) -> 
 	# ------------------
 	payload = {
 		"tpin": tpin,
-		"bhfId": bhf_id,
+		"bhfId": branch_code or "000",
 		"cisInvcNo": cstr(doc.get("custom_cis_number") or doc.name),
 		# SALES — correct mapping
 		"custTpin": safe_cust_tpin,
@@ -349,309 +348,6 @@ def build_debit_note_payload(docname: str, settings_name: str | None = None) -> 
 	return payload
 
 
-# def build_debit_note_payload(docname: str, settings_name: str = None) -> Dict[str, Any]:
-# 	"""
-# 	Build a Debit Note payload for Smart Invoice (ZRA) from a Purchase Invoice/Debit Note.
-# 	This logic assumes a single VAT bucket (A) and handles item-level tax breakdown.
-
-# 	Args:
-# 	    docname (str): name of the Purchase Invoice or Debit Note in ERPNext
-# 	    settings_name (str, optional): Crystal ZRA Smart Invoice Settings record name.
-# 	                                   If None, the first record is fetched.
-# 	Returns:
-# 	    dict: payload ready for submission to Smart Invoice API
-# 	"""
-# 	# ------------------
-# 	# 1. Fetch Documents and Settings
-# 	# ------------------
-# 	doc = frappe.get_doc("Purchase Invoice", docname)
-
-# 	tpin = ""
-# 	bhf_id = "000"  # Default as per example
-# 	if not settings_name:
-# 		# Fetch the name of the first settings record if not provided
-# 		settings_record = frappe.get_all("Crystal ZRA Smart Invoice Settings", fields=["name"], limit=1)
-# 		if settings_record:
-# 			settings_name = settings_record[0]["name"]
-
-# 	if settings_name:
-# 		settings_doc = frappe.get_doc("Crystal ZRA Smart Invoice Settings", settings_name)
-# 		# Assuming get_decrypted_password is available in the environment
-# 		tpin = (
-# 			get_decrypted_password(
-# 				"Crystal ZRA Smart Invoice Settings",
-# 				settings_name,  # positional docname
-# 				"tpin",  # fieldname
-# 				raise_exception=False,
-# 			)
-# 			or ""
-# 		)
-# 		bhf_id = cstr(getattr(settings_doc, "branch_id", "000")) or "000"
-
-# 	user = frappe.session.user or "admin"
-
-# 	# Totals (use document fields if available)
-# 	tot_item_cnt = len(doc.items or [])
-
-# 	# The doc totals are now explicitly ignored in favor of calculated ZRA totals
-# 	# doc_base_net_total = _safe_float(getattr(doc, "base_net_total", 0))
-# 	# doc_base_tax_total = _safe_float(getattr(doc, "base_tax_total", 0))
-# 	# doc_base_grand_total = _safe_float(getattr(doc, "base_grand_total", 0))
-
-# 	# Optional document-level dates
-# 	# Ensure date fields (confirmation_date, posting_date) are passed to the fixed formatters
-# 	cfm_dt = _fmt_datetime(getattr(doc, "confirmation_date", None) or getattr(doc, "posting_date", None))
-# 	sales_dt = _fmt_date(getattr(doc, "posting_date", None))
-
-# 	# Prepare fields that require specific validation (TPIN, LPO)
-# 	cust_tpin_val = cstr(getattr(doc, "supplier_tpin", None) or getattr(doc, "customer_tpin", None))
-# 	# Ensure custTpin is None if it's an empty string to avoid "Must be a valid TPIN" error
-# 	safe_cust_tpin = cust_tpin_val if cust_tpin_val else None
-
-# 	lpo_number_val = cstr(getattr(doc, "lpo_number", None))
-# 	# Ensure lpoNumber is None if it doesn't meet the length requirement (9 to 20)
-# 	safe_lpo_number = lpo_number_val if 9 <= len(lpo_number_val) <= 20 else None
-
-# 	# Original Invoice Number must be provided for Debit Notes.
-# 	# 1. Get the document name from custom field or standard 'return_against' field.
-# 	org_invc_no_val = cstr(getattr(doc, "original_invoice_number", None))
-# 	if not org_invc_no_val:
-# 		org_invc_no_val = cstr(getattr(doc, "return_against", None))
-
-# 	# 2. Extract the numeric suffix required by the ZRA API (Int64).
-# 	extracted_numeric_suffix = None
-# 	if org_invc_no_val and org_invc_no_val != "0":
-# 		try:
-# 			# Split by '-', take the last part (which is the serial number)
-# 			# Example: "ACC-PINV-2025-00049" -> "00049"
-# 			parts = org_invc_no_val.split("-")
-# 			numeric_part = parts[-1]
-
-# 			# Convert to integer to strip leading zeros (e.g., "00049" -> 49),
-# 			# then back to string for the payload.
-# 			# This is done to satisfy the API's Int64 requirement for the invoice number.
-# 			extracted_numeric_suffix = cstr(int(numeric_part))
-# 		except (ValueError, IndexError):
-# 			# If conversion or splitting fails (e.g., non-standard doc name), use the full string.
-# 			extracted_numeric_suffix = org_invc_no_val
-
-# 	# 3. Final assignment: Ensure the value is None if it's still missing or "0"
-# 	safe_org_invc_no = (
-# 		extracted_numeric_suffix if extracted_numeric_suffix and extracted_numeric_suffix != "0" else None
-# 	)
-
-# 	# ------------------
-# 	# 2. Base Payload Structure & Defaults
-# 	# ------------------
-# 	# Rates are read first so the item loop can use them for calculation
-# 	rates = {
-# 		"A": _safe_float(getattr(doc, "tax_rate_a", 16)),
-# 		"B": _safe_float(getattr(doc, "tax_rate_b", 16)),
-# 		"C1": _safe_float(getattr(doc, "tax_rate_c1", 0)),
-# 		"C2": _safe_float(getattr(doc, "tax_rate_c2", 0)),
-# 		"C3": _safe_float(getattr(doc, "tax_rate_c3", 0)),
-# 		"D": _safe_float(getattr(doc, "tax_rate_d", 0)),
-# 		"Rvat": _safe_float(getattr(doc, "tax_rate_rvat", 16)),
-# 		"E": _safe_float(getattr(doc, "tax_rate_e", 0)),
-# 		"F": _safe_float(getattr(doc, "tax_rate_f", 10)),
-# 		"Ipl1": _safe_float(getattr(doc, "tax_rate_ipl1", 5)),
-# 		"Ipl2": _safe_float(getattr(doc, "tax_rate_ipl2", 0)),
-# 		"Tl": _safe_float(getattr(doc, "tax_rate_tl", 1.5)),
-# 		"Ecm": _safe_float(getattr(doc, "tax_rate_ecm", 5)),
-# 		"Exeeg": _safe_float(getattr(doc, "tax_rate_exeeg", 3)),
-# 		"Tot": _safe_float(getattr(doc, "tax_rate_tot", 0)),
-# 	}
-
-# 	payload: Dict[str, Any] = {
-# 		"tpin": tpin,
-# 		"bhfId": bhf_id,
-# 		"cisInvcNo": cstr(getattr(doc, "custom_cis_number", doc.name)),
-# 		"custTpin": safe_cust_tpin,
-# 		"custNm": cstr(getattr(doc, "supplier_name", None) or getattr(doc, "customer_name", None)),
-# 		"salesTyCd": "N",  # default: Normal
-# 		"rcptTyCd": "D",  # D = Debit Note
-# 		"pmtTyCd": cstr(getattr(doc, "payment_type_code", "01")),
-# 		"salesSttsCd": cstr(getattr(doc, "sales_status_code", "02")),
-# 		"cfmDt": cfm_dt,  # Uses the fixed 14-char format
-# 		"salesDt": sales_dt,  # Uses the fixed 8-char format
-# 		"stockRlsDt": None,
-# 		"cnclReqDt": None,
-# 		"cnclDt": None,
-# 		"rfdDt": None,
-# 		"rfdRsnCd": None,
-# 		"totItemCnt": tot_item_cnt,
-# 		# Initialize tax buckets (Amounts and Taxable) and rates from the 'rates' dictionary
-# 		"taxblAmtA": 0.0,
-# 		"taxblAmtB": 0.0,
-# 		"taxblAmtC1": 0.0,
-# 		"taxblAmtC2": 0.0,
-# 		"taxblAmtC3": 0.0,
-# 		"taxblAmtD": 0.0,
-# 		"taxblAmtRvat": 0.0,
-# 		"taxblAmtE": 0.0,
-# 		"taxblAmtF": 0.0,
-# 		"taxblAmtIpl1": 0.0,
-# 		"taxblAmtIpl2": 0.0,
-# 		"taxblAmtTl": 0.0,
-# 		"taxblAmtEcm": 0.0,
-# 		"taxblAmtExeeg": 0.0,
-# 		"taxblAmtTot": 0.0,
-# 		"taxRtA": rates["A"],
-# 		"taxRtB": rates["B"],
-# 		"taxRtC1": rates["C1"],
-# 		"taxRtC2": rates["C2"],
-# 		"taxRtC3": rates["C3"],
-# 		"taxRtD": rates["D"],
-# 		"taxRtRvat": rates["Rvat"],
-# 		"taxRtE": rates["E"],
-# 		"taxRtF": rates["F"],
-# 		"taxRtIpl1": rates["Ipl1"],
-# 		"taxRtIpl2": rates["Ipl2"],
-# 		"taxRtTl": rates["Tl"],
-# 		"taxRtEcm": rates["Ecm"],
-# 		"taxRtExeeg": rates["Exeeg"],
-# 		"taxRtTot": rates["Tot"],
-# 		"taxAmtA": 0.0,
-# 		"taxAmtB": 0.0,
-# 		"taxAmtC1": 0.0,
-# 		"taxAmtC2": 0.0,
-# 		"taxAmtC3": 0.0,
-# 		"taxAmtD": 0.0,
-# 		"taxAmtRvat": 0.0,
-# 		"taxAmtE": 0.0,
-# 		"taxAmtF": 0.0,
-# 		"taxAmtIpl1": 0.0,
-# 		"taxAmtIpl2": 0.0,
-# 		"taxAmtTl": 0.0,
-# 		"taxAmtEcm": 0.0,
-# 		"taxAmtExeeg": 0.0,
-# 		"taxAmtTot": 0.0,
-# 		# Totals are initialized to zero and calculated accurately in step 5
-# 		"totTaxblAmt": 0.0,
-# 		"totTaxAmt": 0.0,
-# 		"totAmt": 0.0,
-# 		"tlAmt": 0.0,  # This field appears in the original list but is a tax type, keep as 0.0 init
-# 		"cashDcRt": _safe_float(getattr(doc, "cash_discount_rate", 0)),
-# 		"cashDcAmt": _safe_float(getattr(doc, "cash_discount_amount", 0)),
-# 		"prchrAcptcYn": cstr(getattr(doc, "prchr_acptc_yn", "N")),
-# 		"remark": cstr(getattr(doc, "remarks", "") or ""),
-# 		"regrId": user,
-# 		"regrNm": user,
-# 		"modrId": user,
-# 		"modrNm": user,
-# 		"saleCtyCd": cstr(getattr(doc, "sale_city_code", "1")),
-# 		"lpoNumber": safe_lpo_number,
-# 		"currencyTyCd": cstr(
-# 			getattr(doc, "currency", frappe.defaults.get_global_default("currency") or "ZMW")
-# 		),
-# 		"exchangeRt": cstr(_safe_float(getattr(doc, "exchange_rate", 1))),
-# 		"destnCountryCd": cstr(getattr(doc, "destination_country_code", "") or ""),
-# 		"dbtRsnCd": cstr(getattr(doc, "debit_reason_code", "03")),
-# 		"invcAdjustReason": cstr(getattr(doc, "adjust_reason", "")),
-# 		"itemList": [],
-# 	}
-
-# 	# Conditionally add orgInvcNo. ZRA API often fails if this mandatory field is 'null',
-# 	# requiring it to be omitted if not present in ERPNext.
-# 	if safe_org_invc_no:
-# 		payload["orgInvcNo"] = safe_org_invc_no
-
-# 	# ------------------
-# 	# 3. Per-item mapping & Totals Accumulation
-# 	# ------------------
-# 	# ------------------
-# 	# 3. Per-item mapping & Totals Accumulation
-# 	# ------------------
-# 	for item_seq, itm in enumerate(doc.items, 1):
-# 		item_code = cstr(itm.get("item_code"))
-# 		item_name = cstr(itm.get("item_name"))
-# 		item_cls = cstr(
-# 			getattr(itm, "custom_item_classification", None)
-# 			or frappe.db.get_value("Item", item_code, "custom_smart_item_classification_code")
-# 			or "50102517"
-# 		)
-
-# 		qty = abs(_safe_float(itm.get("qty", 1)))
-# 		rate = abs(_safe_float(itm.get("rate", itm.get("base_rate", 0))))
-# 		dc_amt = abs(_safe_float(itm.get("discount_amount", 0)))
-# 		dc_rt = abs(_safe_float(itm.get("discount_percentage", 0)))
-
-# 		# Determine tax category and rate
-# 		vat_cat_cd = cstr(getattr(itm, "vat_category", "A") or "A")
-# 		tax_rate = rates.get(vat_cat_cd, 0.0)
-
-# 		# === Calculate amounts exactly like in invoice builder ===
-# 		sply_amt = round(rate * qty, 2)  # Supply amount before tax
-# 		vat_rate = round(rate * tax_rate / 100, 4)  # VAT per unit
-# 		vat_amt = round(sply_amt * tax_rate / 100, 2)  # Total VAT on line
-# 		sply_rate = round(rate + vat_rate, 4)  # Rate including VAT
-# 		tot_amt = round(sply_amt - dc_amt + vat_amt, 2)  # Supply - discount + VAT
-# 		tl_amt = tot_amt  # For compatibility
-
-# 		# === Update tax bucket totals ===
-# 		if vat_cat_cd in rates:
-# 			taxbl_key = f"taxblAmt{vat_cat_cd}"
-# 			taxamt_key = f"taxAmt{vat_cat_cd}"
-# 			taxrt_key = f"taxRt{vat_cat_cd}"
-# 			payload[taxbl_key] = round(payload.get(taxbl_key, 0) + sply_amt, 4)
-# 			payload[taxamt_key] = round(payload.get(taxamt_key, 0) + vat_amt, 2)
-# 			payload[taxrt_key] = tax_rate
-
-# 		# === Item payload ===
-# 		item_payload = {
-# 			"itemSeq": item_seq,
-# 			"itemCd": item_code,
-# 			"itemNm": item_name,
-# 			"itemClsCd": item_cls,
-# 			"qty": qty,
-# 			"qtyUnitCd": cstr(getattr(itm, "uom", getattr(itm, "stock_uom", "EA"))),
-# 			"prc": sply_rate,
-# 			"splyAmt": tl_amt,
-# 			"vatAmt": vat_amt,
-# 			"tlAmt": 0,
-# 			"totAmt": tot_amt,
-# 			"vatTaxblAmt": sply_amt,
-# 			"tlTaxblAmt": sply_amt,
-# 			"pkg": abs(itm.get("package_qty") or 1),
-# 			"pkgUnitCd": cstr(getattr(itm, "package_unit", "EA")),
-# 			"dcAmt": dc_amt,
-# 			"dcRt": dc_rt,
-# 			"bcd": cstr(getattr(itm, "barcode", "") or ""),
-# 			"vatCatCd": vat_cat_cd,
-# 		}
-# 		payload["itemList"].append(item_payload)
-
-# 	# ------------------
-# 	# 5. Final Totals Update (Aggregate all buckets)
-# 	# ------------------
-# 	total_taxable_amount = 0.0
-# 	total_tax_amount = 0.0
-# 	total_items_amount = 0.0  # Calculate this from the item list's totAmt
-
-# 	# Iterate through all tax bucket keys to compute final totals
-# 	for key in ["A", "B", "C1", "C2", "C3", "D", "Rvat", "E", "F", "Ipl1", "Ipl2", "Tl", "Ecm", "Exeeg"]:
-# 		# Round the accumulated bucket values before final summation
-# 		# This double-rounding is okay since the accumulation used item-level rounded values.
-# 		payload[f"taxblAmt{key}"] = round(payload.get(f"taxblAmt{key}", 0.0), 4)
-# 		payload[f"taxAmt{key}"] = round(payload.get(f"taxAmt{key}", 0.0), 2)
-
-# 		total_taxable_amount += payload[f"taxblAmt{key}"]
-# 		total_tax_amount += payload[f"taxAmt{key}"]
-
-# 	# Get the sum of all item total amounts
-# 	total_items_amount = sum(i.get("totAmt", 0) for i in payload["itemList"])
-
-# 	# Update final totals in the payload (using calculated sums)
-# 	payload["totTaxblAmt"] = round(total_taxable_amount, 4)
-# 	payload["totTaxAmt"] = round(total_tax_amount, 2)
-
-# 	# Total Amount = (Sum of Item Totals) - Cash Discount Amount
-# 	computed_tot_amt = round(total_items_amount - payload.get("cashDcAmt", 0), 2)
-# 	payload["totAmt"] = computed_tot_amt
-
-# 	# IMPORTANT: Wrap the entire transaction payload under the 'debitNoteTxn' key
-# 	# as required by the API.
-# 	return payload
 
 
 @frappe.whitelist()
@@ -761,7 +457,7 @@ def build_purchase_payload(docname: str, settings_name: str) -> dict:
 	return payload
 
 
-def generate_vsdc_item_payload(item_name: str, settings_name: str) -> dict:
+def generate_vsdc_item_payload(item_name: str,bhfid, settings_name: str) -> dict:
 	item = frappe.get_doc("Item", item_name)
 
 	def get_code(fieldname: str) -> str | None:
@@ -807,7 +503,7 @@ def generate_vsdc_item_payload(item_name: str, settings_name: str) -> dict:
 
 	payload = {
 		"tpin": tpin,
-		"bhfid": "000",
+		"bhfid": bhfid,
 		"itemCd": item.custom_smart_item_code,  # Generate a custom smart_item_code
 		"itemClsCd": get_code("custom_smart_item_classification_code"),
 		"itemTyCd": item.custom_smart_item_type,
@@ -850,8 +546,17 @@ def fmt4(value):
 
 def build_invoice_payload(invoice: "Document", settings_name: str) -> dict:
 	# settings = frappe.get_doc("Crystal ZRA Smart Invoice Settings", settings_name)
-	tpin = get_decrypted_password("Crystal ZRA Smart Invoice Settings", settings_name, "tpin") or ""
-	bhf_id = "000"
+	
+	settings = get_settings(settings_name)
+	tpin = settings.get("tpin")
+	branch_code = "000" 
+	try:
+		if hasattr(invoice, "branch") and invoice.branch:
+			branch_doc = frappe.get_doc("Branch", invoice.branch)
+			branch_code = branch_doc.get("custom_branch_code") or "000"
+	except Exception as e:
+		frappe.log_error(f"Failed to fetch branch code: {e}", "Branch Code Error")
+
 
 	# Dates
 	sales_dt = datetime.strptime(str(invoice.posting_date), "%Y-%m-%d").strftime("%Y%m%d")
@@ -875,7 +580,7 @@ def build_invoice_payload(invoice: "Document", settings_name: str) -> dict:
 
 	payload = {
 		"tpin": tpin,
-		"bhfId": bhf_id,
+		"bhfId": branch_code or "000",
 		"cisInvcNo": reference_number,
 		"salesDt": sales_dt,
 		"custTpin": customer.tax_id,
@@ -1019,19 +724,21 @@ def get_invoice_reference_number(invoice: Document) -> str:
 def build_credit_note_payload(doc, settings_name):
 	"""Build payload for Credit Note (Return Invoice) matching invoice payload structure."""
 
-	settings = frappe.get_doc("Crystal ZRA Smart Invoice Settings", settings_name)
+	# settings = frappe.get_doc("Crystal ZRA Smart Invoice Settings", settings_name)
 	original_invoice = frappe.get_doc("Sales Invoice", doc.return_against)
 	customer = frappe.get_doc("Customer", doc.customer)
 	# org_invc_no = original_invoice.get("custom_scu_invoice_number")
+	settings = get_settings(settings_name)
+	tpin = settings.get("tpin")
 
-	tpin = (
-		get_decrypted_password(
-			"Crystal ZRA Smart Invoice Settings", settings.name, "tpin", raise_exception=False
-		)
-		or ""
-	)
+	branch_code = "000" 
+	try:
+		if hasattr(original_invoice, "branch") and original_invoice.branch:
+			branch_doc = frappe.get_doc("Branch", original_invoice.branch)
+			branch_code = branch_doc.get("custom_branch_code") or "000"
+	except Exception as e:
+		frappe.log_error(f"Failed to fetch branch code: {e}", "Branch Code Error")
 
-	bhf_id = "000"
 
 	def extract_numeric(invoice_id: str) -> str:
 		"""
@@ -1067,7 +774,7 @@ def build_credit_note_payload(doc, settings_name):
 	# === Base payload ===
 	payload = {
 		"tpin": tpin,
-		"bhfId": bhf_id,
+		"bhfId": branch_code,
 		"orgInvcNo": extract_numeric(original_invoice.name),
 		"cisInvcNo": doc.name,
 		"custTpin": customer.tax_id or "",
@@ -1570,3 +1277,40 @@ def generate_custom_item_code_smart(doc: Document) -> str:
 
 def build_import_item_payload(settings: dict):
 	return {"company_name": settings.company, "tpin": settings.tpin, "bhfId": settings.get("bhf_id", "000")}
+
+
+def get_branch_code_from_sle(sle: dict) -> str:
+    """Return branch code from the document that generated the SLE."""
+
+    voucher_type = sle.get("voucher_type")
+    voucher_no = sle.get("voucher_no")
+
+    if not voucher_type or not voucher_no:
+        return "001"
+
+    if not frappe.db.exists(voucher_type, voucher_no):
+        return "001"
+
+    doc = frappe.get_doc(voucher_type, voucher_no)
+
+    # Branch may appear under different fieldnames
+    branch_name = (
+        getattr(doc, "branch", None)
+        or getattr(doc, "custom_branch", None)
+        or getattr(doc, "branch_id", None)
+        or None
+    )
+
+    if not branch_name:
+        return "001"
+
+    # Fetch Branch master to get ZRA branch code
+    branch_doc = frappe.get_doc("Branch", branch_name)
+
+    branch_code = (
+        getattr(branch_doc, "custom_branch_code", None)
+        or getattr(branch_doc, "custom_branch_code", None)
+        or "001"
+    )
+
+    return str(branch_code).zfill(3)
