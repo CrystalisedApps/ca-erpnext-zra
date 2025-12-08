@@ -27,6 +27,7 @@
   "column_break_mytx",
   "settings",
   "company",
+  "branch_code",
   "imported_item_status",
   "imported_item_status_code",
   "quantity_unit_code",
@@ -209,6 +210,12 @@
    "fieldtype": "Link",
    "label": "Company",
    "options": "Company"
+  },
+  {
+   "fieldname": "branch_code",
+   "fieldtype": "Data",
+   "label": "Branch Code",
+   "read_only": 1
   }
  ],
  "grid_page_length": 50,
@@ -224,7 +231,7 @@
    "link_fieldname": "custom_import_source_registered_purchase"
   }
  ],
- "modified": "2025-12-04 16:44:28.086849",
+ "modified": "2025-12-08 17:11:35.880424",
  "modified_by": "Administrator",
  "module": "Ca Erpnext Zra",
  "name": "Crystallised Smart Registered Import Item",

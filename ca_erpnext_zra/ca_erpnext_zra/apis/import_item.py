@@ -13,24 +13,24 @@ from ..utils.routes_utils import get_route_path
 
 
 @frappe.whitelist()
-def select_import_items_all_branches() -> None:
-	all_credentials = frappe.get_all(
-		SETTINGS_DOCTYPE_NAME, ["name", "company_name", "tpin"], {"is_active": 1}
+def select_import_items(company_name: str, branch_name: str) -> None:
+	credential = frappe.db.get_value(
+		SETTINGS_DOCTYPE_NAME, {"company_name": company_name}, ["name", "company_name", "tpin"], as_dict=True
 	)
 
-	if len(all_credentials) < 1:
+	if not credential:
 		frappe.throw(f"No Active {SETTINGS_DOCTYPE_NAME} found.")
+
+	branch_code = frappe.db.get_value("Branch", {"name": branch_name}, "custom_branch_code")
 
 	route_key = "selectImports"
 
-	for cred in all_credentials:
-		request_data = build_import_item_payload(cred)
-
-		_, last_req_date = get_route_path(route_key, "Crystal VSDC")
-		request_date = add_to_date(datetime.now(), years=-1).strftime("%Y%m%d%H%M%S")
-		last_req_date = last_req_date.strftime("%Y%m%d%H%M%S") if last_req_date else request_date
-		request_data.update({"lastReqDt": last_req_date})
-		perform_import_item(request_data, cred.name, route_key)
+	request_data = build_import_item_payload(credential)
+	_, last_req_date = get_route_path(route_key, "Crystal VSDC")
+	request_date = add_to_date(datetime.now(), years=-1).strftime("%Y%m%d%H%M%S")
+	last_req_date = last_req_date.strftime("%Y%m%d%H%M%S") if last_req_date else request_date
+	request_data.update({"lastReqDt": last_req_date, "bhfId": branch_code})
+	perform_import_item(request_data, credential.name, route_key)
 
 
 def perform_import_item(request_data: str, settings_name: str, route_key: str):
@@ -41,11 +41,12 @@ def perform_import_item(request_data: str, settings_name: str, route_key: str):
 		request_method="POST",
 		doctype="Item",
 		settings_name=settings_name,
+		bhfid=request_data.get("bhfId"),
 	)
 
 
 @frappe.whitelist()
-def create_items_from_fetched_registered_imports(request_data: str) -> None:
+def create_item_from_fetched_registered_import(request_data: str) -> None:
 	data = json.loads(request_data)
 	if data["items"]:
 		items = data["items"]

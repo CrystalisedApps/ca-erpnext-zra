@@ -19,15 +19,23 @@ frappe.listview_settings[doctypeName] = {
 						reqd: 1,
 						default: default_company,
 					},
+					{
+						fieldname: "branch",
+						label: __("Branch"),
+						fieldtype: "Link",
+						options: "Branch",
+						reqd: 1,
+					},
 				],
 				primary_action_label: __("Fetch"),
 				primary_action(values) {
 					dialog.hide();
 
 					frappe.call({
-						method: "ca_erpnext_zra.ca_erpnext_zra.apis.import_item.select_import_items_all_branches",
+						method: "ca_erpnext_zra.ca_erpnext_zra.apis.import_item.select_import_items",
 						args: {
 							company_name: values.company,
+							branch_name: values.branch,
 						},
 						callback: function (r) {},
 						error: function (err) {

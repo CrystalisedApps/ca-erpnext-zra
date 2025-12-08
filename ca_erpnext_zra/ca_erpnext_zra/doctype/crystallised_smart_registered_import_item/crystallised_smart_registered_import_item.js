@@ -42,7 +42,7 @@ frappe.ui.form.on(doctypeName, {
 				__("Create Item"),
 				function () {
 					frappe.call({
-						method: "ca_erpnext_zra.ca_erpnext_zra.apis.import_item.create_items_from_fetched_registered_imports",
+						method: "ca_erpnext_zra.ca_erpnext_zra.apis.import_item.create_item_from_fetched_registered_import",
 						args: {
 							request_data: {
 								items: item,
@@ -201,6 +201,7 @@ frappe.ui.form.on(doctypeName, {
 															values.creditors_account,
 														default_warehouse:
 															values.default_warehouse,
+														branch_code: frm.doc.branch_code,
 													},
 												},
 												callback: (response) => {

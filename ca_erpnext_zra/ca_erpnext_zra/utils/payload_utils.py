@@ -124,7 +124,7 @@ def build_debit_note_payload(docname: str, settings_name: str | None = None) -> 
 	doc = frappe.get_doc("Sales Invoice", docname)
 
 	tpin = ""
-	branch_code = "000" 
+	branch_code = "000"
 	try:
 		if hasattr(doc, "branch") and doc.branch:
 			branch_doc = frappe.get_doc("Branch", doc.branch)
@@ -132,7 +132,6 @@ def build_debit_note_payload(docname: str, settings_name: str | None = None) -> 
 	except Exception as e:
 		frappe.log_error(f"Failed to fetch branch code: {e}", "Branch Code Error")
 
-	
 	if not settings_name:
 		settings_record = frappe.get_all("Crystal ZRA Smart Invoice Settings", fields=["name"], limit=1)
 		if settings_record:
@@ -141,8 +140,6 @@ def build_debit_note_payload(docname: str, settings_name: str | None = None) -> 
 	if settings_name:
 		settings = get_settings(settings_name)
 		tpin = settings.get("tpin")
-		
-		
 
 	user = frappe.session.user or "admin"
 
@@ -348,8 +345,6 @@ def build_debit_note_payload(docname: str, settings_name: str | None = None) -> 
 	return payload
 
 
-
-
 @frappe.whitelist()
 def build_purchase_payload(docname: str, settings_name: str) -> dict:
 	# Fetch documents
@@ -457,7 +452,7 @@ def build_purchase_payload(docname: str, settings_name: str) -> dict:
 	return payload
 
 
-def generate_vsdc_item_payload(item_name: str,bhfid, settings_name: str) -> dict:
+def generate_vsdc_item_payload(item_name: str, bhfid, settings_name: str) -> dict:
 	item = frappe.get_doc("Item", item_name)
 
 	def get_code(fieldname: str) -> str | None:
@@ -546,17 +541,16 @@ def fmt4(value):
 
 def build_invoice_payload(invoice: "Document", settings_name: str) -> dict:
 	# settings = frappe.get_doc("Crystal ZRA Smart Invoice Settings", settings_name)
-	
+
 	settings = get_settings(settings_name)
 	tpin = settings.get("tpin")
-	branch_code = "000" 
+	branch_code = "000"
 	try:
 		if hasattr(invoice, "branch") and invoice.branch:
 			branch_doc = frappe.get_doc("Branch", invoice.branch)
 			branch_code = branch_doc.get("custom_branch_code") or "000"
 	except Exception as e:
 		frappe.log_error(f"Failed to fetch branch code: {e}", "Branch Code Error")
-
 
 	# Dates
 	sales_dt = datetime.strptime(str(invoice.posting_date), "%Y-%m-%d").strftime("%Y%m%d")
@@ -643,11 +637,7 @@ def build_invoice_payload(invoice: "Document", settings_name: str) -> dict:
 			or frappe.db.get_value("Item", item.item_code, "custom_smart_item_code")
 			or item.item_code
 		)
-		rrp = (
-			item.get("standard_rate")
-			or frappe.db.get_value("Item", item.item_code, "standard_rate")
-			
-		)
+		rrp = item.get("standard_rate") or frappe.db.get_value("Item", item.item_code, "standard_rate")
 		# Totals
 		tot_amt = fmt4(sply_amt - dc_amt + vat_amt)
 		tl_amt = tot_amt
@@ -687,7 +677,7 @@ def build_invoice_payload(invoice: "Document", settings_name: str) -> dict:
 				"dcRt": dc_rt,
 				"bcd": item.barcode or "",
 				"vatCatCd": vat_cat,
-				"rrp": rrp
+				"rrp": rrp,
 			}
 		)
 
@@ -731,14 +721,13 @@ def build_credit_note_payload(doc, settings_name):
 	settings = get_settings(settings_name)
 	tpin = settings.get("tpin")
 
-	branch_code = "000" 
+	branch_code = "000"
 	try:
 		if hasattr(original_invoice, "branch") and original_invoice.branch:
 			branch_doc = frappe.get_doc("Branch", original_invoice.branch)
 			branch_code = branch_doc.get("custom_branch_code") or "000"
 	except Exception as e:
 		frappe.log_error(f"Failed to fetch branch code: {e}", "Branch Code Error")
-
 
 	def extract_numeric(invoice_id: str) -> str:
 		"""
@@ -1208,42 +1197,45 @@ def build_sales_payload(sales_invoice_name, company_tpin, user="Admin"):
 
 	return payload
 
+
 def generate_custom_item_code_smart(doc: Document) -> str:
-    """
-    Generate smart item code in fixed format:
-        CC T PP QQ CCCC SSSSSSS
-        
-        CC  = Country (2 chars)
-        T   = Item type (1 char)
-        PP  = Packaging unit (2 chars)
-        QQ  = Qty unit (2 chars)
-        CCCC = Classification code (4 chars, padded)
-        SSSSSSS = Running sequence (7 digits)
-    """
+	"""
+	Generate smart item code in fixed format:
+	    CC T PP QQ CCCC SSSSSSS
 
-    # --- Extract fields ---
-    country = (doc.get("custom_smart_country_of_origin_") or "").upper().strip()[:2]
-    item_type = (doc.get("custom_smart_item_type") or "").upper().strip()[:1]
-    pkg_unit = (doc.get("custom_smart_packaging_unit") or "").upper().strip()[:2]
-    qty_unit = (doc.get("custom_smart_quantity_unit") or "").upper().strip()[:2]
-    class_code = (doc.get("custom_smart_item_classification_code") or "").strip()
+	    CC  = Country (2 chars)
+	    T   = Item type (1 char)
+	    PP  = Packaging unit (2 chars)
+	    QQ  = Qty unit (2 chars)
+	    CCCC = Classification code (4 chars, padded)
+	    SSSSSSS = Running sequence (7 digits)
+	"""
 
-    # --- Enforce padding ---
-    country = country.ljust(2)
-    item_type = item_type.ljust(1)
-    pkg_unit = pkg_unit.ljust(2)
-    qty_unit = qty_unit.ljust(2,)
-    class_code = class_code.zfill(4)  # always 4 digits
+	# --- Extract fields ---
+	country = (doc.get("custom_smart_country_of_origin_") or "").upper().strip()[:2]
+	item_type = (doc.get("custom_smart_item_type") or "").upper().strip()[:1]
+	pkg_unit = (doc.get("custom_smart_packaging_unit") or "").upper().strip()[:2]
+	qty_unit = (doc.get("custom_smart_quantity_unit") or "").upper().strip()[:2]
+	class_code = (doc.get("custom_smart_item_classification_code") or "").strip()
 
-    # --- Build prefix ---
-    prefix = f"{country}{item_type}{pkg_unit}{qty_unit}{class_code}"
+	# --- Enforce padding ---
+	country = country.ljust(2)
+	item_type = item_type.ljust(1)
+	pkg_unit = pkg_unit.ljust(2)
+	qty_unit = qty_unit.ljust(
+		2,
+	)
+	class_code = class_code.zfill(4)  # always 4 digits
 
-    # --- Determine suffix ---
-    if doc.get("custom_smart_item_code"):
-        suffix = doc.custom_smart_item_code[-7:]
-    else:
-        last = frappe.db.sql(
-            """
+	# --- Build prefix ---
+	prefix = f"{country}{item_type}{pkg_unit}{qty_unit}{class_code}"
+
+	# --- Determine suffix ---
+	if doc.get("custom_smart_item_code"):
+		suffix = doc.custom_smart_item_code[-7:]
+	else:
+		last = frappe.db.sql(
+			"""
             SELECT custom_smart_item_code
             FROM `tabItem`
             WHERE custom_smart_item_classification_code = %s
@@ -1251,66 +1243,65 @@ def generate_custom_item_code_smart(doc: Document) -> str:
             ORDER BY CAST(RIGHT(custom_smart_item_code, 7) AS UNSIGNED) DESC
             LIMIT 1
             """,
-            (doc.custom_smart_item_classification_code,),
-        )
+			(doc.custom_smart_item_classification_code,),
+		)
 
-        if last:
-            last_code = last[0][0]
-            try:
-                suffix = str(int(last_code[-7:]) + 1).zfill(7)
-            except:
-                suffix = "0000001"
-        else:
-            suffix = "0000001"
+		if last:
+			last_code = last[0][0]
+			try:
+				suffix = str(int(last_code[-7:]) + 1).zfill(7)
+			except:
+				suffix = "0000001"
+		else:
+			suffix = "0000001"
 
-    # --- Final smart code ---
-    new_code = f"{prefix}{suffix}"
+	# --- Final smart code ---
+	new_code = f"{prefix}{suffix}"
 
-    # Save
-    doc.db_set("custom_smart_item_code", new_code, update_modified=False)
+	# Save
+	doc.db_set("custom_smart_item_code", new_code, update_modified=False)
 
-    frappe.logger().info(f"[SMART] Generated Smart Code: {new_code}")
+	frappe.logger().info(f"[SMART] Generated Smart Code: {new_code}")
 
-    return new_code
-
+	return new_code
 
 
 def build_import_item_payload(settings: dict):
-	return {"company_name": settings.company, "tpin": settings.tpin, "bhfId": settings.get("bhf_id", "000")}
+	return {"company_name": settings.company, "tpin": settings.tpin}
 
 
 def get_branch_code_from_sle(sle: dict) -> str:
-    """Return branch code from the document that generated the SLE."""
+	"""Return branch code from the document that generated the SLE."""
 
-    voucher_type = sle.get("voucher_type")
-    voucher_no = sle.get("voucher_no")
+	voucher_type = sle.get("voucher_type")
+	voucher_no = sle.get("voucher_no")
 
-    if not voucher_type or not voucher_no:
-        return "001"
+	if not voucher_type or not voucher_no:
+		return "001"
 
-    if not frappe.db.exists(voucher_type, voucher_no):
-        return "001"
+	if not frappe.db.exists(voucher_type, voucher_no):
+		return "001"
 
-    doc = frappe.get_doc(voucher_type, voucher_no)
+	doc = frappe.get_doc(voucher_type, voucher_no)
 
-    # Branch may appear under different fieldnames
-    branch_name = (
-        getattr(doc, "branch", None)
-        or getattr(doc, "custom_branch", None)
-        or getattr(doc, "branch_id", None)
-        or None
-    )
+	# Branch may appear under different fieldnames
+	branch_name = (
+		getattr(doc, "branch", None)
+		or getattr(doc, "custom_branch", None)
+		or getattr(doc, "branch_id", None)
+		or None
+	)
 
-    if not branch_name:
-        return "001"
+	if not branch_name:
+		return "001"
 
-    # Fetch Branch master to get ZRA branch code
-    branch_doc = frappe.get_doc("Branch", branch_name)
+	# Fetch Branch master to get ZRA branch code
+	branch_doc = frappe.get_doc("Branch", branch_name)
 
-    branch_code = (
-        getattr(branch_doc, "custom_branch_code", None)
-        or getattr(branch_doc, "custom_branch_code", None)
-        or "001"
-    )
+	branch_code = (
+		getattr(branch_doc, "custom_branch_code", None)
+		or getattr(branch_doc, "custom_branch_code", None)
+		or "001"
+	)
 
-    return str(branch_code).zfill(3)
+	return str(branch_code).zfill(3)
