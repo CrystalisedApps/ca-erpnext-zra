@@ -69,6 +69,7 @@ def imported_items_select_on_success(response: dict, settings_name: str, **kwarg
 				"invoice_foreign_currency": item.get("invcFcurCd"),
 				"foreign_currency_exchange_rate": item.get("invcFcurExcrt"),
 				"settings": settings_name,
+				"branch_code": kwargs.get("bhfId"),
 			}
 
 			item_doc = frappe.get_doc({"doctype": REGISTERED_IMPORTED_ITEM_DOCTYPE_NAME, **response_data})

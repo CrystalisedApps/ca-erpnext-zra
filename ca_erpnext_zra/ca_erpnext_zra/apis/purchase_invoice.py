@@ -30,10 +30,13 @@ def create_purchase_invoice_from_request(request_data: str) -> None:
 		if received_item["item_name"] not in all_existing_items:
 			_ = get_or_create_item(received_item)
 
+	branch = frappe.db.get_value("Branch", {"custom_branch_code": data.get("branch_code")}, "name")
+
 	# Create the Purchase Invoice
 	purchase_invoice = frappe.new_doc("Purchase Invoice")
 	purchase_invoice.supplier = supplier or data["supplier_name"]
 	purchase_invoice.company = data["company_name"]
+	purchase_invoice.branch = branch
 	purchase_invoice.update_stock = 1
 	purchase_invoice.bill_no = data["supplier_invoice_no"]
 	purchase_invoice.bill_date = data["supplier_invoice_date"]
@@ -126,7 +129,7 @@ def update_registered_import_item(request_data: str) -> None:
 	base_payload = {
 		"tpin": tpin,
 		"taskCd": data.get("task_code"),
-		"bhfId": "000",
+		"bhfId": data.get("branch_code"),
 		"dclDe": datetime.strptime(data.get("declaration_date"), "%Y-%m-%d").strftime("%Y%m%d"),
 	}
 
