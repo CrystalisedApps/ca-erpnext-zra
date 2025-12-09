@@ -129,7 +129,7 @@ def update_registered_import_item(request_data: str) -> None:
 	base_payload = {
 		"tpin": tpin,
 		"taskCd": data.get("task_code"),
-		"bhfId": "000",
+		"bhfId": data.get("branch_code"),
 		"dclDe": datetime.strptime(data.get("declaration_date"), "%Y-%m-%d").strftime("%Y%m%d"),
 	}
 

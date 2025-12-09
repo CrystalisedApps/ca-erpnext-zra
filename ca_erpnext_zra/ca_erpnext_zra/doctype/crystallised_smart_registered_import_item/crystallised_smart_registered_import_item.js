@@ -264,6 +264,7 @@ frappe.ui.form.on(doctypeName, {
 														settings_name: frm.doc.settings,
 														item_name: frm.doc.item_name,
 														task_code: frm.doc.task_code,
+														branch_code: frm.doc.branch_code,
 														declaration_date: frm.doc.declaration_date,
 														item_sequence: frm.doc.item_sequence,
 														hs_code: frm.doc.hs_code,
