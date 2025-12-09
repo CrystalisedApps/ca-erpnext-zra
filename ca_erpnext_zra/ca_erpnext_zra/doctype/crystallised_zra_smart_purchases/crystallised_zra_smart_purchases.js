@@ -21,6 +21,23 @@ frappe.ui.form.on(doctypeName, {
 		}
 
 		if (!frm.is_new()) {
+			frm.add_custom_button(
+                __("Reject"),
+                function () {
+                    frappe.call({
+                        method: "ca_erpnext_zra.ca_erpnext_zra.apis.purchase_api.reject_purchase",
+                        args: {
+							purchase_name: frm.doc.name
+                        },
+                        callback: () => {
+                            frappe.msgprint("Purchase Invoice has been rejected.");
+                        },
+                        freeze: true,
+                        freeze_message: __("Rejecting Purchase Invoice..."),
+                    });
+                },
+                __("Smart Actions")
+            );
 			// -------------------------------------------------------------
 			// 🔹 1. CREATE SUPPLIER
 			// -------------------------------------------------------------

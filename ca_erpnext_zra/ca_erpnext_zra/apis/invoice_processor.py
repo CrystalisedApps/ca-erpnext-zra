@@ -190,11 +190,18 @@ def get_vsdc_invoice_details(
 	# Decrypt TPIN
 
 	tpin = settings.get("tpin")
+	branch_code = "000" 
+	try:
+		if hasattr(invoice, "branch") and invoice.branch:
+			branch_doc = frappe.get_doc("Branch", invoice.branch)
+			branch_code = branch_doc.get("custom_branch_code") or "000"
+	except Exception as e:
+		frappe.log_error(f"Failed to fetch branch code: {e}", "Branch Code Error")
 
 	# Build payload
 	payload = {
 		"tpin": tpin,
-		"bhfId": "000",
+		"bhfId": branch_code,
 		"CisInvcNo": invoice.name,
 	}
 

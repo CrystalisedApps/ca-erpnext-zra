@@ -267,12 +267,13 @@ def submit_smart_purchase_invoice(doc: Document) -> None:
 		return
 
 	company_name = doc.company
-	active_settings = get_active_smart_settings()
+	# active_settings = get_active_smart_settings()
+	settings = get_settings(company_name)
 
 	# Find settings for this company
-	company_setting = next((s for s in active_settings if s.get("company") == company_name), None)
+	# company_setting = next((s for s in active_settings if s.get("company") == company_name), None)
 
-	if not company_setting:
+	if not settings:
 		frappe.log_error(f"No Smart settings found for company: {company_name}", "Smart Submission Error")
 		return
 
@@ -283,7 +284,7 @@ def submit_smart_purchase_invoice(doc: Document) -> None:
 
 	try:
 		route_key = "savePurchase"
-		payload = build_purchase_payload(doc.name, company_setting.get("name"))
+		payload = build_purchase_payload(doc.name, settings.get("name"))
 		success_message = "Smart Purchase Invoice submission queued successfully."
 
 		# Process API request
@@ -294,12 +295,12 @@ def submit_smart_purchase_invoice(doc: Document) -> None:
 				response=response,
 				document_name=doc.name,
 				doctype="Purchase Invoice",
-				settings_name=company_setting["name"],
+				settings_name=settings["name"],
 			),
 			request_method="POST",
 			doctype="Purchase Invoice",
 			document_name=doc.name,
-			settings_name=company_setting["name"],
+			settings_name=settings["name"],
 		)
 
 		frappe.msgprint(success_message)
@@ -323,6 +324,7 @@ def send_purchase_details(doc, method=None) -> None:
 	Manually trigger Smart submission for a Purchase Invoice or Debit Note.
 	"""
 	submit_smart_purchase_invoice(doc)
+
 @frappe.whitelist()
 def get_branches_for_company(company):
     return frappe.db.get_all(
@@ -356,7 +358,7 @@ def perform_purchases_search(company: str, branch: str = None) -> None:
     tpin = settings.tpin
 
     # Override with settings BHF ID only if branch-specific not provided
-    bhf_id = bhf_id or settings.get("bhfid") or "000"
+    bhf_id = bhf_id or "000"
 
     # Default request date (1 year back)
     request_date = add_to_date(datetime.now(), years=-1).strftime("%Y%m%d%H%M%S")
@@ -406,3 +408,175 @@ def create_supplier_from_smart_purchase(request_data: str) -> None:
 	supplier_doc = get_or_create_supplier_from_smart(data)
 
 	frappe.msgprint(f"Supplier <b>{supplier_doc}</b> successfully created or linked.")
+
+import frappe
+from frappe.utils import now_datetime
+
+@frappe.whitelist()
+def reject_purchase(purchase_name):
+
+    doc = frappe.get_doc(REGISTERED_PURCHASES_DOCTYPE_NAME, purchase_name)
+
+    payload = build_reject_purchase_payload(doc)
+
+    from ..apis.api_processor import process_request
+
+    process_request(
+        request_data=payload,
+        route_key="savePurchase",
+        handler_function=reject_purchase_success,
+        request_method="POST",
+        doctype=REGISTERED_PURCHASES_DOCTYPE_NAME,
+        document_name=purchase_name
+    )
+
+    return {"status": "success"}
+
+def build_reject_purchase_payload(purchase_doc):
+    """
+    Build payload for rejecting a Smart Purchase.
+    Matches ZRA specification for reject/update purchase.
+    """
+
+    # ------------------------
+    # Branch → BHF ID + Company
+    # ------------------------
+    bhf_id = ""
+    company_name = ""
+
+    if purchase_doc.branch:
+        bhf_id = (
+            frappe.db.get_value("Branch", purchase_doc.branch, "custom_branch_code")
+            or "000"
+        )
+        company_name = (
+            frappe.db.get_value("Branch", purchase_doc.branch, "custom_company")
+            
+        )
+
+    # ------------------------
+    # Fetch settings (TPIN)
+    # ------------------------
+    settings = get_settings(company_name)
+    tpin = settings.tpin if settings else ""
+
+    # Current user
+    user = frappe.session.user.upper()
+
+    # ------------------------
+    # Main Purchase Rejection Payload
+    # ------------------------
+    payload = {
+        "tpin": tpin,
+        "bhfId": bhf_id,
+
+        # Invoice references
+        "cisInvcNo": purchase_doc.name,      # or purchase_doc.cis_invoice_no
+        "orgInvcNo": 0,
+
+        # Supplier Info
+        "spplrTpin": purchase_doc.supplier_tpin,
+        "spplrBhfId": purchase_doc.supplier_branch_id,
+        "spplrNm": purchase_doc.supplier_name,
+        "spplrInvcNo": purchase_doc.supplier_invoice_no,
+
+        # Purchase Type Codes
+        "regTyCd": "M",                      # M = Manual update/reject
+        "pchsTyCd": "N",                     # Normal purchase
+        "rcptTyCd": "P",
+        "pmtTyCd": purchase_doc.payment_type_code,
+        "pchsSttsCd": "04",                  # 04 = Rejected
+
+        # Dates
+        "cfmDt": purchase_doc.confirmed_date.strftime("%Y%m%d%H%M%S")
+        if purchase_doc.confirmed_date else "",
+        "pchsDt": purchase_doc.sales_date.strftime("%Y%m%d")
+        if purchase_doc.sales_date else "",
+
+        # Cancel Fields
+        "cnclReqDt": "",
+        "cnclDt": "",
+
+        # Totals
+        "totItemCnt": purchase_doc.total_item_count,
+        "totTaxblAmt": purchase_doc.total_taxable_amount,
+        "totTaxAmt": purchase_doc.total_tax_amount,
+        "totAmt": purchase_doc.total_amount,
+
+        # User + Remarks
+        "remark": purchase_doc.remarks or "Rejected",
+        "regrNm": user,
+        "regrId": user,
+        "modrNm": user,
+        "modrId": user,
+
+        # Items
+        "itemList": [],
+    }
+
+    # ------------------------
+    # Build Item List
+    # ------------------------
+    for item in purchase_doc.items:
+        item_payload = {
+            "itemSeq": item.item_seq,
+            "itemCd": item.item_code,
+            "itemClsCd": item.item_class_code,
+            "itemNm": item.item_name,
+            "bcd": None,
+            "pkgUnitCd": item.packaging_unit_code,
+            "pkg": 0,
+            "qtyUnitCd": item.quantity_unit_code,
+            "qty": item.quantity,
+            "prc": item.unit_price,
+            "splyAmt": item.supply_amount,
+            "dcRt": item.discount_rate,
+            "dcAmt": item.discount_amount,
+            "taxTyCd": item.vat_category_code,
+            "iplCatCd": None,
+            "tlCatCd": None,
+            "exciseCatCd": None,
+            "taxblAmt":  round(float(item.supply_amount), 2),
+            "vatCatCd": item.vat_category_code,
+            "iplTaxblAmt": None,
+            "tlTaxblAmt": None,
+            "exciseTaxblAmt": None,
+            "taxAmt": item.vat_amount,
+            "iplAmt": None,
+            "tlAmt": None,
+            "exciseTxAmt": None,
+            "totAmt": item.total_amount,
+        }
+
+        payload["itemList"].append(item_payload)
+
+    return payload
+
+def reject_purchase_success(response, document_name=None, **kwargs):
+    """
+    Called when ZRA Reject Purchase API responds successfully.
+    Updates ERPNext document after submit.
+    """
+
+    if not document_name:
+        return
+
+    doc = frappe.get_doc("Crystallised ZRA Smart Purchases",document_name)
+
+    doc.flags.ignore_validate = True
+    doc.flags.ignore_permissions = True
+    doc.flags.ignore_validate_update_after_submit = True
+
+    # Set rejected status
+    doc.pchssttscd = "04"   # ZRA Rejected Code
+    doc.purchase_status = frappe.db.get_value(
+        "Crystallised Smart Purchase Status",
+        {"code": "04"},
+        "code_name"
+    )
+
+    # Optional: add internal remark
+    doc.remark = "Purchase rejected by ZRA"
+
+    doc.save()
+    frappe.db.commit()

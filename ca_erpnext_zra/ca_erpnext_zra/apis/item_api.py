@@ -218,7 +218,84 @@ def update_item(doc, method=None) -> dict | None:
 		settings_name=settings["name"],
 	)
 	return {"queued": True, "item": item.name}
+from frappe.utils.data import add_to_date
+from datetime import datetime
+from frappe.utils import flt
+import frappe
+from ..utils.settings_utils import get_settings
+from .api_processor import process_request
+from ..utils.routes_utils import get_route_path
 
+@frappe.whitelist()
+def submit_item_composition(document_name: str, branch: str = None):
+    """
+    Submits all item compositions in a given document to ZRA (saveItemComposition API).
+    Called from client script.
+    """
+    if not document_name:
+        frappe.throw("Document name is required.")
+
+    doc = frappe.get_doc("BOM", document_name)  # Or your custom doctype
+
+    # Use branch from BOM if available
+    branch = doc.custom_smart_branch or branch
+
+    # Resolve branch info
+    if branch:
+        bhf_id = frappe.db.get_value("Branch", branch, "custom_branch_code") or "000"
+        company = frappe.db.get_value("Branch", branch, "custom_company")
+    else:
+        bhf_id = "000"
+        company = doc.company
+
+    if not company:
+        frappe.throw("Company not found")
+
+    settings = get_settings(company)
+    if not settings:
+        frappe.throw(f"No Smart Invoice settings found for company {company}")
+
+    user = frappe.session.user.upper()
+
+    # Default request date: 1 year back
+    request_date = add_to_date(datetime.now(), years=-1).strftime("%Y%m%d%H%M%S")
+
+    # Fetch last request date from DB if available
+    try:
+        _, last_req_date = get_route_path("saveItemComposition", "Crystal VSDC")
+        last_req_dt = last_req_date.strftime("%Y%m%d%H%M%S") if last_req_date else request_date
+    except Exception:
+        last_req_dt = request_date
+
+    # Loop over all items in the document
+    for item in doc.items:
+        item_code = item.item_code
+        qty = flt(item.qty or 1)
+
+        payload = {
+            "tpin": settings.tpin,
+            "bhfId": bhf_id,
+            "itemCd": item_code,
+            "cpstItemCd": item_code,
+            "cpstQty": qty,
+            "regrId": user,
+            "regrNm": user,
+            "lastReqDt": last_req_dt,
+        }
+
+        # Enqueue each item submission
+        frappe.enqueue(
+            process_request,
+            queue="default",
+            request_data=payload,
+            route_key="saveItemComposition",
+            handler_function=None,
+            request_method="POST",
+            doctype="Item",
+            document_name=item_code
+        )
+
+    return f"Enqueued submission of {len(doc.items)} items for ZRA Smart Invoice."
 
 # @frappe.whitelist()
 # def submit_inventory(item_name: str) -> dict | None:

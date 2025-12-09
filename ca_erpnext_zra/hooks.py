@@ -13,6 +13,7 @@ fixtures = [
 
 doctype_js = {
 	"Item": "public/js/item.js",
+    "BOM": "public/js/bom.js",
 	"Sales Invoice": "public/js/sales_invoice.js",
 	"Purchase Invoice": "public/js/purchase_invoice.js",
 }
@@ -167,6 +168,9 @@ doc_events = {
 		"before_save": ["ca_erpnext_zra.ca_erpnext_zra.overrides.server.shared_override.before_save"],
 		"on_submit": ["ca_erpnext_zra.ca_erpnext_zra.apis.purchase_api.send_purchase_details"],
 	},
+    "BOM": {
+        "on_submit": ["ca_erpnext_zra.ca_erpnext_zra.overrides.server.bom.submit_item_composition_on_bom_submit"]
+	}
     
 
 
