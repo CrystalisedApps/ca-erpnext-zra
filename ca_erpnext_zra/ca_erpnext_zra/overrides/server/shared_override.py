@@ -59,7 +59,7 @@ def generic_invoices_on_submit_override(
 	"""
 
 	company_name = doc.company
-	settings_doc = get_settings()
+	settings_doc = get_settings(company_name)
 
 	# Skip if prevented or already submitted
 	if doc.custom_prevent_smart_submission or getattr(doc, "vsdc_invoice_number", None):

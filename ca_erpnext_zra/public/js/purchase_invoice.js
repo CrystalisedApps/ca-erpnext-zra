@@ -25,7 +25,7 @@ frappe.ui.form.on(purchaseParentDoctype, {
 							(settings_name) => ({
 								method: "ca_erpnext_zra.ca_erpnext_zra.apis.purchase_api.send_purchase_details",
 								args: {
-									doc: frm.doc,
+									doc: frm.doc.name,
 									settings_name: settings_name,
 								},
 								success_msg:

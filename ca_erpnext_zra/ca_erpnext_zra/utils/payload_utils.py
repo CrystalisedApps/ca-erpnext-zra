@@ -351,20 +351,21 @@ def build_purchase_payload(docname: str, settings_name: str) -> dict:
 	doc = frappe.get_doc("Purchase Invoice", docname)
 
 	# Fetch first settings record
-	settings = frappe.get_all("Crystal ZRA Smart Invoice Settings", fields=["name"])
-
+	# settings = frappe.get_all("Crystal ZRA Smart Invoice Settings", fields=["name"])
+	settings = get_settings(settings_name)
 	tpin = ""
 	if settings:
-		settings_name = settings[0]["name"]
-		tpin = (
-			get_decrypted_password(
-				"Crystal ZRA Smart Invoice Settings",
-				settings_name,  # positional docname
-				"tpin",  # fieldname
-				raise_exception=False,
-			)
-			or ""
-		)
+		tpin = settings.get("tpin")
+		# settings_name = settings[0]["name"]
+		# tpin = (
+		# 	get_decrypted_password(
+		# 		"Crystal ZRA Smart Invoice Settings",
+		# 		settings_name,  # positional docname
+		# 		"tpin",  # fieldname
+		# 		raise_exception=False,
+		# 	)
+		# 	or ""
+		# )
 
 	# --- Helper: safely get numeric supplier invoice number ---
 	def get_supplier_invoice_number(value):
@@ -377,10 +378,17 @@ def build_purchase_payload(docname: str, settings_name: str) -> dict:
 	# Dynamic codes
 	rcpt_ty_cd = "R" if getattr(doc, "is_return", 0) else "P"
 	reg_ty_cd = "A" if getattr(doc, "custom_smart_purchase_id", None) else "M"
+	branch_code = "000" 
+	try:
+		if hasattr(doc, "branch") and doc.branch:
+			branch_doc = frappe.get_doc("Branch", doc.branch)
+			branch_code = branch_doc.get("custom_branch_code") or "000"
+	except Exception as e:
+		frappe.log_error(f"Failed to fetch branch code: {e}", "Branch Code Error")
 
 	payload = {
 		"tpin": tpin,
-		"bhfId": getattr(settings, "branch_id", "000"),
+		"bhfId": branch_code,
 		"cisInvcNo": f"cis_{doc.name}",
 		"orgInvcNo": 0,
 		"spplrTpin": getattr(doc, "supplier_tpin", None),
