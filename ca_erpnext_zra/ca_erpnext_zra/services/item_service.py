@@ -2,8 +2,7 @@ import frappe
 
 from ..utils.payload_utils import generate_vsdc_item_payload
 from ..utils.response_utils import parse_response_data
-
-
+from ..utils.settings_utils import get_settings
 def handle_registration_response(
     response,
     request_data=None,
@@ -190,8 +189,8 @@ def item_archive_on_success(response: dict | None = None, **kwargs):
 	pass
 def get_all_branch_mappings(settings_name: str) -> list[dict]:
 	"""Return all branch → bhfid mappings from Smart Settings."""
-	settings = frappe.get_doc("Crystal ZRA Smart Invoice Settings", settings_name)
-
+	# settings = frappe.get_doc("Crystal ZRA Smart Invoice Settings", settings_name)
+	settings =get_settings(settings_name)
 	return [
 		{
 			"branch": row.branch,

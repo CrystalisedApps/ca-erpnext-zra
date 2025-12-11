@@ -4,6 +4,12 @@ from frappe import _
 # from ..utils.smart_api_utils import get_active_smart_settings
 from frappe.utils.background_jobs import enqueue
 from frappe.utils.password import get_decrypted_password
+from frappe.utils.data import add_to_date
+from datetime import datetime
+from frappe.utils import flt
+from ..utils.settings_utils import get_settings
+from .api_processor import process_request
+from ..utils.routes_utils import get_route_path
 
 from ..apis.api_processor import process_request
 from ..services.item_service import fetch_matching_items_on_success, handle_registration_response
@@ -218,13 +224,6 @@ def update_item(doc, method=None) -> dict | None:
 		settings_name=settings["name"],
 	)
 	return {"queued": True, "item": item.name}
-from frappe.utils.data import add_to_date
-from datetime import datetime
-from frappe.utils import flt
-import frappe
-from ..utils.settings_utils import get_settings
-from .api_processor import process_request
-from ..utils.routes_utils import get_route_path
 
 @frappe.whitelist()
 def submit_item_composition(document_name: str, branch: str = None):
@@ -280,7 +279,7 @@ def submit_item_composition(document_name: str, branch: str = None):
             "cpstQty": qty,
             "regrId": user,
             "regrNm": user,
-            "lastReqDt": last_req_dt,
+            
         }
 
         # Enqueue each item submission
