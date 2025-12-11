@@ -772,7 +772,7 @@ def build_credit_note_payload(doc, settings_name):
 	payload = {
 		"tpin": tpin,
 		"bhfId": branch_code,
-		"orgInvcNo": extract_numeric(original_invoice.name),
+		"orgInvcNo": original_invoice.custom_current_receipt_number,
 		"cisInvcNo": doc.name,
 		"custTpin": customer.tax_id or "",
 		"custNm": doc.customer_name or "",
