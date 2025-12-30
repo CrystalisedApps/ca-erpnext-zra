@@ -114,11 +114,11 @@ def generic_invoices_on_submit_override(
 			queue="default",
 			is_async=True,
 			request_data=payload,
-			route_key="SaveDebitNote",  # <-- API route for debit notes
+			route_key="SaveDebitNote", 
 			handler_function=_handle_sales_submission_success,
 			request_method="POST",
 			document_name=doc.name,
-			doctype="Debit Note",
+			doctype="Sales Invoice",
 			settings_name=settings_doc.name,
 			error_callback=sales_information_submission_on_error,
 		)
