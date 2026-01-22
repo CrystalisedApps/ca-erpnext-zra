@@ -51,7 +51,7 @@ This process associates your business TPIN and Branch ID (BhfId) with ZRA’s in
 - **Endpoint**: `InitializeDevice`  
 - **ERPNext DocType**: `Crystal ZRA Smart Invoice Settings`  
 
-![alt text](image-3.png)
+![alt text](./ca_erpnext_zra/docs/images/image-3.png)
 This need to be done only once from Crystal ZRA Smart Invoice Settings using the smart action Initialize Device 
 
 ---
@@ -61,7 +61,7 @@ This need to be done only once from Crystal ZRA Smart Invoice Settings using the
 The authentication module manages secure access to the **Crystal ZRA Smart Invoice API** using **JWT (JSON Web Tokens)**.  
 It ensures that all API requests to ZRA are authorized and compliant with security standards.
 
-![alt text](image-2.png)
+![alt text](./ca_erpnext_zra/docs/images/image-2.png)
 
 Note: An expired token or empty value triggers autamatic authentication when the user makes a request
 
@@ -95,7 +95,7 @@ Note: An expired token or empty value triggers autamatic authentication when the
 
 ### 3. Retrieval of Standard Codes  
 
-![alt text](image-5.png)
+![alt text](./ca_erpnext_zra/docs/images/image-5.png)
 
 
 To correctly classify items, ZRA requires standard codes such as:  
@@ -107,13 +107,13 @@ To correctly classify items, ZRA requires standard codes such as:
 
 These codes are retrieved from the **Smart API** and stored in **custom ERPNext doctypes** for reuse.  
 
-![alt text](image-4.png)
+![alt text](./ca_erpnext_zra/docs/images/image-4.png)
 
 ---
 
 ### 4. Item Classification Codes  
 
-![alt text](image-6.png)
+![alt text](./ca_erpnext_zra/docs/images/image-6.png)
 
 Note: At the moment the API responds with only 1000 codes. You need to import the rest using Data import tool
 
@@ -132,7 +132,7 @@ For example:
 ---
 
 ### 4. Saving Items (Item Management)  
-![alt text](image-1.png)
+![alt text](./ca_erpnext_zra/docs/images/image-1.png)
 Once Items are properly configured, they can be **registered with Smart Zambia**.  
 
 The following fields need to be filled for saving an item successfully:
@@ -144,7 +144,7 @@ The following fields need to be filled for saving an item successfully:
 - `Smart Quantity Unit` 
 The saving of an item happens automatically on saving or updating the item on our ERPNext. Incase this doesn't due to any reason, the smart action button Register(Item) does the same.
 
-![alt text](image-8.png)
+![alt text](./ca_erpnext_zra/docs/images/image-8.png)
 The item shown here has already been successfully registered.
 
 
@@ -184,14 +184,14 @@ We build a **ZRA-compliant payload** from ERPNext Item data.
 
 ### 5. Sales Management
 Manages the complete Sales Record lifecycle — from saving a sale to issuing invoices through the ZRA Smart Invoice platform.
-![alt text](image-15.png)
+![alt text](./ca_erpnext_zra/docs/images/image-15.png)
 The system supports the seamless creation and submission of sales for items already registered and authorized with ZRA. When a Sales Invoice is submitted in ERPNext, all details are automatically transmitted to the Smart Invoice system for signing.
 
 If the automatic submission fails for any reason, the “Send Invoice” smart action allows you to manually resend the invoice for signing.
 
 In addition, the module supports generating and saving both Credit Notes and Debit Notes linked to an existing sale.
-![alt text](image-10.png)
-![alt text](image-9.png)
+![alt text](./ca_erpnext_zra/docs/images/image-10.png)
+![alt text](./ca_erpnext_zra/docs/images/image-9.png)
 
 #### Key Capabilities:
 
@@ -207,10 +207,10 @@ In addition, the module supports generating and saving both Credit Notes and Deb
 ### 6. Purchase Management
 
 #### Purchase Processing Workflow
-![alt text](image-11.png)
+![alt text](./ca_erpnext_zra/docs/images/image-11.png)
 The purchase process begins with the user fetching registered purchases from the ZRA system.
 
-![alt text](image-12.png)
+![alt text](./ca_erpnext_zra/docs/images/image-12.png)
 For each approved purchase, you can generate a Purchase Invoice after completing the required setup steps—this includes creating the supplier and creating/registering the item if it does not already exist.
 
 The system also supports purchases from suppliers who are not registered with the authority.
@@ -218,10 +218,10 @@ In such cases, the user simply creates the supplier in the system and proceeds t
 
 ### 7. Import Management
 Import Processing Workflow
-![alt text](image-13.png)
+![alt text](./ca_erpnext_zra/docs/images/image-13.png)
 
 Similar to the purchase process, import handling begins with the user retrieving raised imports from ASYCUDA.
-![alt text](image-14.png)
+![alt text](./ca_erpnext_zra/docs/images/image-14.png)
 For each imported item that requires acknowledgement(Update Import Item), the user must first create and register the item, marking it as an Imported Item.
 Once the item is registered, the user can proceed to generate a Purchase Invoice linked to that import entry 
 
@@ -245,7 +245,7 @@ All stock movements are monitored through the Stock Ledger Entry, where the syst
 When an item is created with an opening stock value, the system automatically generates a Material Receipt stock entry.
 
 Additionally, all stock activity—including approved purchases, imports, sales, and other adjustment entries—is submitted periodically every 4 minutes, along with updated quantity balances, to maintain continuous synchronization with ZRA.
-![alt text](image-7.png)
+![alt text](./ca_erpnext_zra/docs/images/image-7.png)
 
 
 
