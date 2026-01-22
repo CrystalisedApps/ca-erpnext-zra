@@ -1,0 +1,64 @@
+{
+ "app": "ca_erpnext_zra",
+ "charts": [],
+ "content": "[{\"id\":\"oKVTsbpae3\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\">Smart Invoice Integration</span>\",\"col\":12}},{\"id\":\"EjQfkj-alP\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Smart Dashboard\",\"col\":3}},{\"id\":\"vwY-_GtsWU\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Integration Request\",\"col\":3}},{\"id\":\"CK4uZnWB_Y\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Error Log\",\"col\":3}},{\"id\":\"Zf61-Yj0z7\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Smart Settings\",\"col\":3}}]",
+ "creation": "2026-01-19 16:05:44.445446",
+ "custom_blocks": [],
+ "docstatus": 0,
+ "doctype": "Workspace",
+ "for_user": "",
+ "hide_custom": 0,
+ "icon": "square-star",
+ "idx": 3,
+ "indicator_color": "green",
+ "is_hidden": 0,
+ "label": "Smart Integration",
+ "link_type": "DocType",
+ "links": [],
+ "modified": "2026-01-22 12:00:55.441685",
+ "modified_by": "Administrator",
+ "module": "Ca Erpnext Zra",
+ "name": "Smart Integration",
+ "number_cards": [],
+ "owner": "Administrator",
+ "parent_page": "",
+ "public": 1,
+ "quick_lists": [],
+ "roles": [],
+ "sequence_id": 28.0,
+ "shortcuts": [
+  {
+   "color": "Grey",
+   "doc_view": "List",
+   "label": "Integration Request",
+   "link_to": "Integration Request",
+   "stats_filter": "[]",
+   "type": "DocType"
+  },
+  {
+   "color": "Grey",
+   "doc_view": "List",
+   "label": "Smart Dashboard",
+   "link_to": "Smart Invoice",
+   "type": "Dashboard"
+  },
+  {
+   "color": "Grey",
+   "doc_view": "List",
+   "label": "Error Log",
+   "link_to": "Error Log",
+   "stats_filter": "[]",
+   "type": "DocType"
+  },
+  {
+   "color": "Grey",
+   "doc_view": "List",
+   "label": "Smart Settings",
+   "link_to": "Crystal ZRA Smart Invoice Settings",
+   "stats_filter": "[]",
+   "type": "DocType"
+  }
+ ],
+ "title": "Smart Integration",
+ "type": "Workspace"
+}

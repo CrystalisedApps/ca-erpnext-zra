@@ -2,11 +2,58 @@
  "cards": [
   {
    "card": "Success Invoices"
+  },
+  {
+   "card": "Queued Requests"
+  },
+  {
+   "card": "Total Successful Requests"
+  },
+  {
+   "card": "Total Failed Requests"
+  },
+  {
+   "card": "Pending Item Submissions"
+  },
+  {
+   "card": "Pending Invoice Submissions"
+  },
+  {
+   "card": "Registered Items"
+  },
+  {
+   "card": "Failed Invoices"
+  },
+  {
+   "card": "Pending Credit Notes"
+  },
+  {
+   "card": "Pending Item Submissions-1"
+  },
+  {
+   "card": "Successful Credit Notes"
+  },
+  {
+   "card": "Successful Purchases"
+  },
+  {
+   "card": "Pending Purchases"
+  },
+  {
+   "card": "Pending Stock Ledger Entry Submissions"
+  },
+  {
+   "card": "Successful Stock Ledger Entries"
   }
  ],
  "charts": [
   {
-   "width": "Half"
+   "chart": "Document Submission Status",
+   "width": "Full"
+  },
+  {
+   "chart": "Integration Request Time Analysis",
+   "width": "Full"
   }
  ],
  "creation": "2025-12-10 13:50:19.706149",
@@ -16,7 +63,7 @@
  "idx": 0,
  "is_default": 0,
  "is_standard": 1,
- "modified": "2025-12-10 13:54:29.801663",
+ "modified": "2026-01-22 10:23:37.747119",
  "modified_by": "Administrator",
  "module": "Ca Erpnext Zra",
  "name": "Smart Invoice",

@@ -1,0 +1,25 @@
+{
+ "cards": [
+  {
+   "card": "Success Invoices"
+  }
+ ],
+ "charts": [
+  {
+   "chart": "Document Submission Status",
+   "width": "Full"
+  }
+ ],
+ "creation": "2026-01-22 11:07:29.218590",
+ "dashboard_name": "Smart",
+ "docstatus": 0,
+ "doctype": "Dashboard",
+ "idx": 0,
+ "is_default": 0,
+ "is_standard": 1,
+ "modified": "2026-01-22 11:07:29.218590",
+ "modified_by": "Administrator",
+ "module": "Ca Erpnext Zra",
+ "name": "Smart",
+ "owner": "Administrator"
+}

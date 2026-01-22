@@ -62,53 +62,61 @@ def build_datetime_from_string(date_string: str, format: str = "%Y-%m-%d %H:%M:%
 	return date_object
 
 def update_last_request_date(
-	response_datetime: str,
-	route: str,
-	routes_table: str = ROUTES_TABLE_CHILD_DOCTYPE_NAME,
+    response_datetime: datetime | str,
+    route: str,
+    routes_table: str = ROUTES_TABLE_CHILD_DOCTYPE_NAME,
 ) -> None:
 
-	doc = frappe.get_doc(
-		routes_table,
-		{"url_path": route},
-		["*"],
-	)
+    # Step 1: get document name
+    docname = frappe.get_value(
+        routes_table,
+        {"url_path": route},
+        "name"
+    )
 
-	# Handle datetime or string input
-	if isinstance(response_datetime, datetime):
-		doc.last_request_date = response_datetime
-	else:
-		doc.last_request_date = build_datetime_from_string(
-			response_datetime,
-			"%Y%m%d%H%M%S"
-		)
+    if not docname:
+        frappe.log_error(
+            title="Route not found",
+            message=f"No route found for url_path={route}"
+        )
+        return
 
-	doc.save()
-	frappe.db.commit()
+    # Step 2: load the actual document
+    doc = frappe.get_doc(routes_table, docname)
+
+    # Step 3: assign datetime correctly
+    if isinstance(response_datetime, datetime):
+        doc.last_request_date = response_datetime
+    else:
+        doc.last_request_date = build_datetime_from_string(
+            response_datetime,
+            "%Y%m%d%H%M%S"
+        )
+
+    doc.save(ignore_permissions=True)
 
 
-def get_last_request_date(route: str, routes_table: str = ROUTES_TABLE_CHILD_DOCTYPE_NAME) -> datetime | None:
-    """
-    Fetch the last_request_date for a given route from the Routes table.
-    
-    Args:
-        route (str): Route key or URL path
-        routes_table (str): Name of the doctype where routes are stored (default: ROUTES_TABLE_CHILD_DOCTYPE_NAME)
-    
-    Returns:
-        datetime | None: The last_request_date as a datetime object, or None if not found
-    """
+
+def get_last_request_date(
+    route: str,
+    routes_table: str = ROUTES_TABLE_CHILD_DOCTYPE_NAME
+) -> datetime | None:
+
     try:
-        doc = frappe.get_doc(routes_table, {"url_path": route}, ["last_request_date"])
-        last_request_date = getattr(doc, "last_request_date", None)
+        value = frappe.get_value(
+            routes_table,
+            {"url_path": route},
+            "last_request_date"
+        )
 
-        if last_request_date:
-            # If it's already a datetime object, return as-is
-            if isinstance(last_request_date, datetime):
-                return last_request_date
-            # Otherwise, parse string to datetime (assuming format "%Y%m%d%H%M%S")
-            return build_datetime_from_string(last_request_date, "%Y%m%d%H%M%S")
-        else:
+        if not value:
             return None
+
+        if isinstance(value, datetime):
+            return value
+
+        return build_datetime_from_string(value, "%Y%m%d%H%M%S")
+
     except Exception:
         frappe.log_error(
             title=f"Failed to fetch last_request_date for route {route}",

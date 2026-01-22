@@ -1,8 +1,7 @@
-// Copyright (c) 2025, Crystalised Apps and contributors
+// Copyright (c) 2026, Crystalised Apps and contributors
 // For license information, please see license.txt
 
-
-frappe.query_reports["Document Submission Status Report"] = {
+frappe.query_reports["Document Submission Time Analysis"] = {
   filters: [
     {
       fieldname: "from_date",
@@ -29,3 +28,4 @@ frappe.query_reports["Document Submission Status Report"] = {
     });
   },
 };
+
