@@ -14,13 +14,27 @@ def create_supplier_from_fetched_registered_import(request_data: str) -> None:
 
 
 def get_or_create_supplier(supplier_details: dict) -> Document:
-	if frappe.db.exists("Supplier", {"name": supplier_details["supplier_name"]}):
-		return frappe.get_doc("Supplier", {"name": supplier_details["supplier_name"]})
+	supplier_name = supplier_details.get("supplier_name")
+	supplier_pin = supplier_details.get("supplier_pin")
+	supplier_nation = supplier_details.get("supplier_nation", "").upper()
+	import_item_id = supplier_details.get("name")
+	
+	# Generate supplier_name if not provided
+	if not supplier_name:
+		if supplier_pin:
+			# Pattern: {country_code}-{supplier_pin}
+			supplier_name = f"{supplier_nation}-{supplier_pin}"
+		else:
+			# Fallback: {country_code}-{import_item_id}
+			supplier_name = f"{supplier_nation}-{import_item_id}"
+	
+	if frappe.db.exists("Supplier", {"name": supplier_name}):
+		return frappe.get_doc("Supplier", {"name": supplier_name})
 	else:
 		new_supplier = frappe.new_doc("Supplier")
 
-		new_supplier.supplier_name = supplier_details["supplier_name"]
-		new_supplier.tax_id = supplier_details["supplier_pin"]
+		new_supplier.supplier_name = supplier_name
+		new_supplier.tax_id = supplier_pin or None
 
 		if "supplier_currency" in supplier_details:
 			new_supplier.default_currency = supplier_details["supplier_currency"]
