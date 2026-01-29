@@ -34,9 +34,10 @@
   },
   {
    "fieldname": "item_code",
-   "fieldtype": "Data",
+   "fieldtype": "Link",
    "in_list_view": 1,
-   "label": "Item Code"
+   "label": "Item Code",
+   "options": "Item"
   },
   {
    "fieldname": "item_name",

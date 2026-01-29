@@ -347,117 +347,252 @@ def build_debit_note_payload(docname: str, settings_name: str | None = None) -> 
 
 @frappe.whitelist()
 def build_purchase_payload(docname: str, settings_name: str) -> dict:
-	# Fetch documents
-	doc = frappe.get_doc("Purchase Invoice", docname)
+    # Fetch Purchase Invoice
+    doc = frappe.get_doc("Purchase Invoice", docname)
+    
+    # Get the linked Crystallised ZRA Smart Purchases document
+    # Try multiple ways to find the existing document
+    crystal_doc = None
+    
+    # METHOD 1: Try by purchase_id (Purchase Invoice name)
+    crystal_name = frappe.db.exists("Crystallised ZRA Smart Purchases", {"purchase_id": docname})
+    
+    # METHOD 2: Try by supplier invoice number
+    if not crystal_name:
+        supplier_invoice_no = doc.get("bill_no") or doc.get("supplier_invoice_no")
+        if supplier_invoice_no:
+            crystal_name = frappe.db.exists(
+                "Crystallised ZRA Smart Purchases", 
+                {"supplier_invoice_no": supplier_invoice_no}
+            )
+    
+    # METHOD 3: Try by custom_smart_purchase_id (if set on Purchase Invoice)
+    if not crystal_name and getattr(doc, "custom_smart_purchase_id", None):
+        crystal_name = frappe.db.exists(
+            "Crystallised ZRA Smart Purchases", 
+            {"purchase_id": doc.custom_smart_purchase_id}
+        )
+    
+    # METHOD 4: Try by supplier name and date range (last resort)
+    if not crystal_name:
+        # Look for Crystallised documents with same supplier name in last 7 days
+        from frappe.utils import add_days, getdate
+        
+        week_ago = add_days(getdate(), -7)
+        possible_docs = frappe.get_all(
+            "Crystallised ZRA Smart Purchases",
+            filters={
+                "supplier_name": doc.supplier_name,
+                "sales_date": [">=", week_ago],
+                "total_amount": [">", 0]  # Only consider docs with actual values
+            },
+            fields=["name"],
+            order_by="creation desc",
+            limit=5
+        )
+        if possible_docs:
+            crystal_name = possible_docs[0].name
+    
+    if crystal_name:
+        crystal_doc = frappe.get_doc("Crystallised ZRA Smart Purchases", crystal_name)
+        print(f"Found existing Crystallised document: {crystal_name}")
+        print(f"Values from Crystallised doc:")
+        print(f"  - total_amount: {crystal_doc.total_amount}")
+        print(f"  - total_tax_amount: {crystal_doc.total_tax_amount}")
+        print(f"  - total_taxable_amount: {crystal_doc.total_taxable_amount}")
+        print(f"  - total_item_count: {crystal_doc.total_item_count}")
+    else:
+        print("WARNING: No existing Crystallised document found with matching data!")
 
-	# Fetch first settings record
-	# settings = frappe.get_all("Crystal ZRA Smart Invoice Settings", fields=["name"])
-	settings = get_settings(settings_name)
-	tpin = ""
-	if settings:
-		tpin = settings.get("tpin")
-		# settings_name = settings[0]["name"]
-		# tpin = (
-		# 	get_decrypted_password(
-		# 		"Crystal ZRA Smart Invoice Settings",
-		# 		settings_name,  # positional docname
-		# 		"tpin",  # fieldname
-		# 		raise_exception=False,
-		# 	)
-		# 	or ""
-		# )
+    # Fetch first settings record
+    settings = get_settings(settings_name)
+    tpin = ""
+    
+    if settings:
+        tpin = settings.get("tpin")
 
-	# --- Helper: safely get numeric supplier invoice number ---
-	def get_supplier_invoice_number(value):
-		try:
-			# If doc.name ends like "ACC-PINV-2025-00002" → returns 2
-			return int(str(value).split("-")[-1])
-		except Exception:
-			return 0
+    # --- Helper: safely get numeric supplier invoice number ---
+    def get_supplier_invoice_number(value):
+        try:
+            # If doc.name ends like "ACC-PINV-2025-00002" → returns 2
+            return int(str(value).split("-")[-1])
+        except Exception:
+            return 0
 
-	# Dynamic codes
-	rcpt_ty_cd = "R" if getattr(doc, "is_return", 0) else "P"
-	reg_ty_cd = "A" if getattr(doc, "custom_smart_purchase_id", None) else "M"
-	branch_code = "000" 
-	try:
-		if hasattr(doc, "branch") and doc.branch:
-			branch_doc = frappe.get_doc("Branch", doc.branch)
-			branch_code = branch_doc.get("custom_branch_code") or "000"
-	except Exception as e:
-		frappe.log_error(f"Failed to fetch branch code: {e}", "Branch Code Error")
+    # Dynamic codes
+    rcpt_ty_cd = "R" if getattr(doc, "is_return", 0) else "P"
+    reg_ty_cd = "A" if getattr(doc, "custom_smart_purchase_id", None) else "M"
+    branch_code = "000"
+    
+    try:
+        if hasattr(doc, "branch") and doc.branch:
+            branch_doc = frappe.get_doc("Branch", doc.branch)
+            branch_code = branch_doc.get("custom_branch_code") or "000"
+    except Exception as e:
+        frappe.log_error(f"Failed to fetch branch code: {e}", "Branch Code Error")
 
-	payload = {
-		"tpin": tpin,
-		"bhfId": branch_code,
-		"cisInvcNo": f"cis_{doc.name}",
-		"orgInvcNo": 0,
-		"spplrTpin": getattr(doc, "supplier_tpin", None),
-		"spplrBhfId": getattr(doc, "supplier_branch_id", "000"),
-		"spplrNm": doc.supplier_name,
-		"spplrInvcNo": get_supplier_invoice_number(doc.name),
-		"regTyCd": reg_ty_cd,
-		"pchsTyCd": "N",  # N = Normal Purchase
-		"rcptTyCd": rcpt_ty_cd,  # P = Purchase, R = Return
-		"pmtTyCd": "01",  # 01 = Cash
-		"pchsSttsCd": "02",  # 02 = Confirmed
-		"cfmDt": now_datetime().strftime("%Y%m%d%H%M%S"),
-		"pchsDt": now_datetime().strftime("%Y%m%d"),
-		"cnclReqDt": "",
-		"cnclDt": "",
-		"totItemCnt": len(doc.items),
-		"totTaxblAmt": round(sum(float(i.base_net_amount) for i in doc.items), 4),
-		"totTaxAmt": round(sum(float(getattr(i, "item_tax_amount", 0)) for i in doc.items), 4),
-		"totAmt": round(float(doc.base_grand_total), 2),
-		"remark": doc.remarks or "No Remarks",
-		"regrNm": frappe.session.user,
-		"regrId": frappe.session.user,
-		"modrNm": frappe.session.user,
-		"modrId": frappe.session.user,
-		"itemList": [],
-	}
+    # USE VALUES FROM EXISTING CRYSTALLISED DOCUMENT IF FOUND
+    if crystal_doc:
+        # Get totals from Crystallised document
+        total_item_count = crystal_doc.total_item_count
+        total_taxable_amount = crystal_doc.total_taxable_amount
+        total_tax_amount = crystal_doc.total_tax_amount
+        total_amount = crystal_doc.total_amount
+        
+        # Get other fields from Crystallised document
+        # IMPORTANT: crystal_doc.supplier_tpin contains supplier NAME, not actual TPIN
+        # This is because it's a Link field that stores the linked record name
+        # We need to fetch the actual TPIN from the Supplier record
+        supplier_name_from_crystal = crystal_doc.supplier_tpin
+        actual_supplier_tpin = None
+        
+        if supplier_name_from_crystal:
+            # Fetch the actual TPIN from the Supplier record
+            actual_supplier_tpin = frappe.db.get_value("Supplier", supplier_name_from_crystal, "tax_id")
+            print(f"DEBUG: Supplier name from crystal: {supplier_name_from_crystal}")
+            print(f"DEBUG: Actual TPIN fetched: {actual_supplier_tpin}")
+            
+            # If no tax_id in supplier record, try to use the supplier name as fallback
+            if not actual_supplier_tpin:
+                print(f"WARNING: No tax_id found for supplier {supplier_name_from_crystal}")
+        
+        # Use the actual TPIN, fallback to Purchase Invoice supplier_tpin field
+        supplier_tpin = actual_supplier_tpin or getattr(doc, "supplier_tpin", None)
+        print(f"DEBUG: Final supplier_tpin for payload: {supplier_tpin}")
+        supplier_branch_id = crystal_doc.supplier_branch_id or getattr(doc, "supplier_branch_id", "000")
+        supplier_invoice_no = crystal_doc.supplier_invoice_no or get_supplier_invoice_number(doc.name)
+        remarks = crystal_doc.remarks or doc.remarks or "No Remarks"
+        
+        # Get codes from Crystallised document
+        regtycd = crystal_doc.regtycd or reg_ty_cd
+        pchstycd = crystal_doc.pchstycd or "N"
+        receipt_type_code = crystal_doc.receipt_type_code or rcpt_ty_cd
+        payment_type_code = crystal_doc.payment_type_code or "01"
+        pchssttscd = crystal_doc.pchssttscd or "02"
+    else:
+        # Fallback to Purchase Invoice calculations (shouldn't happen if workflow is correct)
+        print("WARNING: Using Purchase Invoice values as fallback!")
+        total_item_count = len(doc.items)
+        total_taxable_amount = round(sum(float(i.base_net_amount) for i in doc.items), 4)
+        total_tax_amount = round(sum(float(getattr(i, "item_tax_amount", 0)) for i in doc.items), 4)
+        total_amount = round(float(doc.base_grand_total), 2)
+        
+        supplier_tpin = getattr(doc, "supplier_tpin", None)
+        supplier_branch_id = getattr(doc, "supplier_branch_id", "000")
+        supplier_invoice_no = get_supplier_invoice_number(doc.name)
+        remarks = doc.remarks or "No Remarks"
+        
+        regtycd = reg_ty_cd
+        pchstycd = "N"
+        receipt_type_code = rcpt_ty_cd
+        payment_type_code = "01"
+        pchssttscd = "02"
 
-	# --- Build item list ---
-	for idx, item in enumerate(doc.items, start=1):
-		# Fetch custom codes
-		pkg_code = frappe.db.get_value("Item", item.item_code, "custom_smart_packaging_unit") or "EA"
-		class_code = (
-			frappe.db.get_value("Item", item.item_code, "custom_smart_item_classification_code") or "00000000"
-		)
-		uom_code = frappe.db.get_value("Item", item.item_code, "custom_smart_quantity_unit") or "EA"
+    payload = {
+        "tpin": tpin,
+        "bhfId": branch_code,
+        "cisInvcNo": f"cis_{doc.name}",
+        "orgInvcNo": 0,
+        "spplrTpin": supplier_tpin,
+        "spplrBhfId": supplier_branch_id,
+        "spplrNm": doc.supplier_name,
+        "spplrInvcNo": supplier_invoice_no,
+        "regTyCd": regtycd,
+        "pchsTyCd": pchstycd,
+        "rcptTyCd": receipt_type_code,
+        "pmtTyCd": payment_type_code,
+        "pchsSttsCd": pchssttscd,
+        "cfmDt": now_datetime().strftime("%Y%m%d%H%M%S"),
+        "pchsDt": now_datetime().strftime("%Y%m%d"),
+        "cnclReqDt": "",
+        "cnclDt": "",
+        "totItemCnt": total_item_count,
+        "totTaxblAmt": total_taxable_amount,
+        "totTaxAmt": total_tax_amount,
+        "totAmt": total_amount,
+        "remark": remarks,
+        "regrNm": frappe.session.user,
+        "regrId": frappe.session.user,
+        "modrNm": frappe.session.user,
+        "modrId": frappe.session.user,
+        "itemList": [],
+    }
 
-		item_data = {
-			"itemSeq": idx,
-			"itemCd": getattr(item, "item_code", None),
-			"itemClsCd": class_code,
-			"itemNm": item.item_name,
-			"bcd": getattr(item, "barcode", None),
-			"pkgUnitCd": pkg_code,
-			"pkg": float(getattr(item, "package_qty", 0)),
-			"qtyUnitCd": uom_code,
-			"qty": float(item.qty),
-			"prc": float(item.base_rate),
-			"splyAmt": float(item.base_net_amount),
-			"dcRt": float(getattr(item, "discount_percentage", 0)),
-			"dcAmt": float(getattr(item, "discount_amount", 0)),
-			"taxTyCd": getattr(item, "custom_tax_type", "A"),
-			"taxblAmt": round(float(item.base_net_amount), 2),
-			"vatCatCd": "A",
-			"taxAmt": round(float(getattr(item, "item_tax_amount", 0)), 2),
-			"totAmt": round(float(item.base_amount), 2),
-			"iplCatCd": None,
-			"tlCatCd": None,
-			"exciseCatCd": None,
-			"iplTaxblAmt": None,
-			"tlTaxblAmt": None,
-			"exciseTaxblAmt": None,
-			"iplAmt": None,
-			"tlAmt": None,
-			"exciseTxAmt": None,
-		}
+    # --- Build item list ---
+    # IMPORTANT: If crystal_doc has items, use those instead of Purchase Invoice items
+    if crystal_doc and hasattr(crystal_doc, 'items') and crystal_doc.items:
+        print(f"Using items from Crystallised document: {len(crystal_doc.items)} items")
+        for idx, item in enumerate(crystal_doc.items, start=1):
+            item_data = {
+                "itemSeq": idx,
+                "itemCd": getattr(item, "item_code", None),
+                "itemClsCd": getattr(item, "item_class_code", "00000000"),
+                "itemNm": getattr(item, "item_name", ""),
+                "bcd": getattr(item, "barcode", None),
+                "pkgUnitCd": getattr(item, "packaging_unit_code", "EA"),
+                "pkg": float(getattr(item, "package_qty", 0)),
+                "qtyUnitCd": getattr(item, "quantity_unit_code", "EA"),
+                "qty": float(getattr(item, "quantity", 0)),
+                "prc": float(getattr(item, "unit_price", 0)),
+                "splyAmt": float(getattr(item, "supply_amount", 0)),
+                "dcRt": float(getattr(item, "discount_rate", 0)),
+                "dcAmt": float(getattr(item, "discount_amount", 0)),
+                "taxTyCd": getattr(item, "vat_category_code", "A"),
+                "taxblAmt": round(float(getattr(item, "supply_amount", 0)), 2),
+                "vatCatCd": getattr(item, "vat_category_code", "A"),
+                "taxAmt": round(float(getattr(item, "vat_amount", 0)), 2),
+                "totAmt": round(float(getattr(item, "total_amount", 0)), 2),
+                "iplCatCd": None,
+                "tlCatCd": None,
+                "exciseCatCd": None,
+                "iplTaxblAmt": None,
+                "tlTaxblAmt": None,
+                "exciseTaxblAmt": None,
+                "iplAmt": None,
+                "tlAmt": None,
+                "exciseTxAmt": None,
+            }
+            payload["itemList"].append(item_data)
+    else:
+        # Fallback to Purchase Invoice items
+        print("Using items from Purchase Invoice")
+        for idx, item in enumerate(doc.items, start=1):
+            pkg_code = frappe.db.get_value("Item", item.item_code, "custom_smart_packaging_unit") or "EA"
+            class_code = frappe.db.get_value("Item", item.item_code, "custom_smart_item_classification_code") or "00000000"
+            uom_code = frappe.db.get_value("Item", item.item_code, "custom_smart_quantity_unit") or "EA"
 
-		payload["itemList"].append(item_data)
+            item_data = {
+                "itemSeq": idx,
+                "itemCd": getattr(item, "item_code", None),
+                "itemClsCd": class_code,
+                "itemNm": item.item_name,
+                "bcd": getattr(item, "barcode", None),
+                "pkgUnitCd": pkg_code,
+                "pkg": float(getattr(item, "package_qty", 0)),
+                "qtyUnitCd": uom_code,
+                "qty": float(item.qty),
+                "prc": float(item.base_rate),
+                "splyAmt": float(item.base_net_amount),
+                "dcRt": float(getattr(item, "discount_percentage", 0)),
+                "dcAmt": float(getattr(item, "discount_amount", 0)),
+                "taxTyCd": getattr(item, "custom_tax_type", "A"),
+                "taxblAmt": round(float(item.base_net_amount), 2),
+                "vatCatCd": "A",
+                "taxAmt": round(float(getattr(item, "item_tax_amount", 0)), 2),
+                "totAmt": round(float(item.base_amount), 2),
+                "iplCatCd": None,
+                "tlCatCd": None,
+                "exciseCatCd": None,
+                "iplTaxblAmt": None,
+                "tlTaxblAmt": None,
+                "exciseTaxblAmt": None,
+                "iplAmt": None,
+                "tlAmt": None,
+                "exciseTxAmt": None,
+            }
+            payload["itemList"].append(item_data)
 
-	return payload
+    return payload
 
 
 def generate_vsdc_item_payload(item_name: str, bhfid, settings_name: str) -> dict:
@@ -1285,10 +1420,10 @@ def get_branch_code_from_sle(sle: dict) -> str:
 	voucher_no = sle.get("voucher_no")
 
 	if not voucher_type or not voucher_no:
-		return "001"
+		return "000"
 
 	if not frappe.db.exists(voucher_type, voucher_no):
-		return "001"
+		return "000"
 
 	doc = frappe.get_doc(voucher_type, voucher_no)
 
@@ -1301,7 +1436,7 @@ def get_branch_code_from_sle(sle: dict) -> str:
 	)
 
 	if not branch_name:
-		return "001"
+		return "000"
 
 	# Fetch Branch master to get ZRA branch code
 	branch_doc = frappe.get_doc("Branch", branch_name)
@@ -1309,7 +1444,7 @@ def get_branch_code_from_sle(sle: dict) -> str:
 	branch_code = (
 		getattr(branch_doc, "custom_branch_code", None)
 		or getattr(branch_doc, "custom_branch_code", None)
-		or "001"
+		or "000"
 	)
 
 	return str(branch_code).zfill(3)

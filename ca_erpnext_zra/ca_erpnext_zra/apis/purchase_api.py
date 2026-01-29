@@ -251,63 +251,60 @@ def create_items_from_smart_purchase(request_data: str) -> None:
 
 
 def submit_smart_purchase_invoice(doc: Document) -> None:
-	"""
-	Submit a Purchase Invoice or Debit Note to the Smart Invoice System (ZRA).
-	Handles multi-company setups and prevents duplicate submissions.
-	"""
+    """
+    Submit a Purchase Invoice or Debit Note to the Smart Invoice System (ZRA).
+    Handles multi-company setups and prevents duplicate submissions.
+    """
+    
+    # Ensure we have a proper Document object
+    if isinstance(doc, str):
+        doc = frappe.get_doc("Purchase Invoice", doc)
+    
+    # Skip if already submitted to Smart
+    if getattr(doc, "custom_smart_invoice_number", None):
+        frappe.log_error(f"Invoice {doc.name} already has a Smart Invoice Number — skipping submission.")
+        return
 
-	# Ensure we have a proper Document object
-	if isinstance(doc, str):
-		# frappe.throw(str(doc))
-		doc = frappe.get_doc("Purchase Invoice", doc)
+    company_name = doc.company
+    settings = get_settings(company_name)
+    
+    if not settings:
+        frappe.log_error(f"No Smart settings found for company: {company_name}", "Smart Submission Error")
+        return
+    
+    # Skip if Smart submission is explicitly disabled
+    if getattr(doc, "prevent_smart_submission", False):
+        frappe.msgprint("Smart submission prevented for this document.")
+        return
+    
+    try:
+        route_key = "savePurchase"
+        payload = build_purchase_payload(doc.name, settings.get("name"))
+        success_message = "Smart Purchase Invoice submission queued successfully."
 
-	# Skip if already submitted to Smart
-	if getattr(doc, "custom_smart_invoice_number", None):
-		frappe.log_error(f"Invoice {doc.name} already has a Smart Invoice Number — skipping submission.")
-		return
-
-	company_name = doc.company
-	# active_settings = get_active_smart_settings()
-	settings = get_settings(company_name)
-
-	# Find settings for this company
-	# company_setting = next((s for s in active_settings if s.get("company") == company_name), None)
-
-	if not settings:
-		frappe.log_error(f"No Smart settings found for company: {company_name}", "Smart Submission Error")
-		return
-
-	# Skip if Smart submission is explicitly disabled
-	if getattr(doc, "prevent_smart_submission", False):
-		frappe.msgprint("Smart submission prevented for this document.")
-		return
-
-	try:
-		route_key = "savePurchase"
-		payload = build_purchase_payload(doc.name, settings.get("name"))
-		success_message = "Smart Purchase Invoice submission queued successfully."
-
-		# Process API request
-		process_request(
-			request_data=payload,
-			route_key=route_key,
-			handler_function=lambda response, **_: purchase_invoice_submission_on_success(
-				response=response,
-				document_name=doc.name,
-				doctype="Purchase Invoice",
-				settings_name=settings["name"],
-			),
-			request_method="POST",
-			doctype="Purchase Invoice",
-			document_name=doc.name,
-			settings_name=settings["name"],
-		)
-
-		frappe.msgprint(success_message)
-
-	except Exception as e:
-		frappe.log_error(frappe.get_traceback(), "Smart Purchase/Debit Note Submission Failed")
-		frappe.throw(f"Error submitting to Smart: {e}")
+        print(f"Payload: {json.dumps(payload, indent=4)}")
+        
+        # Process API request
+        process_request(
+            request_data=payload,
+            route_key=route_key,
+            handler_function=lambda response, **_: purchase_invoice_submission_on_success(
+                response=response,
+                document_name=doc.name,
+                doctype="Purchase Invoice",
+                settings_name=settings["name"],
+            ),
+            request_method="POST",
+            doctype="Purchase Invoice",
+            document_name=doc.name,
+            settings_name=settings["name"],
+        )
+        
+        frappe.msgprint(success_message)
+        
+    except Exception as e:
+        frappe.log_error(frappe.get_traceback(), "Smart Purchase/Debit Note Submission Failed")
+        frappe.throw(f"Error submitting to Smart: {e}")
 
 
 def on_error(error):
@@ -464,6 +461,16 @@ def build_reject_purchase_payload(purchase_doc):
     user = frappe.session.user.upper()
 
     # ------------------------
+    # Resolve actual supplier TPIN
+    # ------------------------
+    # IMPORTANT: purchase_doc.supplier_tpin contains supplier NAME, not actual TPIN
+    # This is because it's a Link field that stores the linked record name
+    # We need to fetch the actual TPIN from the Supplier record
+    actual_supplier_tpin = None
+    if purchase_doc.supplier_tpin:
+        actual_supplier_tpin = frappe.db.get_value("Supplier", purchase_doc.supplier_tpin, "tax_id")
+
+    # ------------------------
     # Main Purchase Rejection Payload
     # ------------------------
     payload = {
@@ -475,7 +482,7 @@ def build_reject_purchase_payload(purchase_doc):
         "orgInvcNo": 0,
 
         # Supplier Info
-        "spplrTpin": purchase_doc.supplier_tpin,
+        "spplrTpin": actual_supplier_tpin,
         "spplrBhfId": purchase_doc.supplier_branch_id,
         "spplrNm": purchase_doc.supplier_name,
         "spplrInvcNo": purchase_doc.supplier_invoice_no,
@@ -580,3 +587,4 @@ def reject_purchase_success(response, document_name=None, **kwargs):
 
     doc.save()
     frappe.db.commit()
+	
