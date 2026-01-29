@@ -71,8 +71,8 @@ frappe.ui.form.on(doctypeName, {
 						args: {
 							request_data: {
 								name: frm.doc.name,
-								supplier_name: frm.doc.suppliers_name,
-								supplier_pin: null,
+								supplier_name: frm.doc.suppliers_name || null,
+								supplier_pin: frm.doc.suppliers_pin || null,
 								supplier_currency: frm.doc.invoice_foreign_currency,
 								supplier_nation: frm.doc.origin_nation_code,
 							},
@@ -183,7 +183,8 @@ frappe.ui.form.on(doctypeName, {
 														name: frm.doc.name,
 														supplier_invoice_no: null,
 														supplier_invoice_date: null,
-														supplier_name: frm.doc.suppliers_name,
+														supplier_name: frm.doc.suppliers_name || null,
+														supplier_pin:frm.doc.suppliers_pin || null,
 														supplier_currency:
 															frm.doc.invoice_foreign_currency,
 														supplier_nation:
