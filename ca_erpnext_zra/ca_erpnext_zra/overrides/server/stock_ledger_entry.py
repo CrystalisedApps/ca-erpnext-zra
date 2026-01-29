@@ -25,7 +25,7 @@ def on_update(doc: Document, method: str | None = None) -> None:
 	# ---------------------------
 	# Fetch BHF ID from Branch
 	# ---------------------------
-	bhf_id = "001"
+	bhf_id = "000"
 	branch_field = None
 
 	# Some doctypes use "branch", others use accounting dimensions like "cost_center"

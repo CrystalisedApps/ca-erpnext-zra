@@ -1,214 +1,257 @@
 {
- "actions": [],
- "allow_rename": 1,
- "creation": "2025-10-28 09:35:33.943789",
- "doctype": "DocType",
- "engine": "InnoDB",
- "field_order": [
-  "purchase_id",
-  "supplier_tpin",
-  "supplier_name",
-  "pchstycd",
-  "pchssttscd",
-  "purchase_type",
-  "column_break_wgnc",
-  "supplier_invoice_no",
-  "sales_date",
-  "total_amount",
-  "purchase_status",
-  "regtycd",
-  "registration_type",
-  "column_break_dihd",
-  "branch",
-  "section_break_rrhh",
-  "receipt_type",
-  "supplier_branch_id",
-  "receipt_type_code",
-  "payment_type_code",
-  "column_break_pewb",
-  "confirmed_date",
-  "stock_release_date",
-  "total_item_count",
-  "section_break_stap",
-  "total_taxable_amount",
-  "total_tax_amount",
-  "remarks",
-  "section_break_smug",
-  "items"
- ],
- "fields": [
-  {
-   "fieldname": "purchase_id",
-   "fieldtype": "Data",
-   "label": "Purchase ID",
-   "unique": 1
-  },
-  {
-   "fieldname": "supplier_tpin",
-   "fieldtype": "Data",
-   "label": "Supplier TPIN"
-  },
-  {
-   "fieldname": "supplier_name",
-   "fieldtype": "Data",
-   "label": "Supplier Name"
-  },
-  {
-   "fieldname": "column_break_wgnc",
-   "fieldtype": "Column Break"
-  },
-  {
-   "fieldname": "supplier_invoice_no",
-   "fieldtype": "Int",
-   "label": "Supplier Invoice No"
-  },
-  {
-   "fieldname": "sales_date",
-   "fieldtype": "Date",
-   "label": "Sales Date"
-  },
-  {
-   "fieldname": "total_amount",
-   "fieldtype": "Currency",
-   "label": "Total Amount"
-  },
-  {
-   "fieldname": "section_break_rrhh",
-   "fieldtype": "Section Break"
-  },
-  {
-   "fieldname": "supplier_branch_id",
-   "fieldtype": "Data",
-   "label": "Supplier Branch ID"
-  },
-  {
-   "fieldname": "receipt_type_code",
-   "fieldtype": "Data",
-   "label": "Receipt Type Code"
-  },
-  {
-   "fieldname": "payment_type_code",
-   "fieldtype": "Data",
-   "label": "Payment Type Code"
-  },
-  {
-   "fieldname": "column_break_pewb",
-   "fieldtype": "Column Break"
-  },
-  {
-   "fieldname": "confirmed_date",
-   "fieldtype": "Date",
-   "label": "Confirmed Date"
-  },
-  {
-   "fieldname": "stock_release_date",
-   "fieldtype": "Date",
-   "label": "Stock Release Date"
-  },
-  {
-   "fieldname": "total_item_count",
-   "fieldtype": "Int",
-   "label": "Total Item Count"
-  },
-  {
-   "fieldname": "section_break_stap",
-   "fieldtype": "Section Break"
-  },
-  {
-   "fieldname": "total_taxable_amount",
-   "fieldtype": "Currency",
-   "label": "Total Taxable Amount"
-  },
-  {
-   "fieldname": "total_tax_amount",
-   "fieldtype": "Currency",
-   "label": "Total Tax Amount"
-  },
-  {
-   "fieldname": "remarks",
-   "fieldtype": "Small Text",
-   "label": "Remarks"
-  },
-  {
-   "fieldname": "section_break_smug",
-   "fieldtype": "Section Break"
-  },
-  {
-   "fieldname": "items",
-   "fieldtype": "Table",
-   "label": "Items",
-   "options": "Smart Registered Purchase Item"
-  },
-  {
-   "fieldname": "purchase_status",
-   "fieldtype": "Data",
-   "label": "Purchase Status",
-   "options": "Pending\nApproved\nRejected"
-  },
-  {
-   "fieldname": "pchstycd",
-   "fieldtype": "Data",
-   "label": "Purchase Type Code"
-  },
-  {
-   "fieldname": "pchssttscd",
-   "fieldtype": "Data",
-   "label": "Purchase Status Code"
-  },
-  {
-   "fieldname": "regtycd",
-   "fieldtype": "Data",
-   "label": "Registration Type Code"
-  },
-  {
-   "fieldname": "receipt_type",
-   "fieldtype": "Data",
-   "label": "Receipt Type"
-  },
-  {
-   "fieldname": "registration_type",
-   "fieldtype": "Data",
-   "label": "Registration Type"
-  },
-  {
-   "fieldname": "purchase_type",
-   "fieldtype": "Data",
-   "label": "Purchase Type"
-  },
-  {
-   "fieldname": "column_break_dihd",
-   "fieldtype": "Column Break"
-  },
-  {
-   "fieldname": "branch",
-   "fieldtype": "Data",
-   "label": "Branch"
-  }
- ],
- "grid_page_length": 50,
- "index_web_pages_for_search": 1,
- "links": [],
- "modified": "2025-12-05 16:29:42.025826",
- "modified_by": "Administrator",
- "module": "Ca Erpnext Zra",
- "name": "Crystallised ZRA Smart Purchases",
- "owner": "Administrator",
- "permissions": [
-  {
-   "create": 1,
-   "delete": 1,
-   "email": 1,
-   "export": 1,
-   "print": 1,
-   "read": 1,
-   "report": 1,
-   "role": "System Manager",
-   "share": 1,
-   "write": 1
-  }
- ],
- "row_format": "Dynamic",
- "sort_field": "modified",
- "sort_order": "DESC",
- "states": []
+  "actions": [],
+  "allow_rename": 1,
+  "creation": "2025-10-28 09:35:33.943789",
+  "doctype": "DocType",
+  "engine": "InnoDB",
+  "field_order": [
+    "purchase_id",
+    "pchstycd",
+    "pchssttscd",
+    "purchase_type",
+    "column_break_wgnc",
+    "supplier_invoice_no",
+    "sales_date",
+    "purchase_status",
+    "regtycd",
+    "registration_type",
+    "column_break_dihd",
+    "branch",
+    "section_break_supplier",
+    "supplier_tpin",
+    "supplier_name",
+    "supplier_branch_id",
+    "section_break_rrhh",
+    "receipt_type",
+    "receipt_type_code",
+    "payment_type_code",
+    "payment_type",
+    "column_break_pewb",
+    "confirmed_date",
+    "stock_release_date",
+    "section_break_stap",
+    "remarks",
+    "section_break_totals",
+    "total_amount",
+    "total_item_count",
+    "column_break_totals",
+    "total_taxable_amount",
+    "total_tax_amount",
+    "section_break_smug",
+    "items"
+  ],
+  "fields": [
+    {
+      "fieldname": "purchase_id",
+      "fieldtype": "Data",
+      "label": "Purchase ID",
+      "unique": 1
+    },
+    {
+      "fieldname": "section_break_supplier",
+      "fieldtype": "Section Break",
+      "label": "Supplier Information"
+    },
+    {
+      "fieldname": "supplier_tpin",
+      "fieldtype": "Link",
+      "label": "Supplier TPIN",
+      "options": "Supplier"
+    },
+    {
+      "fieldname": "supplier_name",
+      "fieldtype": "Link",
+      "label": "Supplier Name",
+      "options": "Supplier"
+    },
+    {
+      "fieldname": "pchstycd",
+      "fieldtype": "Data",
+      "label": "Purchase Type Code",
+      "read_only": 1
+    },
+    {
+      "fieldname": "pchssttscd",
+      "fieldtype": "Data",
+      "label": "Purchase Status Code",
+      "read_only": 1
+    },
+    {
+      "fieldname": "purchase_type",
+      "fieldtype": "Select",
+      "label": "Purchase Type",
+      "options": "Normal\nCopy"
+    },
+    {
+      "fieldname": "column_break_wgnc",
+      "fieldtype": "Column Break"
+    },
+    {
+      "fieldname": "supplier_invoice_no",
+      "fieldtype": "Int",
+      "label": "Supplier Invoice No"
+    },
+    {
+      "fieldname": "sales_date",
+      "fieldtype": "Date",
+      "label": "Sales Date"
+    },
+    {
+      "fieldname": "section_break_totals",
+      "fieldtype": "Section Break",
+      "label": "Totals"
+    },
+    {
+      "fieldname": "total_amount",
+      "fieldtype": "Currency",
+      "label": "Total Amount",
+      "read_only": 1
+    },
+    {
+      "fieldname": "total_item_count",
+      "fieldtype": "Int",
+      "label": "Total Item Count",
+      "read_only": 1
+    },
+    {
+      "fieldname": "column_break_totals",
+      "fieldtype": "Column Break"
+    },
+    {
+      "fieldname": "total_taxable_amount",
+      "fieldtype": "Currency",
+      "label": "Total Taxable Amount",
+      "read_only": 1
+    },
+    {
+      "fieldname": "total_tax_amount",
+      "fieldtype": "Currency",
+      "label": "Total Tax Amount",
+      "read_only": 1
+    },
+    {
+      "fieldname": "purchase_status",
+      "fieldtype": "Select",
+      "label": "Purchase Status",
+      "options": "Approved\nRefunded\nTransferred\nRejected",
+      "default": "Approved"
+    },
+    {
+      "fieldname": "regtycd",
+      "fieldtype": "Data",
+      "label": "Registration Type Code",
+      "read_only": 1
+    },
+    {
+      "fieldname": "registration_type",
+      "fieldtype": "Select",
+      "label": "Registration Type",
+      "options": "Automatic\nManual",
+      "default": "Automatic"
+    },
+    {
+      "fieldname": "column_break_dihd",
+      "fieldtype": "Column Break"
+    },
+    {
+      "fieldname": "branch",
+      "fieldtype": "Link",
+      "label": "Branch",
+      "options": "Branch"
+    },
+    {
+      "fieldname": "section_break_rrhh",
+      "fieldtype": "Section Break"
+    },
+    {
+      "fieldname": "receipt_type",
+      "fieldtype": "Select",
+      "label": "Receipt Type",
+      "options": "Purchase\nRefund after Purchase",
+      "default": "Purchase"
+    },
+    {
+      "fieldname": "supplier_branch_id",
+      "fieldtype": "Data",
+      "label": "Supplier Branch ID"
+    },
+    {
+      "fieldname": "receipt_type_code",
+      "fieldtype": "Data",
+      "label": "Receipt Type Code",
+      "read_only": 1
+    },
+    {
+      "fieldname": "payment_type_code",
+      "fieldtype": "Data",
+      "label": "Payment Type Code",
+      "read_only": 1
+    },
+    {
+      "fieldname": "payment_type",
+      "fieldtype": "Select",
+      "label": "Payment Type",
+      "options": "Cash\nCredit\nCash/Credit\nBank Check\nDebit&Credit Card\nMobile Money\nOther\nBank transfer",
+      "default": "Cash"
+    },
+    {
+      "fieldname": "column_break_pewb",
+      "fieldtype": "Column Break"
+    },
+    {
+      "fieldname": "confirmed_date",
+      "fieldtype": "Date",
+      "label": "Confirmed Date"
+    },
+    {
+      "fieldname": "stock_release_date",
+      "fieldtype": "Date",
+      "label": "Stock Release Date"
+    },
+    {
+      "fieldname": "section_break_stap",
+      "fieldtype": "Section Break"
+    },
+    {
+      "fieldname": "remarks",
+      "fieldtype": "Small Text",
+      "label": "Remarks"
+    },
+    {
+      "fieldname": "section_break_smug",
+      "fieldtype": "Section Break"
+    },
+    {
+      "fieldname": "items",
+      "fieldtype": "Table",
+      "label": "Items",
+      "options": "Smart Registered Purchase Item"
+    }
+  ],
+  "grid_page_length": 50,
+  "index_web_pages_for_search": 1,
+  "links": [],
+  "modified": "2025-12-05 16:29:42.025826",
+  "modified_by": "Administrator",
+  "module": "Ca Erpnext Zra",
+  "name": "Crystallised ZRA Smart Purchases",
+  "owner": "Administrator",
+  "permissions": [
+    {
+      "create": 1,
+      "delete": 1,
+      "email": 1,
+      "export": 1,
+      "print": 1,
+      "read": 1,
+      "report": 1,
+      "role": "System Manager",
+      "share": 1,
+      "write": 1
+    }
+  ],
+  "row_format": "Dynamic",
+  "sort_field": "modified",
+  "sort_order": "DESC",
+  "states": []
 }
