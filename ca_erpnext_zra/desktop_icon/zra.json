@@ -1,0 +1,21 @@
+{
+ "app": "ca_erpnext_zra",
+ "bg_color": "blue",
+ "creation": "2026-02-03 18:14:38.856405",
+ "docstatus": 0,
+ "doctype": "Desktop Icon",
+ "hidden": 0,
+ "icon_type": "Link",
+ "idx": 0,
+ "label": "ZRA",
+ "link_to": "ZRA",
+ "link_type": "Workspace Sidebar",
+ "logo_url": "/assets/ca_erpnext_zra/zra.png",
+ "modified": "2026-02-03 18:20:32.558149",
+ "modified_by": "Administrator",
+ "name": "ZRA",
+ "owner": "Administrator",
+ "restrict_removal": 0,
+ "roles": [],
+ "standard": 1
+}

@@ -13,7 +13,7 @@
    "indent": 0,
    "keep_closed": 0,
    "label": "Home",
-   "link_to": "Smart  Integration",
+   "link_to": "Smart Integration",
    "link_type": "Workspace",
    "show_arrow": 0,
    "type": "Link"
@@ -171,11 +171,11 @@
    "type": "Link"
   }
  ],
- "modified": "2026-01-22 11:55:52.851664",
+ "modified": "2026-02-03 09:58:38.614397",
  "modified_by": "Administrator",
  "module": "Ca Erpnext Zra",
- "name": "Smart Invoice Integration",
+ "name": "ZRA",
  "owner": "Administrator",
  "standard": 1,
- "title": "Smart Invoice Integration"
+ "title": "ZRA"
 }
