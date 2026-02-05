@@ -22,34 +22,67 @@ def purchase_search_on_success(response: dict, branch=None, **kwargs) -> None:
 		)
 		return
 	frappe.msgprint("Smart purchase fetch request sent successfully.")
-	for sale in sales_list:
-		created_record = create_purchase_from_smart_search_details(sale,branch)
+	
+	successful_saves = 0
+	failed_saves = 0
+	
+	for i, sale in enumerate(sales_list):
+		try:
+			# FIRST: Create the purchase document without saving/submitting
+			purchase_doc = create_purchase_from_smart_search_details(sale, branch, save_and_submit=False)
+			
+			if purchase_doc is None:
+				continue
+			
+			# SECOND: Add all items to it
+			for item in sale.get("itemList", []):
+				create_and_link_purchase_item(item, purchase_doc)
+			
+			# THIRD: Now save and submit the document WITH all items
+			saved_name = save_and_submit_purchase(purchase_doc)
+			successful_saves += 1
+			
+		except Exception as e:
+			frappe.log_error(
+				message=f"Failed to process sale {i+1}: {str(e)}\nSale data: {sale}",
+				title=f"Smart Purchase Processing Error - Sale {i+1}"
+			)
+			failed_saves += 1
+			continue
+	
+	frappe.msgprint(f"Processing complete: {successful_saves} purchases saved successfully, {failed_saves} failed")
 
-		for item in sale.get("itemList", []):
-			create_and_link_purchase_item(item, created_record)
 
-
-def create_purchase_from_smart_search_details(fetched_purchase: dict, branch=None) -> str:
+def create_purchase_from_smart_search_details(fetched_purchase: dict, branch=None, save_and_submit=True):
 	"""
 	Create or update a 'Smart Registered Purchase' document in ERPNext.
 	Items are handled separately by create_and_link_purchase_item().
+	Returns the Document object if save_and_submit=False, otherwise returns document name.
 	"""
 
-	purchase_id = (
-		f"{fetched_purchase['spplrTpin']}-{fetched_purchase['spplrBhfId']}-{fetched_purchase['spplrInvcNo']}"
-	)
+	# Create a more unique purchase_id that includes date and amount to avoid false duplicates
+	supplier_tpin = fetched_purchase.get('spplrTpin', 'UNKNOWN')
+	supplier_branch = fetched_purchase.get('spplrBhfId', '000')
+	invoice_no = fetched_purchase.get('spplrInvcNo', '0')
+	sales_date = fetched_purchase.get('salesDt', '')
+	total_amount = fetched_purchase.get('totAmt', 0)
+	
+	# Include sales date and total amount to make it more unique
+	purchase_id = f"{supplier_tpin}-{supplier_branch}-{invoice_no}-{sales_date}-{total_amount}"
 
 	existing_doc = frappe.get_value(REGISTERED_PURCHASES_DOCTYPE_NAME, {"purchase_id": purchase_id}, "name")
 
-	doc = (
-		frappe.get_doc(REGISTERED_PURCHASES_DOCTYPE_NAME, existing_doc)
-		if existing_doc
-		else frappe.new_doc(REGISTERED_PURCHASES_DOCTYPE_NAME)
-	)
+	if existing_doc:
+		# Skip if document already exists - don't process duplicates
+		return None
+	else:
+		doc = frappe.new_doc(REGISTERED_PURCHASES_DOCTYPE_NAME)
 
 	# Safe flags
 	doc.flags.ignore_permissions = True
-	doc.flags.ignore_validate_update_after_submit = True
+	doc.flags.ignore_validate = True
+	doc.flags.ignore_mandatory = True
+	doc.flags.ignore_links = True
 	doc.purchase_id = purchase_id
 
 	# Basic fields
@@ -67,9 +100,23 @@ def create_purchase_from_smart_search_details(fetched_purchase: dict, branch=Non
 		"Crystallised Smart Purchase Status", {"code": doc.pchssttscd}, "code_name"
 	)
 
-	# Supplier & purchase info
-	doc.supplier_name = fetched_purchase.get("spplrNm")
-	doc.supplier_tpin = fetched_purchase.get("spplrTpin")
+	# Supplier & purchase info - Auto-create supplier if needed
+	supplier_data = {
+		"supplier_name": fetched_purchase.get("spplrNm"),
+		"supplier_tpin": fetched_purchase.get("spplrTpin"),
+		"supplier_branch_id": fetched_purchase.get("spplrBhfId")
+	}
+	
+	# Create or get existing supplier
+	try:
+		supplier_name = get_or_create_supplier_from_smart(supplier_data)
+		doc.supplier_name = supplier_name
+		doc.supplier_tpin = fetched_purchase.get("spplrTpin")
+	except Exception as e:
+		# Fallback to text values
+		doc.supplier_name = fetched_purchase.get("spplrNm")
+		doc.supplier_tpin = fetched_purchase.get("spplrTpin")
+	
 	doc.supplier_branch_id = fetched_purchase.get("spplrBhfId")
 	doc.supplier_invoice_no = fetched_purchase.get("spplrInvcNo")
 	doc.payment_type_code = fetched_purchase.get("pmtTyCd")
@@ -105,28 +152,36 @@ def create_purchase_from_smart_search_details(fetched_purchase: dict, branch=Non
 	# Clear child table
 	doc.items = []
 
-	# Save & submit
-	doc.save(ignore_permissions=True)
-	if doc.docstatus != 1:
-		doc.submit()
+	# Only save if explicitly requested
+	if save_and_submit:
+		doc.save(ignore_permissions=True)
+		if doc.docstatus != 1:
+			doc.submit()
+		return doc.name
+	else:
+		# Return the document object without saving
+		return doc
 
-	return doc.name
 
-
-def create_and_link_purchase_item(item: dict, parent_record: str) -> None:
+def create_and_link_purchase_item(item: dict, parent_document) -> None:
 	"""
-	Append an item to Registered Purchase DocType safely.
+	Append an item to the parent document object.
+	Modified to work with Document object instead of document name.
 	"""
-
-	parent = frappe.get_doc(REGISTERED_PURCHASES_DOCTYPE_NAME, parent_record)
+	
+	# If parent_document is a string (document name), get the document
+	if isinstance(parent_document, str):
+		parent = frappe.get_doc(REGISTERED_PURCHASES_DOCTYPE_NAME, parent_document)
+	else:
+		parent = parent_document
+	
 	parent.flags.ignore_permissions = True
-	parent.flags.ignore_validate_update_after_submit = True
+	parent.flags.ignore_validate = True
 
 	# --------------------------
 	# 1. Ensure classification exists
 	# --------------------------
 	item_cls_code = item.get("itemClsCd") or "99999999"
-	# frappe.throw(str(item_cls_code))
 	classification_doc = frappe.db.exists(ITEM_CLASSIFICATIONS_DOCTYPE_NAME, item_cls_code)
 
 	if not classification_doc:
@@ -139,21 +194,31 @@ def create_and_link_purchase_item(item: dict, parent_record: str) -> None:
 		else:
 			cls.tax_ty_cd = None
 		cls.item_cls_cd = item_cls_code
-		# better mapping
-		cls.save()
+		cls.save(ignore_permissions=True)
 		classification_doc = cls.name
 
 	# --------------------------
-	# 2. Append child row
+	# 2. Auto-create item if needed
 	# --------------------------
+	item_code = item.get("itemCd") or f"TEMP-{item.get('itemSeq', 'X')}"
+	
+	# Try to create the item if it doesn't exist
+	try:
+		created_item_code = get_or_create_item_from_smart(item)
+		item_code = created_item_code
+	except Exception as e:
+		# Use the original item code as fallback
+		pass
 
+	# --------------------------
+	# 3. Append child row
+	# --------------------------
 	parent.append(
 		"items",
 		{
 			"item_seq": item.get("itemSeq"),
 			"item_name": item.get("itemNm"),
-			"item_code": item.get("itemCd") or f"TEMP-{item.get('itemSeq', 'X')}",
-			# IMPORTANT — use the REAL child table fieldname
+			"item_code": item_code,
 			"item_class_code": item.get("itemClsCd"),
 			"packaging_unit_code": item.get("pkgUnitCd"),
 			"quantity": flt(item.get("qty") or 1),
@@ -168,12 +233,40 @@ def create_and_link_purchase_item(item: dict, parent_record: str) -> None:
 			"total_amount": flt(item.get("totAmt") or 0),
 		},
 	)
+	
+	# NO SAVE HERE - we'll save later after all items are added
 
-	# --------------------------
-	# 3. Save parent
-	# --------------------------
-	parent.save(ignore_permissions=True)
-	frappe.db.commit()
+
+def save_and_submit_purchase(purchase_doc) -> str:
+	"""
+	Save and submit the purchase document after all items have been added.
+	"""
+	try:
+		# Additional safety flags
+		purchase_doc.flags.ignore_permissions = True
+		purchase_doc.flags.ignore_validate = True
+		purchase_doc.flags.ignore_mandatory = True
+		purchase_doc.flags.ignore_links = True
+		
+		purchase_doc.save(ignore_permissions=True)
+		
+		# Try to submit, but don't fail if submission fails
+		try:
+			if purchase_doc.docstatus != 1:
+				purchase_doc.submit()
+		except Exception as submit_error:
+			# Continue anyway - the document is saved
+			pass
+		
+		frappe.db.commit()
+		return purchase_doc.name
+	except Exception as e:
+		frappe.log_error(
+			message=f"Failed to save/submit purchase {purchase_doc.purchase_id}: {str(e)}\nTraceback: {frappe.get_traceback()}",
+			title="Smart Purchase Save Error"
+		)
+		frappe.db.rollback()
+		raise e
 
 
 def _update_parent_link_status(parent_doc):
@@ -198,97 +291,97 @@ def _update_parent_link_status(parent_doc):
 	frappe.db.commit()
 
 
-# def create_or_update_purchase_invoice_from_smart(doc):
-#     """
-#     Create or update a Purchase Invoice in ERPNext based on Smart (ZRA) data.
-#     Safe against missing fields, orphaned child rows, and validation edge cases.
-#     """
+def create_or_update_purchase_invoice_from_smart(doc):
+	"""
+	Create or update a Purchase Invoice in ERPNext based on Smart (ZRA) data.
+	Safe against missing fields, orphaned child rows, and validation edge cases.
+	"""
 
-#     supplier_name = get_or_create_supplier_from_smart(doc)
+	supplier_name = get_or_create_supplier_from_smart(doc)
 
-#     existing_pi = frappe.db.get_value(
-#         "Purchase Invoice",
-#         {"custom_smart_purchase_id": doc.purchase_id or doc.smart_id},
-#         "name"
-#     )
+	existing_pi = frappe.db.get_value(
+		"Purchase Invoice",
+		{"custom_smart_purchase_id": doc.purchase_id or doc.smart_id},
+		"name"
+	)
 
-#     if existing_pi:
-#         #  Update existing invoice
-#         pi = frappe.get_doc("Purchase Invoice", existing_pi)
-#         pi.set("items", [])  # clear all previous rows safely
-#     else:
-#         #  Create new invoice
-#         pi = frappe.new_doc("Purchase Invoice")
-#         pi.custom_smart_purchase_id = doc.purchase_id or doc.smart_id
-#         pi.company = getattr(doc, "company", frappe.defaults.get_user_default("Company"))
-#         pi.supplier = supplier_name
-#         pi.bill_no = getattr(doc, "supplier_invoice_no", None) or getattr(doc, "spplrInvcNo", None)
-#         pi.bill_date = getattr(doc, "salesDt", today())
-#         pi.posting_date = today()
-#         pi.currency = "ZMW"  # or derive from Smart if available
-#         pi.buying_price_list = frappe.db.get_value("Buying Settings", None, "price_list") or "Standard Buying"
+	if existing_pi:
+		#  Update existing invoice
+		pi = frappe.get_doc("Purchase Invoice", existing_pi)
+		pi.set("items", [])  # clear all previous rows safely
+	else:
+		#  Create new invoice
+		pi = frappe.new_doc("Purchase Invoice")
+		pi.custom_smart_purchase_id = doc.purchase_id or doc.smart_id
+		pi.company = getattr(doc, "company", frappe.defaults.get_user_default("Company"))
+		pi.supplier = supplier_name
+		pi.bill_no = getattr(doc, "supplier_invoice_no", None) or getattr(doc, "spplrInvcNo", None)
+		pi.bill_date = getattr(doc, "salesDt", today())
+		pi.posting_date = today()
+		pi.currency = "ZMW"  # or derive from Smart if available
+		pi.buying_price_list = frappe.db.get_value("Buying Settings", None, "price_list") or "Standard Buying"
 
-#     # ---  Add Items ---
-#     for item in getattr(doc, "items", []):
-#         item_code = get_or_create_item_from_smart(item)
+	# ---  Add Items ---
+	for item in getattr(doc, "items", []):
+		item_code = get_or_create_item_from_smart(item)
 
-#         qty = flt(getattr(item, "qty", 1))
-#         rate = flt(getattr(item, "prc", 0.0))
-#         amount = qty * rate
-#         uom = getattr(item, "qtyUnitCd", "Nos") or "Nos"
-#         conversion_factor = 1.0
-#         stock_qty = qty * conversion_factor
+		qty = flt(getattr(item, "qty", 1))
+		rate = flt(getattr(item, "prc", 0.0))
+		amount = qty * rate
+		uom = getattr(item, "qtyUnitCd", "Nos") or "Nos"
+		conversion_factor = 1.0
+		stock_qty = qty * conversion_factor
 
-#         # Get a valid default expense account
-#         default_expense_account = (
-#             frappe.db.get_value("Company", pi.company, "default_expense_account")
-#             or frappe.db.get_value("Company", pi.company, "stock_received_but_not_billed")
-#             or frappe.db.get_value("Account", {"company": pi.company, "root_type": "Expense"}, "name")
-#         )
-#         pi.append("items", {
-#             "item_code": item_code,
-#             "item_name": getattr(item, "itemNm", item_code),
-#             "description": getattr(item, "itemNm", item_code),
-#             "qty": qty,
-#             "stock_uom": uom,
-#             "uom": uom,
-#             "conversion_factor": conversion_factor,
-#             "stock_qty": stock_qty,
-#             "accepted_qty": qty,
-#             "rate": rate,
-#             "amount": amount,
-#             "base_rate": rate,
-#             "base_amount": amount,
-#             "received_qty": qty,
-#             "warehouse": frappe.db.get_value("Warehouse", {"company": pi.company}, "name") or "Main Warehouse",
-#            "expense_account": default_expense_account,   #  Fix: ensure valid expense account
+		# Get a valid default expense account
+		default_expense_account = (
+			frappe.db.get_value("Company", pi.company, "default_expense_account")
+			or frappe.db.get_value("Company", pi.company, "stock_received_but_not_billed")
+			or frappe.db.get_value("Account", {"company": pi.company, "root_type": "Expense"}, "name")
+		)
+		pi.append("items", {
+			"item_code": item_code,
+			"item_name": getattr(item, "itemNm", item_code),
+			"description": getattr(item, "itemNm", item_code),
+			"qty": qty,
+			"stock_uom": uom,
+			"uom": uom,
+			"conversion_factor": conversion_factor,
+			"stock_qty": stock_qty,
+			"accepted_qty": qty,
+			"rate": rate,
+			"amount": amount,
+			"base_rate": rate,
+			"base_amount": amount,
+			"received_qty": qty,
+			"warehouse": frappe.db.get_value("Warehouse", {"company": pi.company}, "name") or "Main Warehouse",
+			"expense_account": default_expense_account,   #  Fix: ensure valid expense account
 
-#         })
+		})
 
-#     # ---  Force new child inserts (avoid old row references) ---
-#     for row in pi.items:
-#         row.name = None
+	# ---  Force new child inserts (avoid old row references) ---
+	for row in pi.items:
+		row.name = None
 
-#     # --- Safety Flags ---
-#     pi.flags.ignore_permissions = True
-#     pi.flags.ignore_validate_update_after_submit = True
-#     pi.flags.ignore_mandatory = True
-#     pi.flags.ignore_links = True
-#     pi.flags.ignore_validate = True
+	# --- Safety Flags ---
+	pi.flags.ignore_permissions = True
+	pi.flags.ignore_validate_update_after_submit = True
+	pi.flags.ignore_mandatory = True
+	pi.flags.ignore_links = True
+	pi.flags.ignore_validate = True
 
-#     # ---  Save Safely ---
-#     pi.save(ignore_permissions=True)
-#     frappe.db.commit()
+	# ---  Save Safely ---
+	pi.save(ignore_permissions=True)
+	frappe.db.commit()
 
-#     # ---  Optional: auto-submit if valid ---
-#     try:
-#         if not pi.docstatus:
-#             pi.submit()
-#             frappe.db.commit()
-#     except Exception as e:
-#         frappe.log_error(frappe.get_traceback(), f"Smart Purchase: failed to submit {pi.name}")
+	# ---  Optional: auto-submit if valid ---
+	try:
+		if not pi.docstatus:
+			pi.submit()
+			frappe.db.commit()
+	except Exception as e:
+		frappe.log_error(frappe.get_traceback(), f"Smart Purchase: failed to submit {pi.name}")
 
-#     return pi.name
+	return pi.name
 
 
 # ------------------- Utility Functions -------------------
