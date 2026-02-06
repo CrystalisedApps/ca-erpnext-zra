@@ -65,6 +65,8 @@ def process_request(
 
 	# Resolve route from key (specific to ZRA VSDC)
 	route_path, _ = get_route_path(route_key, "Crystal VSDC")
+	if not route_path:
+		frappe.throw(f"Route not found for key: {route_key}. Please ensure it is configured in the Crystal ZRA Route DocType for vendor 'Crystal VSDC'.")
 	dynamic_route_path = process_dynamic_url(route_path, request_data)
 	url = f"{server_url}{dynamic_route_path}"
 

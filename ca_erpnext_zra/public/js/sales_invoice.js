@@ -21,7 +21,6 @@ frappe.ui.form.on(parentDoctype, {
 	refresh: async function (frm) {
 		await updateTaxAmountLabel(frm);
 
-		if (frm.is_new()) return;
 
 		// Fetch active VSDC settings for current company
 		const { message: activeSetting } = await frappe.call({
@@ -29,8 +28,20 @@ frappe.ui.form.on(parentDoctype, {
 			args: { doctype: settingsDoctypeName, company: frm.doc.company },
 		});
 
-		if (!activeSetting?.length || frm.doc.docstatus === 0 || frm.doc.prevent_vsdc_submission)
-			return;
+		if (!activeSetting?.length) return;
+
+		// --- Get RVAT Principals Button (Visible on Draft/New) ---
+		if (frm.doc.docstatus === 0) {
+			frm.add_custom_button(
+				__("Get RVAT Principals"),
+				function () {
+					getPrincipalsAction(activeSetting, frm);
+				},
+				__("Smart Actions")
+			);
+		}
+
+		if (frm.doc.docstatus === 0 || frm.doc.prevent_vsdc_submission) return;
 
 		// --- Send Invoice Button ---
 		if (!frm.doc.custom_successfully_submitted) {
@@ -208,6 +219,127 @@ async function updateTaxAmountLabel(frm) {
 			);
 		}
 	} catch (error) {
+
 		console.error("Error updating Tax Amount label:", error);
+	}
+}
+
+function getPrincipalsAction(settings, frm) {
+	const handler = (settings_name) => {
+		frappe.call({
+			method: "ca_erpnext_zra.ca_erpnext_zra.apis.sales_api.get_principals",
+			args: { settings_name: settings_name },
+			callback: (r) => {
+				if (r.message && r.message.data) {
+					// r.message.data is expected to be the list of principals
+					const principals = r.message.data.itemList || r.message.data;
+					// Adjust based on actual API response structure. 
+					// VSDC usually returns { resultCd, data: { itemList: [...] } } or similar
+
+					// If it's a direct list
+					let list = Array.isArray(principals) ? principals : [];
+
+					// Fallback: check if the response itself is the list
+					if (Array.isArray(r.message)) {
+						list = r.message;
+					}
+
+					if (list.length === 0) {
+						frappe.msgprint(__("No principals found."));
+						return;
+					}
+
+					const d = new frappe.ui.Dialog({
+						title: __("Select Principal"),
+						fields: [
+							{
+								label: "Principal",
+								fieldname: "principal",
+								fieldtype: "Table",
+								fields: [
+									{ fieldname: "tpin", label: "TPIN", fieldtype: "Data", in_list_view: 1 },
+									{ fieldname: "bhfId", label: "Branch ID", fieldtype: "Data", in_list_view: 1 },
+									{ fieldname: "prncplNm", label: "Name", fieldtype: "Data", in_list_view: 1 }
+								],
+								data: list,
+								get_data: () => list
+							}
+						],
+						primary_action_label: __("Select"),
+						primary_action: () => {
+							// Table selection is tricky in standard Dialog. 
+							// Better to use a Select field if list is small, or a custom HTML selection.
+							// For simplicity, let's use a Select field populated with options.
+							d.hide();
+						}
+					});
+
+					// Re-implementing with Select for simplicity as Table selection in Dialog needs custom JS
+					const options = list.map(p => ({
+						label: `${p.prncplNm || p.tpin} (${p.tpin})`,
+						value: p.tpin,
+						original: p
+					}));
+
+					const selectionDialog = new frappe.ui.Dialog({
+						title: __("Select Principal"),
+						fields: [
+							{
+								label: __("Principal"),
+								fieldname: "principal_tpin",
+								fieldtype: "Select",
+								options: options,
+								reqd: 1
+							}
+						],
+						primary_action_label: __("Set Principal"),
+						primary_action: ({ principal_tpin }) => {
+							const selected = options.find(o => o.value === principal_tpin).original;
+							frm.set_value("custom_principal_id", selected.tpin);
+							if (selected.prncplNm) {
+								frm.set_value("custom_principal_name", selected.prncplNm);
+							}
+							selectionDialog.hide();
+						}
+					});
+
+					selectionDialog.show();
+				} else {
+					console.log("Full response:", r);
+					frappe.msgprint(__("No data received or invalid format. Check console."));
+				}
+			},
+			error: (err) => {
+				console.error(err);
+				frappe.msgprint(__("Failed to fetch principals."));
+			}
+		});
+	};
+
+	if (settings.length === 1) {
+		handler(settings[0].name);
+	} else {
+		const dialog = new frappe.ui.Dialog({
+			title: __("Select VSDC Settings"),
+			fields: [
+				{
+					label: __("Select VSDC Settings"),
+					fieldname: "settings_name",
+					fieldtype: "Select",
+					options: settings.map((s) => ({
+						label: `${s.company} (${s.name})`,
+						value: s.name,
+					})),
+					reqd: 1,
+					default: settings[0]?.name,
+				},
+			],
+			primary_action_label: __("Proceed"),
+			primary_action: ({ settings_name }) => {
+				dialog.hide();
+				handler(settings_name);
+			},
+		});
+		dialog.show();
 	}
 }
