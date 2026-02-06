@@ -60,15 +60,15 @@ def create_purchase_from_smart_search_details(fetched_purchase: dict, branch=Non
 	Returns the Document object if save_and_submit=False, otherwise returns document name.
 	"""
 
-	# Create a more unique purchase_id that includes date and amount to avoid false duplicates
+	# Create a more unique purchase_id that includes date to avoid false duplicates
 	supplier_tpin = fetched_purchase.get('spplrTpin', 'UNKNOWN')
 	supplier_branch = fetched_purchase.get('spplrBhfId', '000')
 	invoice_no = fetched_purchase.get('spplrInvcNo', '0')
 	sales_date = fetched_purchase.get('salesDt', '')
 	total_amount = fetched_purchase.get('totAmt', 0)
 	
-	# Include sales date and total amount to make it more unique
-	purchase_id = f"{supplier_tpin}-{supplier_branch}-{invoice_no}-{sales_date}-{total_amount}"
+	# Include sales date to make it  unique
+	purchase_id = f"{supplier_tpin}-{supplier_branch}-{invoice_no}-{sales_date}"
 
 	existing_doc = frappe.get_value(REGISTERED_PURCHASES_DOCTYPE_NAME, {"purchase_id": purchase_id}, "name")
 
