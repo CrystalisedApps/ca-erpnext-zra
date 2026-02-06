@@ -14,6 +14,7 @@ from ...utils.payload_utils import (
 	build_credit_note_payload,
 	build_debit_note_payload,
 	build_invoice_payload,
+	build_rvat_sale_payload,
 	get_invoice_reference_number,
 )
 from ...utils.settings_utils import get_settings
@@ -125,7 +126,10 @@ def generic_invoices_on_submit_override(
 		return
 
 	# =============== NORMAL SALES INVOICE SUBMISSION ==================
-	payload = build_invoice_payload(doc, settings_doc.name)
+	if getattr(doc, "custom_principal_id", None):
+		payload = build_rvat_sale_payload(doc.name, settings_doc.name)
+	else:
+		payload = build_invoice_payload(doc, settings_doc.name)
 
 	frappe.enqueue(
 		process_request,

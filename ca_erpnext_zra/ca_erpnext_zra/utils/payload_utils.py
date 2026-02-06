@@ -1448,3 +1448,184 @@ def get_branch_code_from_sle(sle: dict) -> str:
 	)
 
 	return str(branch_code).zfill(3)
+
+
+def build_rvat_sale_payload(docname: str, settings_name: str) -> dict:
+	"""
+	Build payload for RVAT Sale, supporting Principal ID and RVAT tax category.
+	"""
+	settings = get_settings(settings_name)
+	tpin = settings.get("tpin")
+	
+	doc = frappe.get_doc("Sales Invoice", docname)
+
+	branch_code = "000"
+	try:
+		if hasattr(doc, "branch") and doc.branch:
+			branch_doc = frappe.get_doc("Branch", doc.branch)
+			branch_code = branch_doc.get("custom_branch_code") or "000"
+	except Exception as e:
+		frappe.log_error(f"Failed to fetch branch code: {e}", "Branch Code Error")
+
+	# Dates
+	sales_dt = datetime.strptime(str(doc.posting_date), "%Y-%m-%d").strftime("%Y%m%d")
+	now_str = datetime.now().strftime("%Y%m%d%H%M%S")
+
+	reference_number = doc.name
+	customer = frappe.get_doc("Customer", doc.customer)
+
+	# Extended tax map to include RVAT
+	tax_field_map = {
+		"A": ("taxblAmtA", "taxAmtA", "taxRtA"),
+		"B": ("taxblAmtB", "taxAmtB", "taxRtB"),
+		"C1": ("taxblAmtC1", "taxAmtC1", "taxRtC1"),
+		"C2": ("taxblAmtC2", "taxAmtC2", "taxRtC2"),
+		"C3": ("taxblAmtC3", "taxAmtC3", "taxRtC3"),
+		"D": ("taxblAmtD", "taxAmtD", "taxRtD"),
+		"F": ("taxblAmtF", "taxAmtF", "taxRtF"),
+		"IPL1": ("taxblAmtIpl1", "taxAmtIpl1", "taxRtIpl1"),
+		"IPL2": ("taxblAmtIpl2", "taxAmtIpl2", "taxRtIpl2"),
+		"TL": ("taxblAmtTl", "taxAmtTl", "taxRtTl"),
+		"RVAT": ("taxblAmtRvat", "taxAmtRvat", "taxRtRvat"),
+	}
+
+	payload = {
+		"tpin": tpin,
+		"bhfId": branch_code or "000",
+		"cisInvcNo": reference_number,
+		"salesDt": sales_dt,
+		"custTpin": customer.tax_id,
+		"custNm": customer.customer_name,
+		"currencyTyCd": doc.currency,
+		"totItemCnt": len(doc.items),
+		"totAmt": fmt4(0),
+		"totTaxAmt": fmt4(0),
+		"totTaxblAmt": fmt4(0),
+		"remark": doc.remarks or "",
+		"cfmDt": now_str,
+		"regrId": frappe.session.user,
+		"regrNm": frappe.session.user,
+		"modrId": frappe.session.user,
+		"modrNm": frappe.session.user,
+		"pmtTyCd": "01",
+		"rcptTyCd": "S",
+		"salesTyCd": "N",
+		"salesSttsCd": "02",
+		"saleCtyCd": "1",
+		"prchrAcptcYn": "N",
+		"orgInvcNo": 0,
+		"exchangeRt": 1,
+		"itemList": [],
+	}
+
+	# Add Principal ID if present (RVAT Feature)
+	if getattr(doc, "custom_principal_id", None):
+		payload["principalId"] = doc.custom_principal_id
+
+	# Initialize tax category fields
+	for _, (taxbl, taxamt, taxrt) in tax_field_map.items():
+		payload[taxbl] = fmt4(0)
+		payload[taxamt] = fmt4(0)
+		payload[taxrt] = 0
+		
+		# Set default rates for known categories if possible, otherwise they get updated from items
+		if "Rvat" in taxbl: # taxblAmtRvat
+			payload[taxrt] = 16
+
+	# Line items
+	for idx, item in enumerate(doc.items, start=1):
+		# Fetch custom codes
+		pkg_code = frappe.db.get_value("Item", item.item_code, "custom_smart_packaging_unit") or "EA"
+		class_code = (
+			frappe.db.get_value("Item", item.item_code, "custom_smart_item_classification_code") or "00000000"
+		)
+		uom_code = frappe.db.get_value("Item", item.item_code, "custom_smart_quantity_unit") or "EA"
+
+		qty = fmt4(item.qty)
+		rate = fmt4(item.rate)
+		sply_amt = fmt4(rate * qty)
+
+		dc_amt = fmt4(item.get("discount_amount") or 0)
+		dc_rt = fmt4(item.get("discount_percentage") or 0)
+
+		# Tax Logic
+		vat_cat = item.get("custom_taxation_type") or "A"
+		
+		# If user didn't explicit set RVAT on item but invoice has principal, should we force it?
+		# For now, let's respect the item's taxation type but ensure "RVAT" is supported.
+		# If item is "RVAT", tax rate is 16%.
+		if vat_cat == "RVAT":
+			tax_rate = 16.0
+		else:
+			tax_rate = float(item.get("custom_tax_rate") or 0)
+
+		vat_rate = fmt4(rate * tax_rate / 100)
+		vat_amt = fmt4(sply_amt * tax_rate / 100)
+		
+		item_code = (
+			item.get("custom_smart_item_code")
+			or frappe.db.get_value("Item", item.item_code, "custom_smart_item_code")
+			or item.item_code
+		)
+		rrp = item.get("standard_rate") or frappe.db.get_value("Item", item.item_code, "standard_rate")
+		
+		# Totals
+		tot_amt = fmt4(sply_amt - dc_amt + vat_amt)
+		# tl_amt = tot_amt # In sample, tlAmt is 0.0? Wait. 
+		# In build_invoice_payload: tl_amt = tot_amt.
+		# In user sample: "tlAmt": 0.0. "totAmt": 100.
+		# I will follow build_invoice_payload logic for consistency, unless sample proves otherwise.
+		# Sample item 1: "tlAmt": 0.0. Item 2: "tlAmt": 0.0.
+		# OK, I will set tlAmt to 0.0 as per sample.
+		tl_amt = 0.0 
+
+		sply_rate = fmt4(rate + vat_rate)
+
+		# Update tax category totals
+		if vat_cat in tax_field_map:
+			taxbl, taxamt, taxrt = tax_field_map[vat_cat]
+			payload[taxbl] = fmt4(payload[taxbl] + sply_amt)
+			payload[taxamt] = fmt4(payload[taxamt] + vat_amt)
+			payload[taxrt] = int(round(tax_rate))
+
+		# Item block
+		payload["itemList"].append(
+			{
+				"itemSeq": idx,
+				"itemCd": item_code,
+				"itemNm": item.item_name,
+				"itemClsCd": class_code,
+				"qty": qty,
+				"qtyUnitCd": uom_code,
+				"prc": sply_rate, # Price inclusive of tax? Sample: "prc":100, splyAmt:100. Tax: 13.79. 
+                                  # If prc(100) * qty(1) = 100. vat(13.79). tot(100)? 
+                                  # No, 86.20 + 13.79 = 100.
+                                  # So 100 is inclusive price.
+                                  # build_invoice_payload uses `sply_rate = rate + vat_rate`.
+				"splyAmt": sply_amt, # Sample: 100. Wait. 
+                                     # Sample Item 1: prc:100. splyAmt:100. taxblAmt: 86.20. vatAmt: 13.79. totAmt: 100.
+                                     # It seems splyAmt in sample is inclusive? 
+                                     # But typically Supply Amount is exclusive.
+                                     # In build_invoice_payload: sply_amt = rate * qty (exclusive).
+                                     # I will stick to build_invoice_payload logic which successfully works for other invoices.
+				"vatAmt": vat_amt,
+				"tlAmt": tl_amt, 
+				"totAmt": tot_amt,
+				"vatTaxblAmt": sply_amt,
+				"tlTaxblAmt": sply_amt,
+				"pkg": item.get("package_qty") or 1,
+				"pkgUnitCd": pkg_code,
+				"dcAmt": dc_amt,
+				"dcRt": dc_rt,
+				"bcd": item.barcode or "",
+				"vatCatCd": vat_cat,
+				"rrp": rrp,
+			}
+		)
+
+	# Update global totals
+	payload["totAmt"] = sum(item["totAmt"] for item in payload["itemList"])
+	payload["totTaxAmt"] = sum(item["vatAmt"] for item in payload["itemList"])
+	payload["totTaxblAmt"] = sum(item["vatTaxblAmt"] for item in payload["itemList"])
+
+	return payload

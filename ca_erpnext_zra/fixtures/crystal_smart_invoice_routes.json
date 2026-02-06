@@ -1,155 +1,164 @@
 [
- {
-  "docstatus": 0,
-  "doctype": "Crystal Smart Invoice Routes",
-  "modified": "2025-11-24 16:39:29.536520",
-  "name": "saleq619bb",
-  "route_table": [
-   {
-    "description": null,
-    "last_request_date": null,
-    "parent": "saleq619bb",
-    "parentfield": "route_table",
-    "parenttype": "Crystal Smart Invoice Routes",
-    "url_path": "/api/v1/CodeData/selectCodes",
-    "url_path_function": "selectCodes"
-   },
-   {
-    "description": null,
-    "last_request_date": null,
-    "parent": "saleq619bb",
-    "parentfield": "route_table",
-    "parenttype": "Crystal Smart Invoice Routes",
-    "url_path": "/api/v1/ItemsClassInformation/selectItemsClass",
-    "url_path_function": "selectItemsClass"
-   },
-   {
-    "description": null,
-    "last_request_date": null,
-    "parent": "saleq619bb",
-    "parentfield": "route_table",
-    "parenttype": "Crystal Smart Invoice Routes",
-    "url_path": "/api/v1/ItemInformation/saveItem",
-    "url_path_function": "saveItem"
-   },
-   {
-    "description": null,
-    "last_request_date": null,
-    "parent": "saleq619bb",
-    "parentfield": "route_table",
-    "parenttype": "Crystal Smart Invoice Routes",
-    "url_path": "/api/v1/SalesInformation/saveSales",
-    "url_path_function": "saveSales"
-   },
-   {
-    "description": null,
-    "last_request_date": null,
-    "parent": "saleq619bb",
-    "parentfield": "route_table",
-    "parenttype": "Crystal Smart Invoice Routes",
-    "url_path": "/api/v1/SalesInformation/SelectInvoice",
-    "url_path_function": "SelectInvoice"
-   },
-   {
-    "description": null,
-    "last_request_date": null,
-    "parent": "saleq619bb",
-    "parentfield": "route_table",
-    "parenttype": "Crystal Smart Invoice Routes",
-    "url_path": "/api/v1/SalesInformation/SaveCreditNote",
-    "url_path_function": "SaveCreditNote"
-   },
-   {
-    "description": null,
-    "last_request_date": null,
-    "parent": "saleq619bb",
-    "parentfield": "route_table",
-    "parenttype": "Crystal Smart Invoice Routes",
-    "url_path": "/api/v1/InitializationInfo/selectInitInfo",
-    "url_path_function": "selectInitInfo"
-   },
-   {
-    "description": null,
-    "last_request_date": null,
-    "parent": "saleq619bb",
-    "parentfield": "route_table",
-    "parenttype": "Crystal Smart Invoice Routes",
-    "url_path": "/api/v1/StockItemInformation/saveStockItems",
-    "url_path_function": "saveStockItems"
-   },
-   {
-    "description": null,
-    "last_request_date": null,
-    "parent": "saleq619bb",
-    "parentfield": "route_table",
-    "parenttype": "Crystal Smart Invoice Routes",
-    "url_path": "/api/v1/StockMasterInformation/SaveStockMaster",
-    "url_path_function": "SaveStockMaster"
-   },
-   {
-    "description": null,
-    "last_request_date": null,
-    "parent": "saleq619bb",
-    "parentfield": "route_table",
-    "parenttype": "Crystal Smart Invoice Routes",
-    "url_path": "/api/v1/SalesInformation/SaveDebitNote",
-    "url_path_function": "SaveDebitNote"
-   },
-   {
-    "description": null,
-    "last_request_date": null,
-    "parent": "saleq619bb",
-    "parentfield": "route_table",
-    "parenttype": "Crystal Smart Invoice Routes",
-    "url_path": "/api/v1/PurchaseInformation/selectTrnsPurchaseSales",
-    "url_path_function": "selectTrnsPurchaseSales"
-   },
-   {
-    "description": null,
-    "last_request_date": null,
-    "parent": "saleq619bb",
-    "parentfield": "route_table",
-    "parenttype": "Crystal Smart Invoice Routes",
-    "url_path": "/api/v1/PurchaseInformation/savePurchase",
-    "url_path_function": "savePurchase"
-   },
-   {
-    "description": null,
-    "last_request_date": null,
-    "parent": "saleq619bb",
-    "parentfield": "route_table",
-    "parenttype": "Crystal Smart Invoice Routes",
-    "url_path": "/api/v1/ItemInformation/selectItem",
-    "url_path_function": "selectItem"
-   },
-   {
-    "description": null,
-    "last_request_date": null,
-    "parent": "saleq619bb",
-    "parentfield": "route_table",
-    "parenttype": "Crystal Smart Invoice Routes",
-    "url_path": "/api/v1/ItemInformation/updateItem",
-    "url_path_function": "updateItem"
-   },
-   {
-    "description": null,
-    "last_request_date": null,
-    "parent": "saleq619bb",
-    "parentfield": "route_table",
-    "parenttype": "Crystal Smart Invoice Routes",
-    "url_path": "/api/v1/ImportItemsInfo/selectImportItems",
-    "url_path_function": "selectImports"
-   },
-   {
-    "description": null,
-    "last_request_date": null,
-    "parent": "saleq619bb",
-    "parentfield": "route_table",
-    "parenttype": "Crystal Smart Invoice Routes",
-    "url_path": "/api/v1/ImportItemsInfo/updateImportItems",
-    "url_path_function": "updateImports"
-   }
-  ],
-  "vendor": "Crystal VSDC"
- }
+    {
+        "docstatus": 0,
+        "doctype": "Crystal Smart Invoice Routes",
+        "modified": "2025-11-24 16:39:29.536520",
+        "name": "saleq619bb",
+        "route_table": [
+            {
+                "description": null,
+                "last_request_date": null,
+                "parent": "saleq619bb",
+                "parentfield": "route_table",
+                "parenttype": "Crystal Smart Invoice Routes",
+                "url_path": "/api/v1/CodeData/selectCodes",
+                "url_path_function": "selectCodes"
+            },
+            {
+                "description": null,
+                "last_request_date": null,
+                "parent": "saleq619bb",
+                "parentfield": "route_table",
+                "parenttype": "Crystal Smart Invoice Routes",
+                "url_path": "/api/v1/ItemsClassInformation/selectItemsClass",
+                "url_path_function": "selectItemsClass"
+            },
+            {
+                "description": null,
+                "last_request_date": null,
+                "parent": "saleq619bb",
+                "parentfield": "route_table",
+                "parenttype": "Crystal Smart Invoice Routes",
+                "url_path": "/api/v1/ItemInformation/saveItem",
+                "url_path_function": "saveItem"
+            },
+            {
+                "description": null,
+                "last_request_date": null,
+                "parent": "saleq619bb",
+                "parentfield": "route_table",
+                "parenttype": "Crystal Smart Invoice Routes",
+                "url_path": "/api/v1/SalesInformation/saveSales",
+                "url_path_function": "saveSales"
+            },
+            {
+                "description": null,
+                "last_request_date": null,
+                "parent": "saleq619bb",
+                "parentfield": "route_table",
+                "parenttype": "Crystal Smart Invoice Routes",
+                "url_path": "/api/v1/SalesInformation/SelectInvoice",
+                "url_path_function": "SelectInvoice"
+            },
+            {
+                "description": null,
+                "last_request_date": null,
+                "parent": "saleq619bb",
+                "parentfield": "route_table",
+                "parenttype": "Crystal Smart Invoice Routes",
+                "url_path": "/api/v1/SalesInformation/SaveCreditNote",
+                "url_path_function": "SaveCreditNote"
+            },
+            {
+                "description": null,
+                "last_request_date": null,
+                "parent": "saleq619bb",
+                "parentfield": "route_table",
+                "parenttype": "Crystal Smart Invoice Routes",
+                "url_path": "/api/v1/InitializationInfo/selectInitInfo",
+                "url_path_function": "selectInitInfo"
+            },
+            {
+                "description": null,
+                "last_request_date": null,
+                "parent": "saleq619bb",
+                "parentfield": "route_table",
+                "parenttype": "Crystal Smart Invoice Routes",
+                "url_path": "/api/v1/StockItemInformation/saveStockItems",
+                "url_path_function": "saveStockItems"
+            },
+            {
+                "description": null,
+                "last_request_date": null,
+                "parent": "saleq619bb",
+                "parentfield": "route_table",
+                "parenttype": "Crystal Smart Invoice Routes",
+                "url_path": "/api/v1/StockMasterInformation/SaveStockMaster",
+                "url_path_function": "SaveStockMaster"
+            },
+            {
+                "description": null,
+                "last_request_date": null,
+                "parent": "saleq619bb",
+                "parentfield": "route_table",
+                "parenttype": "Crystal Smart Invoice Routes",
+                "url_path": "/api/v1/SalesInformation/SaveDebitNote",
+                "url_path_function": "SaveDebitNote"
+            },
+            {
+                "description": null,
+                "last_request_date": null,
+                "parent": "saleq619bb",
+                "parentfield": "route_table",
+                "parenttype": "Crystal Smart Invoice Routes",
+                "url_path": "/api/v1/PurchaseInformation/selectTrnsPurchaseSales",
+                "url_path_function": "selectTrnsPurchaseSales"
+            },
+            {
+                "description": null,
+                "last_request_date": null,
+                "parent": "saleq619bb",
+                "parentfield": "route_table",
+                "parenttype": "Crystal Smart Invoice Routes",
+                "url_path": "/api/v1/PurchaseInformation/savePurchase",
+                "url_path_function": "savePurchase"
+            },
+            {
+                "description": null,
+                "last_request_date": null,
+                "parent": "saleq619bb",
+                "parentfield": "route_table",
+                "parenttype": "Crystal Smart Invoice Routes",
+                "url_path": "/api/v1/ItemInformation/selectItem",
+                "url_path_function": "selectItem"
+            },
+            {
+                "description": null,
+                "last_request_date": null,
+                "parent": "saleq619bb",
+                "parentfield": "route_table",
+                "parenttype": "Crystal Smart Invoice Routes",
+                "url_path": "/api/v1/ItemInformation/updateItem",
+                "url_path_function": "updateItem"
+            },
+            {
+                "description": null,
+                "last_request_date": null,
+                "parent": "saleq619bb",
+                "parentfield": "route_table",
+                "parenttype": "Crystal Smart Invoice Routes",
+                "url_path": "/api/v1/ImportItemsInfo/selectImportItems",
+                "url_path_function": "selectImports"
+            },
+            {
+                "description": null,
+                "last_request_date": null,
+                "parent": "saleq619bb",
+                "parentfield": "route_table",
+                "parenttype": "Crystal Smart Invoice Routes",
+                "url_path": "/api/v1/ImportItemsInfo/updateImportItems",
+                "url_path_function": "updateImports"
+            },
+            {
+                "description": null,
+                "last_request_date": null,
+                "parent": "saleq619bb",
+                "parentfield": "route_table",
+                "parenttype": "Crystal Smart Invoice Routes",
+                "url_path": "/api/v1/SalesInformation/SelectPrinciples",
+                "url_path_function": "selectPrincipals"
+            }
+        ],
+        "vendor": "Crystal VSDC"
+    }
 ]
