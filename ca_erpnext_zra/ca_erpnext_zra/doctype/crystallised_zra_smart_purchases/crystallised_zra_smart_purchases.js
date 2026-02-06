@@ -16,11 +16,6 @@ frappe.ui.form.on(doctypeName, {
             frm.set_value("receipt_type_code", "P");
             frm.set_value("payment_type_code", "01");
             frm.set_value("payment_type", "Cash");
-        } else {
-            // Only load ZRA items if they are not already populated to avoid marking form as "Not Saved"
-            if (!frm.doc.items || frm.doc.items.length === 0) {
-                load_zra_smart_purchase_items(frm);
-            }
         }
 
         // Setup standard Link field queries for supplier and branch fields
@@ -924,11 +919,13 @@ function toggle_tpin_functionality(frm) {
         // Hide TPIN field and clear its value
         frm.set_df_property("supplier_tpin", "hidden", 1);
         if (frm.doc.supplier_tpin) {
-            frm.set_value("supplier_tpin", "");
+            frm.set_value("supplier_tpin", "", null, 1);
         }
         // Clear TPIN display
         if (frm.fields_dict.supplier_tpin && frm.fields_dict.supplier_tpin.$input) {
-            frm.fields_dict.supplier_tpin.$input.val("");
+            if (frm.fields_dict.supplier_tpin.$input.val() !== "") {
+                frm.fields_dict.supplier_tpin.$input.val("");
+            }
         }
         if (frm.fields_dict.supplier_tpin && frm.fields_dict.supplier_tpin.set_new_description) {
             frm.fields_dict.supplier_tpin.set_new_description("");
@@ -1769,15 +1766,19 @@ function calculate_totals(frm) {
         total_tax_amount += vat_amount;
     });
 
-    // Round to 2 decimal places
-    total_amount = parseFloat(total_amount.toFixed(2));
-    total_taxable_amount = parseFloat(total_taxable_amount.toFixed(2));
-    total_tax_amount = parseFloat(total_tax_amount.toFixed(2));
-
-    frm.set_value("total_amount", total_amount);
-    frm.set_value("total_taxable_amount", total_taxable_amount);
-    frm.set_value("total_tax_amount", total_tax_amount);
-    frm.set_value("total_item_count", total_item_count);
+    // Only set values if they actually changed to avoid marking form as dirty/Not Saved
+    if (flt(frm.doc.total_amount, 2) !== total_amount) {
+        frm.set_value("total_amount", total_amount, null, 1);
+    }
+    if (flt(frm.doc.total_taxable_amount, 2) !== total_taxable_amount) {
+        frm.set_value("total_taxable_amount", total_taxable_amount, null, 1);
+    }
+    if (flt(frm.doc.total_tax_amount, 2) !== total_tax_amount) {
+        frm.set_value("total_tax_amount", total_tax_amount, null, 1);
+    }
+    if (frm.doc.total_item_count !== total_item_count) {
+        frm.set_value("total_item_count", total_item_count, null, 1);
+    }
 }
 
 // ============================================================
@@ -1804,7 +1805,7 @@ function update_registration_type_codes(frm) {
     }
 
     if (target_val && frm.doc.regtycd !== target_val) {
-        frm.set_value("regtycd", target_val);
+        frm.set_value("regtycd", target_val, null, 1);
     }
 }
 
@@ -1819,7 +1820,7 @@ function update_purchase_type_codes(frm) {
     }
 
     if (target_val && frm.doc.pchstycd !== target_val) {
-        frm.set_value("pchstycd", target_val);
+        frm.set_value("pchstycd", target_val, null, 1);
     }
 }
 
@@ -1834,7 +1835,7 @@ function update_receipt_type_codes(frm) {
     }
 
     if (target_val && frm.doc.receipt_type_code !== target_val) {
-        frm.set_value("receipt_type_code", target_val);
+        frm.set_value("receipt_type_code", target_val, null, 1);
     }
 }
 
@@ -1853,7 +1854,7 @@ function update_purchase_status_codes(frm) {
     }
 
     if (target_val && frm.doc.pchssttscd !== target_val) {
-        frm.set_value("pchssttscd", target_val);
+        frm.set_value("pchssttscd", target_val, null, 1);
     }
 }
 
@@ -1873,7 +1874,7 @@ function update_payment_type_codes(frm) {
 
     let target_val = paymentTypeMap[payment_type];
     if (target_val && frm.doc.payment_type_code !== target_val) {
-        frm.set_value("payment_type_code", target_val);
+        frm.set_value("payment_type_code", target_val, null, 1);
     }
 }
 
