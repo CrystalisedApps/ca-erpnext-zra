@@ -202,7 +202,7 @@ def create_purchase_invoice_from_smart_request(request_data: str) -> None:
 				"expense_account": expense_account,
 				"custom_smart_packaging_unit": item.get("packaging_unit_code"),
 				"custom_smart_item_classification_code": item.get("item_class_code"),
-				"custom_smart_vat_category": item.get("vat_category_code"),
+				"custom_taxation_type": item.get("vat_category_code"),
 				"custom_smart_quantity_unit": item.get("quantity_unit_code"),
 			},
 		)
