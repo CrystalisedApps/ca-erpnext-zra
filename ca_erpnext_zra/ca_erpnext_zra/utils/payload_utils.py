@@ -740,6 +740,7 @@ def build_invoice_payload(invoice: "Document", settings_name: str) -> dict:
 		"saleCtyCd": "1",
 		"prchrAcptcYn": "N",
 		"orgInvcNo": 0,
+		"lpoNumber": invoice.get("custom_lpo_number") or "",
 		"exchangeRt": 1,
 		"itemList": [],
 	}

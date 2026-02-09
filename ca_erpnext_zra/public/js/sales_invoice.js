@@ -21,6 +21,19 @@ frappe.ui.form.on(parentDoctype, {
 	refresh: async function (frm) {
 		await updateTaxAmountLabel(frm);
 
+		// MTV/LPO/Exempt Specific Query for Item Selection
+		// Must be set early in refresh to apply to Drafts
+		frm.set_query("item_code", "items", function (doc, cdt, cdn) {
+			if (doc.custom_is_mtv) {
+				return { filters: { "custom_vat_category_code": "B" } };
+			} else if (doc.custom_is_lpo) {
+				return { filters: { "custom_vat_category_code": ["in", ["C1", "C2", "C3"]] } };
+			} else if (doc.custom_is_exempt) {
+				return { filters: { "custom_vat_category_code": ["in", ["C", "D"]] } };
+			}
+			return {};
+		});
+
 		// Fetch active VSDC settings for current company
 		const { message: activeSetting } = await frappe.call({
 			method: "ca_erpnext_zra.ca_erpnext_zra.utils.smart_api_utils.get_active_smart_settings",
@@ -40,6 +53,7 @@ frappe.ui.form.on(parentDoctype, {
 			);
 		}
 
+		// Only show submission/sync buttons for submitted invoices or specific cases
 		if (frm.doc.docstatus === 0 || frm.doc.prevent_vsdc_submission) return;
 
 		// --- Send Invoice Button ---
@@ -76,22 +90,10 @@ frappe.ui.form.on(parentDoctype, {
 				__("Smart Actions")
 			);
 		}
-
-		// MTV Specific Query for Item Selection
-		// Registered once in refresh - will re-evaluate on every search click based on frm.doc.custom_is_mtv
-		frm.set_query("item_code", "items", function (doc, cdt, cdn) {
-			if (doc.custom_is_mtv) {
-				return {
-					filters: {
-						"custom_vat_category_code": "B"
-					}
-				};
-			}
-			return {};
-		});
 	},
 
 	validate: function (frm) {
+		// MTV Validation
 		if (frm.doc.custom_is_mtv) {
 			const non_b_items = (frm.doc.items || []).filter(item => item.custom_taxation_type !== 'B');
 			if (non_b_items.length > 0) {
@@ -104,22 +106,50 @@ frappe.ui.form.on(parentDoctype, {
 				frappe.validated = false;
 			}
 		}
+
+		// LPO Validation
+		if (frm.doc.custom_is_lpo) {
+			if (!frm.doc.custom_lpo_number) {
+				frappe.msgprint({
+					title: __("LPO Number Required"),
+					message: __("Please enter the LPO Number for this sale."),
+					indicator: "red"
+				});
+				frappe.validated = false;
+			}
+			const non_lpo_items = (frm.doc.items || []).filter(item => !['C1', 'C2', 'C3'].includes(item.custom_taxation_type));
+			if (non_lpo_items.length > 0) {
+				const item_codes = non_lpo_items.map(i => i.item_code).join(', ');
+				frappe.msgprint({
+					title: __("Invalid Items for LPO"),
+					message: __("LPO Sale is only allowed for items with Smart VAT Category Code C1, C2, or C3. Non-compliant items found: {0}", [item_codes]),
+					indicator: "red"
+				});
+				frappe.validated = false;
+			}
+		}
+
+		// Exempt Validation
+		if (frm.doc.custom_is_exempt) {
+			const non_exempt_items = (frm.doc.items || []).filter(item => !['C', 'D'].includes(item.custom_taxation_type));
+			if (non_exempt_items.length > 0) {
+				const item_codes = non_exempt_items.map(i => i.item_code).join(', ');
+				frappe.msgprint({
+					title: __("Invalid Items for Exempt Sale"),
+					message: __("Exempt Sale is only allowed for items with Smart VAT Category Code C or D. Non-compliant items found: {0}", [item_codes]),
+					indicator: "red"
+				});
+				frappe.validated = false;
+			}
+		}
 	},
 
 	custom_is_mtv: function (frm) {
-		// Set filter immediately
-		frm.set_query("item_code", "items", function (doc, cdt, cdn) {
-			if (doc.custom_is_mtv) {
-				return {
-					filters: {
-						"custom_vat_category_code": "B"
-					}
-				};
-			}
-			return {};
-		});
-
 		if (frm.doc.custom_is_mtv) {
+			// Uncheck others
+			frm.set_value("custom_is_lpo", 0);
+			frm.set_value("custom_is_exempt", 0);
+
 			// Scan existing items
 			let non_b_items = (frm.doc.items || []).filter(item => item.custom_taxation_type !== 'B');
 
@@ -127,7 +157,6 @@ frappe.ui.form.on(parentDoctype, {
 				frappe.confirm(
 					__("MTV Mode Active. This invoice contains items that are not Category 'B'. MTV Sale requires all items to be Category 'B'. Would you like to remove non-B items?"),
 					() => {
-						// On Yes: Filter and remove
 						let valid_items = (frm.doc.items || []).filter(item => item.custom_taxation_type === 'B');
 						frm.set_value("items", []);
 						valid_items.forEach(item => {
@@ -138,7 +167,6 @@ frappe.ui.form.on(parentDoctype, {
 						frappe.show_alert(__("Non-Category B items removed."));
 					},
 					() => {
-						// On No: Uncheck to maintain data
 						frm.set_value("custom_is_mtv", 0);
 						frappe.show_alert(__("MTV Sale disabled to preserve items."));
 					}
@@ -146,6 +174,80 @@ frappe.ui.form.on(parentDoctype, {
 			} else {
 				frappe.show_alert({
 					message: __("MTV Mode Active: Item selection filtered to Category 'B'."),
+					indicator: "blue"
+				});
+			}
+		}
+		frm.refresh_field("items");
+	},
+
+	custom_is_lpo: function (frm) {
+		if (frm.doc.custom_is_lpo) {
+			// Uncheck others
+			frm.set_value("custom_is_mtv", 0);
+			frm.set_value("custom_is_exempt", 0);
+
+			// Scan existing items
+			let non_lpo_items = (frm.doc.items || []).filter(item => !['C1', 'C2', 'C3'].includes(item.custom_taxation_type));
+
+			if (non_lpo_items.length) {
+				frappe.confirm(
+					__("LPO Mode Active. This invoice contains items that are not LPO-compliant (C1, C2, C3). Would you like to remove non-compliant items?"),
+					() => {
+						let valid_items = (frm.doc.items || []).filter(item => ['C1', 'C2', 'C3'].includes(item.custom_taxation_type));
+						frm.set_value("items", []);
+						valid_items.forEach(item => {
+							let row = frm.add_child("items");
+							$.extend(row, item);
+						});
+						frm.refresh_field("items");
+						frappe.show_alert(__("Non-LPO-compliant items removed."));
+					},
+					() => {
+						frm.set_value("custom_is_lpo", 0);
+						frappe.show_alert(__("LPO Sale disabled to preserve items."));
+					}
+				);
+			} else {
+				frappe.show_alert({
+					message: __("LPO Mode Active: Item selection filtered to Categories C1, C2, C3."),
+					indicator: "blue"
+				});
+			}
+		}
+		frm.refresh_field("items");
+	},
+
+	custom_is_exempt: function (frm) {
+		if (frm.doc.custom_is_exempt) {
+			// Uncheck others
+			frm.set_value("custom_is_mtv", 0);
+			frm.set_value("custom_is_lpo", 0);
+
+			// Scan existing items
+			let non_exempt_items = (frm.doc.items || []).filter(item => !['C', 'D'].includes(item.custom_taxation_type));
+
+			if (non_exempt_items.length) {
+				frappe.confirm(
+					__("Exempt Mode Active. This invoice contains taxable items. Exempt Sale requires all items to be Category C or D. Would you like to remove taxable items?"),
+					() => {
+						let valid_items = (frm.doc.items || []).filter(item => ['C', 'D'].includes(item.custom_taxation_type));
+						frm.set_value("items", []);
+						valid_items.forEach(item => {
+							let row = frm.add_child("items");
+							$.extend(row, item);
+						});
+						frm.refresh_field("items");
+						frappe.show_alert(__("Taxable items removed."));
+					},
+					() => {
+						frm.set_value("custom_is_exempt", 0);
+						frappe.show_alert(__("Exempt Sale disabled to preserve items."));
+					}
+				);
+			} else {
+				frappe.show_alert({
+					message: __("Exempt Mode Active: Item selection filtered to Categories C and D."),
 					indicator: "blue"
 				});
 			}
