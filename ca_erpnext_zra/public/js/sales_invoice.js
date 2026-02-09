@@ -85,7 +85,8 @@ function getModeLabel(modeName) {
 		'LPO': __("LPO-compliant items (C1, C2, C3) only"),
 		'Exempt': __("Category C or D items only"),
 		'Disbursement': __("Category 'E' items only"),
-		'RVAT': __("RVAT items only")
+		'RVAT': __("RVAT items only"),
+		'Export': __("Export items (C1) only")
 	};
 	return modeLabels[modeName] || "";
 }
@@ -106,6 +107,8 @@ frappe.ui.form.on(parentDoctype, {
 				return { filters: { "custom_vat_category_code": ["in", ["C", "D"]], "custom_smart_item_code": ["!=", ""] } };
 			} else if (doc.custom_is_disbursement) {
 				return { filters: { "custom_vat_category_code": "E", "custom_smart_item_code": ["!=", ""] } };
+			} else if (doc.custom_is_export_sale) {
+				return { filters: { "custom_vat_category_code": "C1", "custom_smart_item_code": ["!=", ""] } };
 			} else if (doc.custom_principal_id) {
 				return { filters: { "custom_taxation_type": "RVAT", "custom_smart_item_code": ["!=", ""] } };
 			}
@@ -270,6 +273,28 @@ frappe.ui.form.on(parentDoctype, {
 				frappe.validated = false;
 			}
 		}
+
+		// Export Validation
+		if (frm.doc.custom_is_export_sale) {
+			if (!frm.doc.custom_destination_country) {
+				frappe.msgprint({
+					title: __("Destination Country Required"),
+					message: __("Please select a Destination Country for this Export Sale."),
+					indicator: "red"
+				});
+				frappe.validated = false;
+			}
+			const non_export_items = (frm.doc.items || []).filter(item => vat_lookup[item.item_code] !== 'C1');
+			if (non_export_items.length > 0) {
+				const item_codes = non_export_items.map(i => i.item_code).join(', ');
+				frappe.msgprint({
+					title: __("Invalid Items for Export Sale"),
+					message: __("Export Sale is only allowed for items with Smart VAT Category Code 'C1'. Non-export items found: {0}", [item_codes]),
+					indicator: "red"
+				});
+				frappe.validated = false;
+			}
+		}
 	},
 
 	custom_is_mtv: function (frm) {
@@ -278,6 +303,7 @@ frappe.ui.form.on(parentDoctype, {
 			frm.set_value("custom_is_lpo", 0);
 			frm.set_value("custom_is_exempt", 0);
 			frm.set_value("custom_is_disbursement", 0);
+			frm.set_value("custom_is_export_sale", 0);
 			handleSaleModeToggle(frm, 'MTV', vat_cat => vat_cat === 'B');
 		}
 	},
@@ -288,6 +314,7 @@ frappe.ui.form.on(parentDoctype, {
 			frm.set_value("custom_is_mtv", 0);
 			frm.set_value("custom_is_exempt", 0);
 			frm.set_value("custom_is_disbursement", 0);
+			frm.set_value("custom_is_export_sale", 0);
 			handleSaleModeToggle(frm, 'LPO', vat_cat => ['C1', 'C2', 'C3'].includes(vat_cat));
 		}
 	},
@@ -298,6 +325,7 @@ frappe.ui.form.on(parentDoctype, {
 			frm.set_value("custom_is_mtv", 0);
 			frm.set_value("custom_is_lpo", 0);
 			frm.set_value("custom_is_disbursement", 0);
+			frm.set_value("custom_is_export_sale", 0);
 			handleSaleModeToggle(frm, 'Exempt', vat_cat => ['C', 'D'].includes(vat_cat));
 		}
 	},
@@ -308,7 +336,19 @@ frappe.ui.form.on(parentDoctype, {
 			frm.set_value("custom_is_mtv", 0);
 			frm.set_value("custom_is_lpo", 0);
 			frm.set_value("custom_is_exempt", 0);
+			frm.set_value("custom_is_export_sale", 0);
 			handleSaleModeToggle(frm, 'Disbursement', vat_cat => vat_cat === 'E');
+		}
+	},
+
+	custom_is_export_sale: function (frm) {
+		if (frm.doc.custom_is_export_sale) {
+			// Uncheck others
+			frm.set_value("custom_is_mtv", 0);
+			frm.set_value("custom_is_lpo", 0);
+			frm.set_value("custom_is_exempt", 0);
+			frm.set_value("custom_is_disbursement", 0);
+			handleSaleModeToggle(frm, 'Export', vat_cat => vat_cat === 'C1');
 		}
 	},
 });
