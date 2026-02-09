@@ -765,7 +765,8 @@ def build_invoice_payload(invoice: "Document", settings_name: str) -> dict:
 		# Supply amount = net amount before tax
 		# sply_amt = fmt4(item.net_amount)
 
-		sply_amt = fmt4(rate * qty)
+		actual_sply_amt = fmt4(rate * qty)
+		sply_amt = actual_sply_amt
 
 		# Discount
 		dc_amt = fmt4(item.get("discount_amount") or 0)
@@ -773,27 +774,54 @@ def build_invoice_payload(invoice: "Document", settings_name: str) -> dict:
 
 		# Tax rate
 		tax_rate = float(item.get("custom_tax_rate") or 0)
-		vat_rate = fmt4(rate * tax_rate / 100)
-		vat_amt = fmt4(sply_amt * tax_rate / 100)
+
+		# MTV Logic
+		is_mtv = invoice.get("custom_is_mtv")
+		rrp = (
+			item.get("custom_rrp")
+			or item.get("standard_rate")
+			or frappe.db.get_value("Item", item.item_code, "custom_rrp")
+			or frappe.db.get_value("Item", item.item_code, "standard_rate")
+			or 0
+		)
+
+		if is_mtv and rrp > _safe_float(rate):
+			# Use MTV for tax calculation
+			taxable_amt = fmt4(_safe_float(rrp) * _safe_float(qty))
+			vat_amt = fmt4(taxable_amt * tax_rate / 100)
+			# sply_amt in ZRA payload (vatTaxblAmt) should reflect MTV
+			sply_amt = taxable_amt
+			# Track that MTV was applied
+			invoice.custom_mtv_applied = 1
+		else:
+			vat_amt = fmt4(sply_amt * tax_rate / 100)
+
+		vat_rate = fmt4(_safe_float(rate) * tax_rate / 100)
 		item_code = (
 			item.get("custom_smart_item_code")
 			or frappe.db.get_value("Item", item.item_code, "custom_smart_item_code")
 			or item.item_code
 		)
-		rrp = item.get("standard_rate") or frappe.db.get_value("Item", item.item_code, "standard_rate")
+		
 		# Totals
-		tot_amt = fmt4(sply_amt - dc_amt + vat_amt)
+		tot_amt = fmt4(actual_sply_amt - dc_amt + vat_amt)
 		tl_amt = tot_amt
 
-		sply_rate = fmt4(rate + vat_rate)
+		sply_rate = fmt4(_safe_float(rate) + vat_rate)
 		# tl_amt = fmt4(sply_amt + vat_amt)   # line total including VAT
 		# tot_amt = fmt4(sply_amt - dc_amt + vat_amt)  # supply - discount + taxes
 
 		# Update tax category totals
 		vat_cat = item.get("custom_taxation_type") or "A"
+		
+		# MTV Enforcement: Only Category B allowed for MTV
+		if is_mtv:
+			vat_cat = "B"
+			
 		if vat_cat in tax_field_map:
 			taxbl, taxamt, taxrt = tax_field_map[vat_cat]
 
+			# For MTV, we only populate 'B' (which is now forced if is_mtv is true)
 			payload[taxbl] = fmt4(payload[taxbl] + sply_amt)
 			payload[taxamt] = fmt4(payload[taxamt] + vat_amt)
 			payload[taxrt] = int(round(tax_rate))
@@ -1551,26 +1579,44 @@ def build_rvat_sale_payload(docname: str, settings_name: str) -> dict:
 		# Tax Logic
 		vat_cat = item.get("custom_taxation_type") or "A"
 		
-		# If user didn't explicit set RVAT on item but invoice has principal, should we force it?
-		# For now, let's respect the item's taxation type but ensure "RVAT" is supported.
 		# If item is "RVAT", tax rate is 16%.
 		if vat_cat == "RVAT":
 			tax_rate = 16.0
 		else:
 			tax_rate = float(item.get("custom_tax_rate") or 0)
 
-		vat_rate = fmt4(rate * tax_rate / 100)
-		vat_amt = fmt4(sply_amt * tax_rate / 100)
+		# MTV Logic
+		is_mtv = invoice.get("custom_is_mtv")
+		rrp = (
+			item.get("custom_rrp")
+			or item.get("standard_rate")
+			or frappe.db.get_value("Item", item.item_code, "custom_rrp")
+			or frappe.db.get_value("Item", item.item_code, "standard_rate")
+			or 0
+		)
+		
+		actual_sply_amt = sply_amt
+		if is_mtv and rrp > _safe_float(rate):
+			# Use MTV for tax calculation
+			taxable_amt = fmt4(_safe_float(rrp) * _safe_float(qty))
+			vat_amt = fmt4(taxable_amt * tax_rate / 100)
+			# taxable_amt is used for vatTaxblAmt and tlTaxblAmt
+			sply_amt = taxable_amt
+			# Track that MTV was applied
+			invoice.custom_mtv_applied = 1
+		else:
+			vat_amt = fmt4(sply_amt * tax_rate / 100)
+
+		vat_rate = fmt4(_safe_float(rate) * tax_rate / 100)
 		
 		item_code = (
 			item.get("custom_smart_item_code")
 			or frappe.db.get_value("Item", item.item_code, "custom_smart_item_code")
 			or item.item_code
 		)
-		rrp = item.get("standard_rate") or frappe.db.get_value("Item", item.item_code, "standard_rate")
 		
 		# Totals
-		tot_amt = fmt4(sply_amt - dc_amt + vat_amt)
+		tot_amt = fmt4(actual_sply_amt - dc_amt + vat_amt)
 		# tl_amt = tot_amt # In sample, tlAmt is 0.0? Wait. 
 		# In build_invoice_payload: tl_amt = tot_amt.
 		# In user sample: "tlAmt": 0.0. "totAmt": 100.
@@ -1582,6 +1628,9 @@ def build_rvat_sale_payload(docname: str, settings_name: str) -> dict:
 		sply_rate = fmt4(rate + vat_rate)
 
 		# Update tax category totals
+		if is_mtv:
+			vat_cat = "B"
+			
 		if vat_cat in tax_field_map:
 			taxbl, taxamt, taxrt = tax_field_map[vat_cat]
 			payload[taxbl] = fmt4(payload[taxbl] + sply_amt)

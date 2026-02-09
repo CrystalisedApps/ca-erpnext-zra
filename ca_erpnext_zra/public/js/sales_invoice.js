@@ -21,7 +21,6 @@ frappe.ui.form.on(parentDoctype, {
 	refresh: async function (frm) {
 		await updateTaxAmountLabel(frm);
 
-
 		// Fetch active VSDC settings for current company
 		const { message: activeSetting } = await frappe.call({
 			method: "ca_erpnext_zra.ca_erpnext_zra.utils.smart_api_utils.get_active_smart_settings",
@@ -78,23 +77,80 @@ frappe.ui.form.on(parentDoctype, {
 			);
 		}
 
-		// --- Verify and Fix Button ---
-		// frm.add_custom_button(
-		// 	__("Verify Submission and Fix if Incorrect"),
-		// 	function () {
-		// 		executeVSDCAction("Verify Submission", activeSetting, (settings_name) => ({
-		// 			method: "ca_erpnext_zra.ca_erpnext_zra.apis.invoice_processor.verify_vsdc_invoice",
-		// 			args: {
-		// 				document_name: frm.doc.name,
-		// 				invoice_type: "Sales Invoice",
-		// 				settings_name: settings_name,
-		// 				company: frm.doc.company,
-		// 			},
-		// 			success_msg: "Verification and correction queued",
-		// 		}));
-		// 	},
-		// 	__("Smart Actions")
-		// );
+		// MTV Specific Query for Item Selection
+		// Registered once in refresh - will re-evaluate on every search click based on frm.doc.custom_is_mtv
+		frm.set_query("item_code", "items", function (doc, cdt, cdn) {
+			if (doc.custom_is_mtv) {
+				return {
+					filters: {
+						"custom_vat_category_code": "B"
+					}
+				};
+			}
+			return {};
+		});
+	},
+
+	validate: function (frm) {
+		if (frm.doc.custom_is_mtv) {
+			const non_b_items = (frm.doc.items || []).filter(item => item.custom_taxation_type !== 'B');
+			if (non_b_items.length > 0) {
+				const item_codes = non_b_items.map(i => i.item_code).join(', ');
+				frappe.msgprint({
+					title: __("Invalid Items for MTV"),
+					message: __("MTV Sale is only allowed for items with Smart VAT Category Code 'B'. Non-B items found: {0}", [item_codes]),
+					indicator: "red"
+				});
+				frappe.validated = false;
+			}
+		}
+	},
+
+	custom_is_mtv: function (frm) {
+		// Set filter immediately
+		frm.set_query("item_code", "items", function (doc, cdt, cdn) {
+			if (doc.custom_is_mtv) {
+				return {
+					filters: {
+						"custom_vat_category_code": "B"
+					}
+				};
+			}
+			return {};
+		});
+
+		if (frm.doc.custom_is_mtv) {
+			// Scan existing items
+			let non_b_items = (frm.doc.items || []).filter(item => item.custom_taxation_type !== 'B');
+
+			if (non_b_items.length) {
+				frappe.confirm(
+					__("MTV Mode Active. This invoice contains items that are not Category 'B'. MTV Sale requires all items to be Category 'B'. Would you like to remove non-B items?"),
+					() => {
+						// On Yes: Filter and remove
+						let valid_items = (frm.doc.items || []).filter(item => item.custom_taxation_type === 'B');
+						frm.set_value("items", []);
+						valid_items.forEach(item => {
+							let row = frm.add_child("items");
+							$.extend(row, item);
+						});
+						frm.refresh_field("items");
+						frappe.show_alert(__("Non-Category B items removed."));
+					},
+					() => {
+						// On No: Uncheck to maintain data
+						frm.set_value("custom_is_mtv", 0);
+						frappe.show_alert(__("MTV Sale disabled to preserve items."));
+					}
+				);
+			} else {
+				frappe.show_alert({
+					message: __("MTV Mode Active: Item selection filtered to Category 'B'."),
+					indicator: "blue"
+				});
+			}
+		}
+		frm.refresh_field("items");
 	},
 });
 
@@ -153,7 +209,7 @@ frappe.ui.form.on(childDoctype, {
 	item_code: function (frm, cdt, cdn) {
 		const row = locals[cdt][cdn];
 
-		if (!row.custom_taxation_type && row.item_code) {
+		if (row.item_code) {
 			frappe.call({
 				method: "frappe.client.get",
 				args: {
@@ -162,8 +218,12 @@ frappe.ui.form.on(childDoctype, {
 				},
 				callback: function (r) {
 					if (r.message) {
-						row.custom_taxation_type = r.message.custom_taxation_type;
-						row.custom_taxation_type_code = r.message.custom_taxation_type;
+						if (!row.custom_taxation_type) {
+							// Map Item's custom_vat_category_code to Sales Invoice Item's custom_taxation_type
+							row.custom_taxation_type = r.message.custom_vat_category_code;
+						}
+						// Fetch RRP from Item's custom_rrp or fallback to standard_rate
+						row.custom_rrp = r.message.custom_rrp || r.message.standard_rate || 0;
 						frm.refresh_field("items");
 					}
 				},

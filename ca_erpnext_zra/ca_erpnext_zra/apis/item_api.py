@@ -412,13 +412,13 @@ def item_search_on_success(response: dict,branch: str, settings_name: str, **kwa
 					"uoms": [{"uom": default_uom, "conversion_factor": 1}],
 					# Custom ZRA fields
 					"custom_zra_item_code": zra_item_code,
-					"custom_smart_item_classification": item_data.get("itemClsCd", ""),
+					"custom_smart_item_classification_code": item_data.get("itemClsCd", ""),
 					"custom_smart_item_type": item_data.get("itemTyCd", ""),
 					"custom_smart_country_of_origin_code": country_code,
-					"custom_smart_country_of_origin": country_link or "",
+					"custom_smart_country_of_origin_": country_link or "",
 					"custom_smart_packaging_unit": item_data.get("pkgUnitCd", ""),
 					"custom_smart_quantity_unit": default_uom,
-					"custom_smart_vat_category": item_data.get("vatCatCd", ""),
+					"custom_vat_category_code": item_data.get("vatCatCd", ""),
 					"custom_smart_safety_quantity": round(item_data.get("sftyQty", 0.0), 2),
 				}
 
