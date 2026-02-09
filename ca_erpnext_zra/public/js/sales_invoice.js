@@ -16,11 +16,101 @@ frappe.realtime.on("refresh_form", function (name) {
 	}
 });
 
+// --- Unified Handle for Sale Mode Toggling ---
+async function handleSaleModeToggle(frm, modeName, vatCategoryCriteria) {
+	// Fetch VAT categories from Item master
+	const item_codes = (frm.doc.items || []).map(i => i.item_code);
+	if (item_codes.length === 0) {
+		frappe.show_alert({
+			message: __("{0} Mode Active: {1}.", [modeName, getModeLabel(modeName)]),
+			indicator: "blue"
+		});
+		return;
+	}
+
+	const { message } = await frappe.call({
+		method: 'frappe.client.get_list',
+		args: {
+			doctype: 'Item',
+			filters: [['name', 'in', item_codes]],
+			fields: ['name', 'custom_vat_category_code']
+		}
+	});
+
+	const vat_lookup = {};
+	(message || []).forEach(item => {
+		vat_lookup[item.name] = item.custom_vat_category_code;
+	});
+
+	// Check compliance using VAT category from Item master
+	const nonCompliant = (frm.doc.items || []).filter(item => {
+		const vat_cat = vat_lookup[item.item_code];
+		return !vatCategoryCriteria(vat_cat);
+	});
+
+	if (nonCompliant.length > 0) {
+		frappe.confirm(
+			__("{0} Sale enabled. This invoice contains non-compliant items. {0} Sale requires {1}. Would you like to remove non-compliant items?", [modeName, getModeLabel(modeName)]),
+			() => {
+				const validItems = (frm.doc.items || []).filter(item => {
+					const vat_cat = vat_lookup[item.item_code];
+					return vatCategoryCriteria(vat_cat);
+				});
+				frm.set_value("items", []);
+				validItems.forEach(item => {
+					let row = frm.add_child("items");
+					$.extend(row, item);
+				});
+				frm.refresh_field("items");
+				frappe.show_alert(__("Non-compliant items removed."));
+			},
+			() => {
+				// Revert checkbox
+				const fieldName = `custom_is_${modeName.toLowerCase()}`;
+				frm.set_value(fieldName, 0);
+				frappe.show_alert(__("{0} Sale disabled to preserve items.", [modeName]));
+			}
+		);
+	} else {
+		frappe.show_alert({
+			message: __("{0} Mode Active: {1}.", [modeName, getModeLabel(modeName)]),
+			indicator: "blue"
+		});
+	}
+}
+
+function getModeLabel(modeName) {
+	const modeLabels = {
+		'MTV': __("Category 'B' items only"),
+		'LPO': __("LPO-compliant items (C1, C2, C3) only"),
+		'Exempt': __("Category C or D items only"),
+		'Disbursement': __("Category 'E' items only"),
+		'RVAT': __("RVAT items only")
+	};
+	return modeLabels[modeName] || "";
+}
+
 // === Parent Doctype: Sales Invoice ===
 frappe.ui.form.on(parentDoctype, {
 	refresh: async function (frm) {
 		await updateTaxAmountLabel(frm);
 
+		// MTV/LPO/Exempt/Disbursement Specific Query for Item Selection
+		// Must be set early in refresh to apply to Drafts
+		frm.set_query("item_code", "items", function (doc, cdt, cdn) {
+			if (doc.custom_is_mtv) {
+				return { filters: { "custom_vat_category_code": "B", "custom_smart_item_code": ["!=", ""] } };
+			} else if (doc.custom_is_lpo) {
+				return { filters: { "custom_vat_category_code": ["in", ["C1", "C2", "C3"]], "custom_smart_item_code": ["!=", ""] } };
+			} else if (doc.custom_is_exempt) {
+				return { filters: { "custom_vat_category_code": ["in", ["C", "D"]], "custom_smart_item_code": ["!=", ""] } };
+			} else if (doc.custom_is_disbursement) {
+				return { filters: { "custom_vat_category_code": "E", "custom_smart_item_code": ["!=", ""] } };
+			} else if (doc.custom_principal_id) {
+				return { filters: { "custom_taxation_type": "RVAT", "custom_smart_item_code": ["!=", ""] } };
+			}
+			return {};
+		});
 
 		// Fetch active VSDC settings for current company
 		const { message: activeSetting } = await frappe.call({
@@ -30,7 +120,7 @@ frappe.ui.form.on(parentDoctype, {
 
 		if (!activeSetting?.length) return;
 
-		// --- Get RVAT Principals Button (Visible on Draft/New) ---
+		// --- Get RVAT Principals Button ---
 		if (frm.doc.docstatus === 0) {
 			frm.add_custom_button(
 				__("Get RVAT Principals"),
@@ -41,6 +131,7 @@ frappe.ui.form.on(parentDoctype, {
 			);
 		}
 
+		// Only show submission/sync buttons for submitted invoices or specific cases
 		if (frm.doc.docstatus === 0 || frm.doc.prevent_vsdc_submission) return;
 
 		// --- Send Invoice Button ---
@@ -77,24 +168,148 @@ frappe.ui.form.on(parentDoctype, {
 				__("Smart Actions")
 			);
 		}
+	},
 
-		// --- Verify and Fix Button ---
-		// frm.add_custom_button(
-		// 	__("Verify Submission and Fix if Incorrect"),
-		// 	function () {
-		// 		executeVSDCAction("Verify Submission", activeSetting, (settings_name) => ({
-		// 			method: "ca_erpnext_zra.ca_erpnext_zra.apis.invoice_processor.verify_vsdc_invoice",
-		// 			args: {
-		// 				document_name: frm.doc.name,
-		// 				invoice_type: "Sales Invoice",
-		// 				settings_name: settings_name,
-		// 				company: frm.doc.company,
-		// 			},
-		// 			success_msg: "Verification and correction queued",
-		// 		}));
-		// 	},
-		// 	__("Smart Actions")
-		// );
+	validate: async function (frm) {
+		// Helper function to get VAT category from Item master
+		const getItemVatCategories = async (item_codes) => {
+			const { message } = await frappe.call({
+				method: 'frappe.client.get_list',
+				args: {
+					doctype: 'Item',
+					filters: [['name', 'in', item_codes]],
+					fields: ['name', 'custom_vat_category_code']
+				}
+			});
+			return message || [];
+		};
+
+		const item_codes = (frm.doc.items || []).map(i => i.item_code);
+		if (item_codes.length === 0) return;
+
+		const item_vat_map = await getItemVatCategories(item_codes);
+		const vat_lookup = {};
+		item_vat_map.forEach(item => {
+			vat_lookup[item.name] = item.custom_vat_category_code;
+		});
+
+		// MTV Validation
+		if (frm.doc.custom_is_mtv) {
+			const non_b_items = (frm.doc.items || []).filter(item => vat_lookup[item.item_code] !== 'B');
+			if (non_b_items.length > 0) {
+				const item_codes = non_b_items.map(i => i.item_code).join(', ');
+				frappe.msgprint({
+					title: __("Invalid Items for MTV"),
+					message: __("MTV Sale is only allowed for items with Smart VAT Category Code 'B'. Non-B items found: {0}", [item_codes]),
+					indicator: "red"
+				});
+				frappe.validated = false;
+			}
+		}
+
+		// LPO Validation
+		if (frm.doc.custom_is_lpo) {
+			if (!frm.doc.custom_lpo_number) {
+				frappe.msgprint({
+					title: __("LPO Number Required"),
+					message: __("Please enter the LPO Number for this sale."),
+					indicator: "red"
+				});
+				frappe.validated = false;
+			}
+			const non_lpo_items = (frm.doc.items || []).filter(item => !['C1', 'C2', 'C3'].includes(vat_lookup[item.item_code]));
+			if (non_lpo_items.length > 0) {
+				const item_codes = non_lpo_items.map(i => i.item_code).join(', ');
+				frappe.msgprint({
+					title: __("Invalid Items for LPO"),
+					message: __("LPO Sale is only allowed for items with Smart VAT Category Code C1, C2, or C3. Non-compliant items found: {0}", [item_codes]),
+					indicator: "red"
+				});
+				frappe.validated = false;
+			}
+		}
+
+		// Exempt Validation
+		if (frm.doc.custom_is_exempt) {
+			const non_exempt_items = (frm.doc.items || []).filter(item => !['C', 'D'].includes(vat_lookup[item.item_code]));
+			if (non_exempt_items.length > 0) {
+				const item_codes = non_exempt_items.map(i => i.item_code).join(', ');
+				frappe.msgprint({
+					title: __("Invalid Items for Exempt Sale"),
+					message: __("Exempt Sale is only allowed for items with Smart VAT Category Code C or D. Non-compliant items found: {0}", [item_codes]),
+					indicator: "red"
+				});
+				frappe.validated = false;
+			}
+		}
+
+		// Disbursement Validation
+		if (frm.doc.custom_is_disbursement) {
+			const non_e_items = (frm.doc.items || []).filter(item => vat_lookup[item.item_code] !== 'E');
+			if (non_e_items.length > 0) {
+				const item_codes = non_e_items.map(i => i.item_code).join(', ');
+				frappe.msgprint({
+					title: __("Invalid Items for Disbursement"),
+					message: __("Disbursement Sale is only allowed for items with Smart VAT Category Code 'E'. Non-compliant items found: {0}", [item_codes]),
+					indicator: "red"
+				});
+				frappe.validated = false;
+			}
+		}
+
+		// RVAT Validation
+		if (frm.doc.custom_principal_id) {
+			const non_rvat_items = (frm.doc.items || []).filter(item => vat_lookup[item.item_code] !== 'RVAT');
+			if (non_rvat_items.length > 0) {
+				const item_codes = non_rvat_items.map(i => i.item_code).join(', ');
+				frappe.msgprint({
+					title: __("Invalid Items for RVAT Sale"),
+					message: __("RVAT Sale (Principal ID set) is only allowed for items with Smart VAT Category Code 'RVAT'. Non-RVAT items found: {0}", [item_codes]),
+					indicator: "red"
+				});
+				frappe.validated = false;
+			}
+		}
+	},
+
+	custom_is_mtv: function (frm) {
+		if (frm.doc.custom_is_mtv) {
+			// Uncheck others
+			frm.set_value("custom_is_lpo", 0);
+			frm.set_value("custom_is_exempt", 0);
+			frm.set_value("custom_is_disbursement", 0);
+			handleSaleModeToggle(frm, 'MTV', vat_cat => vat_cat === 'B');
+		}
+	},
+
+	custom_is_lpo: function (frm) {
+		if (frm.doc.custom_is_lpo) {
+			// Uncheck others
+			frm.set_value("custom_is_mtv", 0);
+			frm.set_value("custom_is_exempt", 0);
+			frm.set_value("custom_is_disbursement", 0);
+			handleSaleModeToggle(frm, 'LPO', vat_cat => ['C1', 'C2', 'C3'].includes(vat_cat));
+		}
+	},
+
+	custom_is_exempt: function (frm) {
+		if (frm.doc.custom_is_exempt) {
+			// Uncheck others
+			frm.set_value("custom_is_mtv", 0);
+			frm.set_value("custom_is_lpo", 0);
+			frm.set_value("custom_is_disbursement", 0);
+			handleSaleModeToggle(frm, 'Exempt', vat_cat => ['C', 'D'].includes(vat_cat));
+		}
+	},
+
+	custom_is_disbursement: function (frm) {
+		if (frm.doc.custom_is_disbursement) {
+			// Uncheck others
+			frm.set_value("custom_is_mtv", 0);
+			frm.set_value("custom_is_lpo", 0);
+			frm.set_value("custom_is_exempt", 0);
+			handleSaleModeToggle(frm, 'Disbursement', vat_cat => vat_cat === 'E');
+		}
 	},
 });
 
@@ -153,7 +368,7 @@ frappe.ui.form.on(childDoctype, {
 	item_code: function (frm, cdt, cdn) {
 		const row = locals[cdt][cdn];
 
-		if (!row.custom_taxation_type && row.item_code) {
+		if (row.item_code) {
 			frappe.call({
 				method: "frappe.client.get",
 				args: {
@@ -162,8 +377,12 @@ frappe.ui.form.on(childDoctype, {
 				},
 				callback: function (r) {
 					if (r.message) {
-						row.custom_taxation_type = r.message.custom_taxation_type;
-						row.custom_taxation_type_code = r.message.custom_taxation_type;
+						if (!row.custom_taxation_type) {
+							// Map Item's custom_vat_category_code to Sales Invoice Item's custom_taxation_type
+							row.custom_taxation_type = r.message.custom_vat_category_code;
+						}
+						// Fetch RRP from Item's custom_rrp or fallback to standard_rate
+						row.custom_rrp = r.message.custom_rrp || r.message.standard_rate || 0;
 						frm.refresh_field("items");
 					}
 				},
@@ -295,10 +514,21 @@ function getPrincipalsAction(settings, frm) {
 						primary_action_label: __("Set Principal"),
 						primary_action: ({ principal_tpin }) => {
 							const selected = options.find(o => o.value === principal_tpin).original;
+
+							// Clear other sale modes to prevent conflict
+							frm.set_value("custom_is_mtv", 0);
+							frm.set_value("custom_is_lpo", 0);
+							frm.set_value("custom_is_exempt", 0);
+							frm.set_value("custom_is_disbursement", 0);
+
 							frm.set_value("custom_principal_id", selected.tpin);
 							if (selected.prncplNm) {
 								frm.set_value("custom_principal_name", selected.prncplNm);
 							}
+
+							// Trigger cleanup logic for RVAT compliance
+							handleSaleModeToggle(frm, 'RVAT', vat_cat => vat_cat === 'RVAT');
+
 							selectionDialog.hide();
 						}
 					});

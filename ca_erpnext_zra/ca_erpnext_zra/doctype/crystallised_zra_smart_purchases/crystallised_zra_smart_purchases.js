@@ -16,9 +16,6 @@ frappe.ui.form.on(doctypeName, {
             frm.set_value("receipt_type_code", "P");
             frm.set_value("payment_type_code", "01");
             frm.set_value("payment_type", "Cash");
-        } else {
-            // For EXISTING forms: Load ZRA smart purchase items
-            load_zra_smart_purchase_items(frm);
         }
 
         // Setup standard Link field queries for supplier and branch fields
@@ -49,31 +46,6 @@ frappe.ui.form.on(doctypeName, {
             });
         }
 
-        // Registration Type field change handler
-        frm.fields_dict.registration_type.$input.on("change", function () {
-            update_registration_type_codes(frm);
-        });
-
-        // Purchase Type field change handler
-        frm.fields_dict.purchase_type.$input.on("change", function () {
-            update_purchase_type_codes(frm);
-        });
-
-        // Purchase Status field change handler
-        frm.fields_dict.purchase_status.$input.on("change", function () {
-            update_purchase_status_codes(frm);
-        });
-
-        // Payment Type field change handler
-        frm.fields_dict.payment_type.$input.on("change", function () {
-            update_payment_type_codes(frm);
-        });
-
-        // Receipt Type field change handler
-        frm.fields_dict.receipt_type.$input.on("change", function () {
-            update_receipt_type_codes(frm);
-        });
-
         // Setup item query for item_code field in items table
         setup_item_query(frm);
 
@@ -82,13 +54,13 @@ frappe.ui.form.on(doctypeName, {
 
         // Setup Clear Link button handlers
         setup_clear_link_handlers(frm);
-        
+
         // Setup grid event listeners for item deletion
         setup_grid_event_listeners(frm);
 
         // Show item filtering status
         show_item_filtering_status(frm);
-        
+
         // Monitor items array for changes (including deletions)
         monitor_items_changes(frm);
 
@@ -457,10 +429,10 @@ frappe.ui.form.on(doctypeName, {
 
     items_remove: function (frm, cdt, cdn) {
         // Multiple approaches to ensure totals are recalculated when items are deleted
-        
+
         // Approach 1: Immediate recalculation
         calculate_totals(frm);
-        
+
         // Approach 2: Delayed recalculation with multiple timeouts
         setTimeout(() => {
             calculate_totals(frm);
@@ -469,12 +441,12 @@ frappe.ui.form.on(doctypeName, {
             frm.refresh_field("total_tax_amount");
             frm.refresh_field("total_item_count");
         }, 50);
-        
+
         setTimeout(() => {
             calculate_totals(frm);
             frm.refresh_field("items");
         }, 200);
-        
+
         setTimeout(() => {
             calculate_totals(frm);
             frm.dirty();
@@ -482,16 +454,16 @@ frappe.ui.form.on(doctypeName, {
     },
 
     // Add before_items_remove event
-    before_items_remove: function(frm, cdt, cdn) {
+    before_items_remove: function (frm, cdt, cdn) {
         // This fires before the item is actually removed
         setTimeout(() => {
             calculate_totals(frm);
         }, 100);
     },
 
-    after_save: function (frm) {},
+    after_save: function (frm) { },
 
-    onload_post_render: function(frm) {
+    onload_post_render: function (frm) {
         // Additional setup after form is fully rendered
         setTimeout(() => {
             setup_grid_event_listeners(frm);
@@ -577,7 +549,7 @@ frappe.ui.form.on("Smart Registered Purchase Item", {
         }
     },
 
-    form_render: function (frm, cdt, cdn) {}
+    form_render: function (frm, cdt, cdn) { }
 });
 
 // ============================================================
@@ -642,7 +614,7 @@ function fetch_item_details(frm, row) {
             try {
                 // Re-fetch the row to ensure it still exists
                 const current_row = frappe.get_doc(row.doctype, row.name);
-                
+
                 if (response.message && current_row && !current_row.__islocal_deleted) {
                     const item = response.message;
 
@@ -855,10 +827,10 @@ function setup_grid_event_listeners(frm) {
     setTimeout(() => {
         if (frm.fields_dict.items && frm.fields_dict.items.grid) {
             const grid = frm.fields_dict.items.grid;
-            
+
             // Listen for row removal events
             $(grid.wrapper).off('click.delete_row');
-            $(grid.wrapper).on('click.delete_row', '.grid-delete-row', function() {
+            $(grid.wrapper).on('click.delete_row', '.grid-delete-row', function () {
                 // Delay calculation to ensure row is removed
                 setTimeout(() => {
                     calculate_totals(frm);
@@ -868,19 +840,19 @@ function setup_grid_event_listeners(frm) {
                     frm.refresh_field("total_item_count");
                 }, 200);
             });
-            
+
             // Listen for any grid changes
             $(grid.wrapper).off('change.grid_totals');
-            $(grid.wrapper).on('change.grid_totals', function() {
+            $(grid.wrapper).on('change.grid_totals', function () {
                 setTimeout(() => {
                     calculate_totals(frm);
                 }, 100);
             });
-            
+
             // Override the grid's remove_row method
             if (grid.remove_row) {
                 const original_remove_row = grid.remove_row;
-                grid.remove_row = function(idx) {
+                grid.remove_row = function (idx) {
                     const result = original_remove_row.call(this, idx);
                     // Recalculate after removal
                     setTimeout(() => {
@@ -901,7 +873,7 @@ function setup_grid_event_listeners(frm) {
 function monitor_items_changes(frm) {
     // Store initial items count
     let previous_items_count = frm.doc.items ? frm.doc.items.length : 0;
-    
+
     // Set up interval to check for changes
     const monitor_interval = setInterval(() => {
         if (!frm.doc || frm.doc.__islocal === 0) {
@@ -909,11 +881,11 @@ function monitor_items_changes(frm) {
             clearInterval(monitor_interval);
             return;
         }
-        
-        const current_items_count = frm.doc.items ? frm.doc.items.filter(item => 
+
+        const current_items_count = frm.doc.items ? frm.doc.items.filter(item =>
             item && !item.__islocal_deleted && !item.__deleted && item.item_code
         ).length : 0;
-        
+
         if (current_items_count !== previous_items_count) {
             // Items count changed, recalculate totals
             calculate_totals(frm);
@@ -921,11 +893,11 @@ function monitor_items_changes(frm) {
             frm.refresh_field("total_taxable_amount");
             frm.refresh_field("total_tax_amount");
             frm.refresh_field("total_item_count");
-            
+
             previous_items_count = current_items_count;
         }
     }, 500); // Check every 500ms
-    
+
     // Store interval ID on form for cleanup
     frm._items_monitor_interval = monitor_interval;
 }
@@ -947,11 +919,13 @@ function toggle_tpin_functionality(frm) {
         // Hide TPIN field and clear its value
         frm.set_df_property("supplier_tpin", "hidden", 1);
         if (frm.doc.supplier_tpin) {
-            frm.set_value("supplier_tpin", "");
+            frm.set_value("supplier_tpin", "", null, 1);
         }
         // Clear TPIN display
         if (frm.fields_dict.supplier_tpin && frm.fields_dict.supplier_tpin.$input) {
-            frm.fields_dict.supplier_tpin.$input.val("");
+            if (frm.fields_dict.supplier_tpin.$input.val() !== "") {
+                frm.fields_dict.supplier_tpin.$input.val("");
+            }
         }
         if (frm.fields_dict.supplier_tpin && frm.fields_dict.supplier_tpin.set_new_description) {
             frm.fields_dict.supplier_tpin.set_new_description("");
@@ -1659,12 +1633,12 @@ function calculate_item_row_safe(frm, row) {
     if (!row || typeof row !== 'object') {
         return;
     }
-    
+
     // Check if row is marked for deletion
     if (row.__islocal_deleted || row.__deleted) {
         return;
     }
-    
+
     // Check if row has minimum required properties
     if (!row.hasOwnProperty('name') && !row.hasOwnProperty('idx')) {
         return;
@@ -1771,9 +1745,9 @@ function calculate_totals(frm) {
     let total_item_count = 0;
 
     // Filter out null/undefined items, deleted items, and items marked for deletion
-    const validItems = frm.doc.items.filter(item => 
-        item && 
-        !item.__islocal_deleted && 
+    const validItems = frm.doc.items.filter(item =>
+        item &&
+        !item.__islocal_deleted &&
         !item.__deleted &&
         item.item_code // Must have an item code to be valid
     );
@@ -1792,15 +1766,19 @@ function calculate_totals(frm) {
         total_tax_amount += vat_amount;
     });
 
-    // Round to 2 decimal places
-    total_amount = parseFloat(total_amount.toFixed(2));
-    total_taxable_amount = parseFloat(total_taxable_amount.toFixed(2));
-    total_tax_amount = parseFloat(total_tax_amount.toFixed(2));
-
-    frm.set_value("total_amount", total_amount);
-    frm.set_value("total_taxable_amount", total_taxable_amount);
-    frm.set_value("total_tax_amount", total_tax_amount);
-    frm.set_value("total_item_count", total_item_count);
+    // Only set values if they actually changed to avoid marking form as dirty/Not Saved
+    if (flt(frm.doc.total_amount, 2) !== total_amount) {
+        frm.set_value("total_amount", total_amount, null, 1);
+    }
+    if (flt(frm.doc.total_taxable_amount, 2) !== total_taxable_amount) {
+        frm.set_value("total_taxable_amount", total_taxable_amount, null, 1);
+    }
+    if (flt(frm.doc.total_tax_amount, 2) !== total_tax_amount) {
+        frm.set_value("total_tax_amount", total_tax_amount, null, 1);
+    }
+    if (frm.doc.total_item_count !== total_item_count) {
+        frm.set_value("total_item_count", total_item_count, null, 1);
+    }
 }
 
 // ============================================================
@@ -1819,44 +1797,64 @@ function format_currency(value, currency) {
 // Function to update registration type codes
 function update_registration_type_codes(frm) {
     let registration_type = frm.doc.registration_type;
+    let target_val = "";
     if (registration_type === "Manual") {
-        frm.set_value("regtycd", "M");
+        target_val = "M";
     } else if (registration_type === "Automatic") {
-        frm.set_value("regtycd", "A");
+        target_val = "A";
+    }
+
+    if (target_val && frm.doc.regtycd !== target_val) {
+        frm.set_value("regtycd", target_val, null, 1);
     }
 }
 
 // Function to update purchase type codes
 function update_purchase_type_codes(frm) {
     let purchase_type = frm.doc.purchase_type;
+    let target_val = "";
     if (purchase_type === "Normal") {
-        frm.set_value("pchstycd", "N");
+        target_val = "N";
     } else if (purchase_type === "Copy") {
-        frm.set_value("pchstycd", "C");
+        target_val = "C";
+    }
+
+    if (target_val && frm.doc.pchstycd !== target_val) {
+        frm.set_value("pchstycd", target_val, null, 1);
     }
 }
 
 // Function to update receipt type codes
 function update_receipt_type_codes(frm) {
     let receipt_type = frm.doc.receipt_type;
+    let target_val = "";
     if (receipt_type === "Purchase") {
-        frm.set_value("receipt_type_code", "P");
+        target_val = "P";
     } else if (receipt_type === "Refund after Purchase") {
-        frm.set_value("receipt_type_code", "R");
+        target_val = "R";
+    }
+
+    if (target_val && frm.doc.receipt_type_code !== target_val) {
+        frm.set_value("receipt_type_code", target_val, null, 1);
     }
 }
 
 // Function to update purchase status codes
 function update_purchase_status_codes(frm) {
     let purchase_status = frm.doc.purchase_status;
+    let target_val = "";
     if (purchase_status === "Refunded") {
-        frm.set_value("pchssttscd", "05");
+        target_val = "05";
     } else if (purchase_status === "Transferred") {
-        frm.set_value("pchssttscd", "06");
+        target_val = "06";
     } else if (purchase_status === "Approved") {
-        frm.set_value("pchssttscd", "02");
+        target_val = "02";
     } else if (purchase_status === "Rejected") {
-        frm.set_value("pchssttscd", "04");
+        target_val = "04";
+    }
+
+    if (target_val && frm.doc.pchssttscd !== target_val) {
+        frm.set_value("pchssttscd", target_val, null, 1);
     }
 }
 
@@ -1874,8 +1872,9 @@ function update_payment_type_codes(frm) {
         "Bank transfer": "08",
     };
 
-    if (paymentTypeMap[payment_type]) {
-        frm.set_value("payment_type_code", paymentTypeMap[payment_type]);
+    let target_val = paymentTypeMap[payment_type];
+    if (target_val && frm.doc.payment_type_code !== target_val) {
+        frm.set_value("payment_type_code", target_val, null, 1);
     }
 }
 
