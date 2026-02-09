@@ -250,7 +250,6 @@ def build_debit_note_payload(docname: str, settings_name: str | None = None) -> 
 		"modrId": user,
 		"modrNm": user,
 		"saleCtyCd": "1",
-		"lpoNumber": safe_lpo_number,
 		"currencyTyCd": doc.currency or "ZMW",
 		"exchangeRt": "1",
 		"destnCountryCd": "",
@@ -258,6 +257,10 @@ def build_debit_note_payload(docname: str, settings_name: str | None = None) -> 
 		"invcAdjustReason": cstr(doc.get("custom_debit_reason_code") or ""),
 		"itemList": [],
 	}
+
+	# Conditionally add lpoNumber only if valid (9-20 characters)
+	if safe_lpo_number:
+		payload["lpoNumber"] = safe_lpo_number
 
 	# only add ON ORIGINAL INVOICE IF EXISTS
 	if safe_org_invc_no:
@@ -699,7 +702,8 @@ def build_invoice_payload(invoice: "Document", settings_name: str) -> dict:
 	sales_dt = datetime.strptime(str(invoice.posting_date), "%Y-%m-%d").strftime("%Y%m%d")
 	now_str = datetime.now().strftime("%Y%m%d%H%M%S")
 
-	reference_number = invoice.name
+	# Make cisInvcNo unique by appending timestamp to avoid duplicates on resubmission
+	reference_number = f"{invoice.name}-{now_str}"
 	customer = frappe.get_doc("Customer", invoice.customer)
 
 	tax_field_map = {
@@ -740,10 +744,14 @@ def build_invoice_payload(invoice: "Document", settings_name: str) -> dict:
 		"saleCtyCd": "1",
 		"prchrAcptcYn": "N",
 		"orgInvcNo": 0,
-		"lpoNumber": invoice.get("custom_lpo_number") or "",
 		"exchangeRt": 1,
 		"itemList": [],
 	}
+
+	# Conditionally add lpoNumber only if valid (9-20 characters)
+	lpo_number = invoice.get("custom_lpo_number")
+	if lpo_number and 9 <= len(lpo_number) <= 20:
+		payload["lpoNumber"] = lpo_number
 
 	# Initialize tax category fields
 	for _, (taxbl, taxamt, taxrt) in tax_field_map.items():
@@ -778,17 +786,20 @@ def build_invoice_payload(invoice: "Document", settings_name: str) -> dict:
 
 		# MTV Logic
 		is_mtv = invoice.get("custom_is_mtv")
-		rrp = (
+		rrp_raw = (
 			item.get("custom_rrp")
 			or item.get("standard_rate")
 			or frappe.db.get_value("Item", item.item_code, "custom_rrp")
 			or frappe.db.get_value("Item", item.item_code, "standard_rate")
 			or 0
 		)
+		
+		# Format RRP properly - for MTV, use RRP if available, otherwise use rate
+		rrp = fmt4(rrp_raw if rrp_raw > 0 else rate)
 
-		if is_mtv and rrp > _safe_float(rate):
+		if is_mtv and rrp_raw > _safe_float(rate):
 			# Use MTV for tax calculation
-			taxable_amt = fmt4(_safe_float(rrp) * _safe_float(qty))
+			taxable_amt = fmt4(_safe_float(rrp_raw) * _safe_float(qty))
 			vat_amt = fmt4(taxable_amt * tax_rate / 100)
 			# sply_amt in ZRA payload (vatTaxblAmt) should reflect MTV
 			sply_amt = taxable_amt
@@ -1500,7 +1511,8 @@ def build_rvat_sale_payload(docname: str, settings_name: str) -> dict:
 	sales_dt = datetime.strptime(str(doc.posting_date), "%Y-%m-%d").strftime("%Y%m%d")
 	now_str = datetime.now().strftime("%Y%m%d%H%M%S")
 
-	reference_number = doc.name
+	# Make cisInvcNo unique by appending timestamp to avoid duplicates on resubmission
+	reference_number = f"{doc.name}-{now_str}"
 	customer = frappe.get_doc("Customer", doc.customer)
 
 	# Extended tax map to include RVAT
@@ -1516,6 +1528,7 @@ def build_rvat_sale_payload(docname: str, settings_name: str) -> dict:
 		"IPL2": ("taxblAmtIpl2", "taxAmtIpl2", "taxRtIpl2"),
 		"TL": ("taxblAmtTl", "taxAmtTl", "taxRtTl"),
 		"RVAT": ("taxblAmtRvat", "taxAmtRvat", "taxRtRvat"),
+		"E": ("taxblAmtE", "taxAmtE", "taxRtE"),
 	}
 
 	payload = {
@@ -1613,17 +1626,11 @@ def build_rvat_sale_payload(docname: str, settings_name: str) -> dict:
 		item_code = (
 			item.get("custom_smart_item_code")
 			or frappe.db.get_value("Item", item.item_code, "custom_smart_item_code")
-			or item.item_code
 		)
 		
 		# Totals
 		tot_amt = fmt4(actual_sply_amt - dc_amt + vat_amt)
-		# tl_amt = tot_amt # In sample, tlAmt is 0.0? Wait. 
-		# In build_invoice_payload: tl_amt = tot_amt.
-		# In user sample: "tlAmt": 0.0. "totAmt": 100.
-		# I will follow build_invoice_payload logic for consistency, unless sample proves otherwise.
-		# Sample item 1: "tlAmt": 0.0. Item 2: "tlAmt": 0.0.
-		# OK, I will set tlAmt to 0.0 as per sample.
+		
 		tl_amt = 0.0 
 
 		sply_rate = fmt4(rate + vat_rate)
@@ -1647,17 +1654,8 @@ def build_rvat_sale_payload(docname: str, settings_name: str) -> dict:
 				"itemClsCd": class_code,
 				"qty": qty,
 				"qtyUnitCd": uom_code,
-				"prc": sply_rate, # Price inclusive of tax? Sample: "prc":100, splyAmt:100. Tax: 13.79. 
-                                  # If prc(100) * qty(1) = 100. vat(13.79). tot(100)? 
-                                  # No, 86.20 + 13.79 = 100.
-                                  # So 100 is inclusive price.
-                                  # build_invoice_payload uses `sply_rate = rate + vat_rate`.
-				"splyAmt": sply_amt, # Sample: 100. Wait. 
-                                     # Sample Item 1: prc:100. splyAmt:100. taxblAmt: 86.20. vatAmt: 13.79. totAmt: 100.
-                                     # It seems splyAmt in sample is inclusive? 
-                                     # But typically Supply Amount is exclusive.
-                                     # In build_invoice_payload: sply_amt = rate * qty (exclusive).
-                                     # I will stick to build_invoice_payload logic which successfully works for other invoices.
+				"prc": sply_rate,
+				"splyAmt": sply_amt, 
 				"vatAmt": vat_amt,
 				"tlAmt": tl_amt, 
 				"totAmt": tot_amt,
