@@ -15,6 +15,7 @@ from ...utils.payload_utils import (
 	build_debit_note_payload,
 	build_invoice_payload,
 	build_rvat_sale_payload,
+    build_export_sale_payload,
 	get_invoice_reference_number,
 )
 from ...utils.settings_utils import get_settings
@@ -124,8 +125,17 @@ def generic_invoices_on_submit_override(
 			error_callback=sales_information_submission_on_error,
 		)
 		return
-
-	# =============== NORMAL SALES INVOICE SUBMISSION ==================
+    # =============== NORMAL SALES INVOICE SUBMISSION ==================
+    
+	if getattr(doc, "custom_is_export_sale", None):
+		# EXPORT SALE DETECTED
+		# Identified by: custom_is_export_sale checkbox = True
+		# Key payload differences:
+		# - destnCountryCd: populated with destination country code
+		# - saleCtyCd: remains "1" 
+		# - Tax category: typically C1 (Exports 0%)
+		payload = build_export_sale_payload(doc.name, settings_doc.name)
+	
 	if getattr(doc, "custom_principal_id", None):
 		payload = build_rvat_sale_payload(doc.name, settings_doc.name)
 	else:

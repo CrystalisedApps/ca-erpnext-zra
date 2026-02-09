@@ -1629,3 +1629,223 @@ def build_rvat_sale_payload(docname: str, settings_name: str) -> dict:
 	payload["totTaxblAmt"] = sum(item["vatTaxblAmt"] for item in payload["itemList"])
 
 	return payload
+
+def build_export_sale_payload(docname: str, settings_name: str) -> dict:
+	"""
+	Build payload for Export Sales with destination country and zero-rated tax treatment.
+	
+	Export sales are identified by:
+	- custom_is_export_sale checkbox = True
+	- custom_destination_country field populated
+	
+	Key differences from domestic sales:
+	- destnCountryCd: populated with destination country code (e.g., "MW" for Malawi)
+	- saleCtyCd: remains "1" (same as domestic - destination country is the export indicator)
+	- Tax category: typically C1 (Exports 0% - zero-rated)
+	- Currency: may be foreign currency with actual exchange rate
+	
+	Args:
+	    docname: Sales Invoice document name
+	    settings_name: Crystal ZRA Smart Invoice Settings name
+	    
+	Returns:
+	    dict: Export sale payload for ZRA API
+	"""
+	# Get settings and company TPIN
+	settings = get_settings(settings_name)
+	tpin = settings.get("tpin")
+	
+	# Fetch the Sales Invoice document
+	doc = frappe.get_doc("Sales Invoice", docname)
+
+	# Get branch code (default to "000" if not set)
+	branch_code = "000"
+	try:
+		if hasattr(doc, "branch") and doc.branch:
+			branch_doc = frappe.get_doc("Branch", doc.branch)
+			branch_code = branch_doc.get("custom_branch_code") or "000"
+	except Exception as e:
+		frappe.log_error(f"Failed to fetch branch code: {e}", "Branch Code Error")
+
+	# Format dates for ZRA API
+	# salesDt: YYYYMMDD format (e.g., "20240508")
+	# cfmDt: YYYYMMDDHHmmss format (e.g., "20240508102010")
+	sales_dt = datetime.strptime(str(doc.posting_date), "%Y-%m-%d").strftime("%Y%m%d")
+	now_str = datetime.now().strftime("%Y%m%d%H%M%S")
+
+	# Use invoice name as reference number
+	reference_number = doc.name
+	
+	# Fetch customer details
+	customer = frappe.get_doc("Customer", doc.customer)
+
+	# Get destination country code - THIS IS THE KEY EXPORT INDICATOR
+	# For domestic sales, this field is empty ""
+	# For export sales, this contains the country code (e.g., "MW" for Malawi)
+	destination_country_code = ""
+	if getattr(doc, "custom_destination_country", None):
+		# Fetch the country code from the Crystallised Smart Country doctype
+		destination_country_code = frappe.db.get_value(
+			"Crystallised Smart Country", 
+			doc.custom_destination_country, 
+			"code"
+		) or ""
+
+	# Sale category code - IMPORTANT: Exports use "1" (same as domestic)
+	# The destination country field is what indicates it's an export, not the sale category
+	sale_category_code = "1"
+	if getattr(doc, "custom_sale_category_code", None):
+		sale_category_code = frappe.db.get_value(
+			"Crystallised Smart Sale Category",
+			doc.custom_sale_category_code,
+			"code"
+		) or "1"
+
+	# Tax field mapping - maps VAT categories to payload field names
+	# Each category has three fields: taxable amount, tax amount, and tax rate
+	tax_field_map = {
+		"A": ("taxblAmtA", "taxAmtA", "taxRtA"),           # Standard 16%
+		"B": ("taxblAmtB", "taxAmtB", "taxRtB"),           # MTV 16%
+		"C1": ("taxblAmtC1", "taxAmtC1", "taxRtC1"),       # Exports 0% - TYPICAL FOR EXPORTS
+		"C2": ("taxblAmtC2", "taxAmtC2", "taxRtC2"),       # Zero-rated local 0%
+		"C3": ("taxblAmtC3", "taxAmtC3", "taxRtC3"),       # Zero-rated by nature 0%
+		"D": ("taxblAmtD", "taxAmtD", "taxRtD"),           # Exempt 0%
+		"F": ("taxblAmtF", "taxAmtF", "taxRtF"),           # 10%
+		"IPL1": ("taxblAmtIpl1", "taxAmtIpl1", "taxRtIpl1"), # Insurance Premium Levy 5%
+		"IPL2": ("taxblAmtIpl2", "taxAmtIpl2", "taxRtIpl2"), # Insurance Premium Levy 0%
+		"TL": ("taxblAmtTl", "taxAmtTl", "taxRtTl"),       # Tourism Levy 1.5%
+	}
+
+	# Get exchange rate - for foreign currency exports
+	# If currency is ZMW (local), exchange rate is "1"
+	# If foreign currency (USD, EUR, etc.), use the actual conversion rate
+	exchange_rate = "1"
+	if doc.currency != "ZMW":
+		# Get exchange rate from invoice conversion_rate field
+		exchange_rate = str(doc.conversion_rate or 1)
+
+	# Build the main payload structure
+	payload = {
+		"tpin": tpin,                          # Company Tax Payer Identification Number
+		"bhfId": branch_code or "000",         # Branch ID
+		"cisInvcNo": reference_number,         # Invoice reference number (ERPNext doc name)
+		"salesDt": sales_dt,                   # Sale date (YYYYMMDD)
+		"custTpin": customer.tax_id or "",     # Customer TPIN (may be empty for foreign customers)
+		"custNm": customer.customer_name,      # Customer name
+		"currencyTyCd": doc.currency or "ZMW", # Currency code (ZMW, USD, EUR, etc.)
+		"totItemCnt": len(doc.items),          # Total number of items
+		"totAmt": fmt4(0),                     # Total amount (calculated later)
+		"totTaxAmt": fmt4(0),                  # Total tax amount (calculated later)
+		"totTaxblAmt": fmt4(0),                # Total taxable amount (calculated later)
+		"remark": doc.remarks or "",           # Remarks/notes
+		"cfmDt": now_str,                      # Confirmation datetime (YYYYMMDDHHmmss)
+		"regrId": frappe.session.user,         # Registrar user ID
+		"regrNm": frappe.session.user,         # Registrar user name
+		"modrId": frappe.session.user,         # Modifier user ID
+		"modrNm": frappe.session.user,         # Modifier user name
+		"pmtTyCd": "01",                       # Payment type code (01 = Cash)
+		"rcptTyCd": "S",                       # Receipt type code (S = Sale)
+		"salesTyCd": "N",                      # Sales type code (N = Normal)
+		"salesSttsCd": "02",                   # Sales status code (02 = Approved)
+		"saleCtyCd": sale_category_code,       # Sale category (1 = Local, includes exports)
+		"prchrAcptcYn": "N",                   # Purchaser acceptance (N = No)
+		"orgInvcNo": 0,                        # Original invoice number (0 for new invoices)
+		"exchangeRt": exchange_rate,           # Exchange rate (EXPORT-SPECIFIC: actual rate if foreign currency)
+		"destnCountryCd": destination_country_code,  # EXPORT-SPECIFIC: Destination country code
+		"itemList": [],                        # Item list (populated below)
+	}
+
+	# Initialize all tax category fields to zero
+	# These will be accumulated as we process items
+	for _, (taxbl, taxamt, taxrt) in tax_field_map.items():
+		payload[taxbl] = fmt4(0)   # Taxable amount for this category
+		payload[taxamt] = fmt4(0)  # Tax amount for this category
+		payload[taxrt] = 0         # Tax rate for this category
+
+	# Process each line item in the invoice
+	for idx, item in enumerate(doc.items, start=1):
+		# Fetch item-specific codes from Item master
+		# These codes are required by ZRA for item classification
+		pkg_code = frappe.db.get_value("Item", item.item_code, "custom_smart_packaging_unit") or "EA"
+		class_code = (
+			frappe.db.get_value("Item", item.item_code, "custom_smart_item_classification_code") or "00000000"
+		)
+		uom_code = frappe.db.get_value("Item", item.item_code, "custom_smart_quantity_unit") or "EA"
+
+		# Get item quantities and pricing
+		qty = fmt4(item.qty)                    # Quantity
+		rate = fmt4(item.rate)                  # Unit rate (price per unit)
+		sply_amt = fmt4(rate * qty)             # Supply amount (rate × quantity)
+
+		# Get discount information
+		dc_amt = fmt4(item.get("discount_amount") or 0)        # Discount amount
+		dc_rt = fmt4(item.get("discount_percentage") or 0)     # Discount rate/percentage
+
+		# Determine tax category and rate
+		# For exports, default to C1 (Exports 0% - zero-rated)
+		# User can override by setting custom_taxation_type on the item
+		vat_cat = item.get("custom_taxation_type") or "C1"
+		
+		# Get tax rate from item or use 0 for zero-rated exports
+		tax_rate = float(item.get("custom_tax_rate") or 0)
+		
+		# Calculate VAT amounts
+		vat_rate = fmt4(rate * tax_rate / 100)      # VAT per unit
+		vat_amt = fmt4(sply_amt * tax_rate / 100)   # Total VAT for this line
+		
+		# Get item code (ZRA item code or fallback to ERPNext item code)
+		item_code = (
+			item.get("custom_smart_item_code")
+			or frappe.db.get_value("Item", item.item_code, "custom_smart_item_code")
+			or item.item_code
+		)
+		
+		# Get recommended retail price (RRP)
+		rrp = item.get("standard_rate") or frappe.db.get_value("Item", item.item_code, "standard_rate")
+		
+		# Calculate line totals
+		tot_amt = fmt4(sply_amt - dc_amt + vat_amt)  # Total = supply - discount + tax
+		tl_amt = tot_amt                              # Tourism levy amount (same as total)
+		sply_rate = fmt4(rate + vat_rate)             # Supply rate including VAT
+
+		# Update tax category totals in the main payload
+		# This accumulates amounts for each tax category across all items
+		if vat_cat in tax_field_map:
+			taxbl, taxamt, taxrt = tax_field_map[vat_cat]
+			payload[taxbl] = fmt4(payload[taxbl] + sply_amt)   # Add to taxable amount
+			payload[taxamt] = fmt4(payload[taxamt] + vat_amt)  # Add to tax amount
+			payload[taxrt] = int(round(tax_rate))              # Set tax rate
+
+		# Build item payload and add to item list
+		payload["itemList"].append(
+			{
+				"itemSeq": idx,                # Item sequence number (1, 2, 3, ...)
+				"itemCd": item_code,           # Item code (ZRA code)
+				"itemNm": item.item_name,      # Item name
+				"itemClsCd": class_code,       # Item classification code
+				"qty": qty,                    # Quantity
+				"qtyUnitCd": uom_code,         # Quantity unit code (EA, KG, etc.)
+				"prc": sply_rate,              # Price (including VAT)
+				"splyAmt": tl_amt,             # Supply amount
+				"vatAmt": vat_amt,             # VAT amount
+				"tlAmt": 0,                    # Tourism levy amount (0 for exports)
+				"totAmt": tot_amt,             # Total amount for this line
+				"vatTaxblAmt": sply_amt,       # VAT taxable amount
+				"tlTaxblAmt": sply_amt,        # Tourism levy taxable amount
+				"pkg": item.get("package_qty") or 1,  # Package quantity
+				"pkgUnitCd": pkg_code,         # Package unit code
+				"dcAmt": dc_amt,               # Discount amount
+				"dcRt": dc_rt,                 # Discount rate
+				"bcd": item.barcode or "",     # Barcode
+				"vatCatCd": vat_cat,           # VAT category code (C1 for exports)
+				"rrp": rrp,                    # Recommended retail price
+			}
+		)
+
+	# Calculate and update global totals from all items
+	# These are the invoice-level totals
+	payload["totAmt"] = sum(item["totAmt"] for item in payload["itemList"])           # Total invoice amount
+	payload["totTaxAmt"] = sum(item["vatAmt"] for item in payload["itemList"])        # Total tax amount
+	payload["totTaxblAmt"] = sum(item["vatTaxblAmt"] for item in payload["itemList"]) # Total taxable amount
+
+	return payload
