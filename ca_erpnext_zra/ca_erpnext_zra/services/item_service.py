@@ -47,6 +47,7 @@ def handle_registration_response(
                 frappe.log_error(
                     f"[SMART] Item with code {item_code} not found", "Registration Handler"
                 )
+				
                 return
 
             zra_item_code = result_data.get("itemCd") or result.get("ItemCd") or item_code
