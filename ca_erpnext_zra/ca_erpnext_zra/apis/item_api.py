@@ -378,27 +378,36 @@ def item_search_on_success(response: dict,branch: str, settings_name: str, **kwa
 				default_uom = item_data.get("qtyUnitCd") or "Nos"
 
 				# Build item data
+				# Build item data with truthy guards to prevent overwriting local data with blanks
 				item_fields = {
 					"item_name": item_name,
-					"item_code": zra_item_code,
-					"description": item_data.get("itemStdNm", item_name),
 					"is_sales_item": True,
 					"is_purchase_item": True,
 					"valuation_rate": round(item_data.get("dftPrc", 0.0), 2),
 					"last_purchase_rate": round(item_data.get("dftPrc", 0.0), 2),
 					"stock_uom": default_uom,
 					"uoms": [{"uom": default_uom, "conversion_factor": 1}],
-					# Custom ZRA fields
 					"custom_zra_item_code": zra_item_code,
-					"custom_smart_item_classification_code": item_data.get("itemClsCd", ""),
-					"custom_smart_item_type": item_data.get("itemTyCd", ""),
-					"custom_smart_country_of_origin_code": country_code,
-					"custom_smart_country_of_origin_": country_link or "",
-					"custom_smart_packaging_unit": item_data.get("pkgUnitCd", ""),
+					"custom_smart_item_code": zra_item_code,
 					"custom_smart_quantity_unit": default_uom,
-					"custom_vat_category_code": item_data.get("vatCatCd", ""),
-					"custom_smart_safety_quantity": round(item_data.get("sftyQty", 0.0), 2),
 				}
+
+				if item_data.get("itemClsCd"):
+					item_fields["custom_smart_item_classification_code"] = item_data.get("itemClsCd")
+				if item_data.get("itemTyCd"):
+					item_fields["custom_smart_item_type"] = item_data.get("itemTyCd")
+				if item_data.get("orgnNatCd"):
+					country_code = item_data.get("orgnNatCd").lower()
+					item_fields["custom_smart_country_of_origin_code"] = country_code
+					country_link = get_link_value("Country", "code", country_code)
+					if country_link:
+						item_fields["custom_smart_country_of_origin_"] = country_link
+				if item_data.get("pkgUnitCd"):
+					item_fields["custom_smart_packaging_unit"] = item_data.get("pkgUnitCd")
+				if item_data.get("vatCatCd"):
+					item_fields["custom_vat_category_code"] = item_data.get("vatCatCd")
+				if item_data.get("sftyQty"):
+					item_fields["custom_smart_safety_quantity"] = round(item_data.get("sftyQty", 0.0), 2)
 				# 1. Identify Target Item
 				item_doc = None
 				if existing_item:
