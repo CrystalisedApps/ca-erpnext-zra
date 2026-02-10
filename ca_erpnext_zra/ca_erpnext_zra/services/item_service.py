@@ -84,6 +84,16 @@ def handle_registration_response(
                 f"[SMART] Registered: {item_code} → ZRA Code: {zra_item_code} | Branch: {branch}"
             )
 
+            # --- STEP 2: Trigger selectItem (Fetch Details) ---
+            from ..apis.item_api import fetch_item_details
+            frappe.enqueue(
+                fetch_item_details,
+                queue="default",
+                item_code=zra_item_code,
+                branch=branch,
+                settings_name=settings_name
+            )
+
     except Exception as e:
         frappe.log_error(
             frappe.get_traceback(), f"[SMART] Failed to process registration response: {e}"
@@ -156,7 +166,33 @@ def fetch_matching_items_on_success(response: dict, document_name: str, settings
 			existing_mapping = None 
 	
 	
+def trigger_item_registration(document_name: str, settings_name: str, branch_code: str = None, branch_name: str = None):
+	"""
+	Triggers the actual saveItem/updateItem API calls for an item.
+	This can be called directly to skip the preliminary selectItem check.
+	"""
+	from ..apis.api_processor import process_request
+	
+	item_doc = frappe.get_doc("Item", document_name)
+	
+	# Check for existing mapping
+	existing_mapping = next(
+		(
+			row.zra_item_code
+			for row in item_doc.get("custom_smart_setup_mapping", [])
+				if row.smart_setup == settings_name
+		),
+		None,
+	)
+
 	branch_mappings = get_all_branch_mappings(settings_name)
+
+	# If specific branch info provided, filter for it
+	if branch_code or branch_name:
+		branch_mappings = [
+			m for m in branch_mappings 
+			if (branch_code and m["bhfid"] == branch_code) or (branch_name and m["branch"] == branch_name)
+		]
 
 	for row in branch_mappings:
 		branch_bhfid = row["bhfid"]
@@ -183,6 +219,76 @@ def fetch_matching_items_on_success(response: dict, document_name: str, settings
 			branch=branch_name,
 			settings_name=settings_name,
 		)
+
+
+def fetch_matching_items_on_success(response: dict, document_name: str, settings_name: str, bhfid,branch, **kwargs) -> None:
+	"""
+	Handles Smart Zambia (ZRA) item search response.
+	Checks for matching items, archives duplicates if found,
+	and registers or creates the ERPNext Item accordingly.
+	"""
+	from ..apis.api_processor import process_request
+	
+	frappe.logger().info(f"[SMART] Callback received BHFID: {bhfid}")
+	items = parse_response_data(response, list)
+	item_doc = frappe.get_doc("Item", document_name)
+
+	# Check for existing mapping
+	existing_mapping = next(
+		(
+			row.zra_item_code
+			for row in item_doc.get("custom_smart_setup_mapping", [])
+				if row.smart_setup == settings_name
+		),
+		None,
+	)
+
+	# --- CASE 1: Remote items exist ---
+	if items:
+		if not existing_mapping:
+			frappe.get_doc(
+				{
+					"doctype": "Smart Crystallised Mapping",
+					"parent": item_doc.name,
+					"parenttype": "Item",
+					"parentfield": "custom_smart_setup_mapping",
+					"zra_item_code": items[0].get("itemCd"),
+					"smart_setup": settings_name,
+				}
+			).insert(ignore_permissions=True)
+			existing_mapping = items[0].get("itemCd")
+
+		# Archive duplicates
+		for item in items:
+			if existing_mapping != item.get("itemCd"):
+				frappe.enqueue(
+					process_request,
+					queue="default",
+					doctype="Item",
+					request_data={
+						"document_name": item_doc.name,
+						"name": f"{item_doc.name} - Archived",
+						"itemCd": item.get("itemCd"),
+						"useYn": "N",
+					},
+					route_key="updateItem",
+					handler_function=item_archive_on_success,
+					request_method="POST",
+					settings_name=settings_name,
+				)
+
+	# --- CASE 2: No remote item found, trigger new item creation ---
+	elif response.get("IsSuccess") is False:
+		error_message = response.get("ErrorMessage", "").lower()
+		if "no search result" in error_message or "error code: 001" in error_message:
+			frappe.logger().info(
+				f"[SMART] No existing ZRA item found for {item_doc.name}, creating new item."
+			)
+			existing_mapping = None 
+	
+	
+	# Trigger registration for all branches
+	trigger_item_registration(document_name, settings_name)
 
 
 def item_archive_on_success(response: dict | None = None, **kwargs):

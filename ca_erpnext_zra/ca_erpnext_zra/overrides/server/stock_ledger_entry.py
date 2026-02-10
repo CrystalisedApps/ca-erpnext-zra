@@ -253,6 +253,29 @@ def get_notes_docs_items_details(items: list[Document], all_present_items: list[
 
 def stock_mvt_submission_on_success(response: dict, document_name: str, **kwargs) -> None:
 	frappe.db.set_value("Stock Ledger Entry", document_name, {"custom_submitted_successfully": 1})
+	frappe.db.commit()
+
+	# --- STEP 5: Trigger saveStockMaster (Initial Stock Balance) ---
+	from ...apis.stock_api import submit_inventory
+	from ...utils.payload_utils import get_branch_code_from_sle
+	
+	sle_doc = frappe.get_doc("Stock Ledger Entry", document_name)
+	
+	data = {
+		"name": sle_doc.name,
+		"owner": sle_doc.owner,
+		"residual_qty": sle_doc.qty_after_transaction,
+		"item_code": sle_doc.item_code,
+		"smart_item_code": frappe.db.get_value("Item", sle_doc.item_code, "custom_smart_item_code"),
+		"company": sle_doc.company,
+		"branch_id": get_branch_code_from_sle(sle_doc)
+	}
+
+	frappe.enqueue(
+		submit_inventory,
+		queue="default",
+		data=data
+	)
 
 def on_error(
     response: dict | str,
