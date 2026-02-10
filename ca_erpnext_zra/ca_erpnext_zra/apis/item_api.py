@@ -12,7 +12,11 @@ from .api_processor import process_request
 from ..utils.routes_utils import get_route_path
 
 from ..apis.api_processor import process_request
-from ..services.item_service import fetch_matching_items_on_success, handle_registration_response
+from ..services.item_service import (
+	fetch_matching_items_on_success,
+	handle_registration_response,
+	trigger_item_registration,
+)
 from ..utils.payload_utils import (
 	build_stock_payload,
 	generate_custom_item_code_smart,
@@ -87,11 +91,11 @@ def perform_item_registration(doc, settings_name=None, branch=None,branch_code=N
 	 
 	# item.save(ignore_permissions=True)
 	# frappe.db.commit()
-	# Step 1: Enqueue async GET to check if item already exists remotely
+	# Trigger direct registration (skip lookup)
 	frappe.enqueue(
-		"ca_erpnext_zra.ca_erpnext_zra.apis.item_api._process_item_lookup",
+		"ca_erpnext_zra.ca_erpnext_zra.apis.item_api._process_item_registration_direct",
 		queue="default",
-		job_name=f"[SMART] Lookup existing item {item.name}",
+		job_name=f"[SMART] Register item {item.name}",
 		timeout=300,
 		item_name=item.name,
 		branch_code=branch_code,
@@ -102,56 +106,20 @@ def perform_item_registration(doc, settings_name=None, branch=None,branch_code=N
 	return {
 		"queued": True,
 		"item": item.name,
-		"message": _("Item lookup has been queued for Smart Zambia registration."),
+		"message": _("Item registration has been queued for Smart Zambia."),
 	}
 
 
 @frappe.whitelist()
-def _process_item_lookup(item_name: str,branch_code: str, branch: str, settings_name: str):
-	"""Search for existing Smart Zambia item before registration (selectItem)."""
-	from ..apis.api_processor import process_request
-
-	# Fetch Item and settings
-	item = frappe.get_doc("Item", item_name)
-	settings = frappe.get_doc("Crystal ZRA Smart Invoice Settings", settings_name)
-	tpin = settings.get("tpin")
-	if branch_code:
-		bhf_id = branch_code
-	elif branch:
-        # Fetch the branch code from the Branch DocType
-		bhf_id = frappe.db.get_value("Branch", branch, "custom_branch_code") or "000"
-	else:
-		bhf_id = "000"
-	item_cd = item.get("custom_smart_item_code")
-	if not (tpin and item_cd):
-		frappe.log_error(
-			title="[SMART] Missing Required Data for selectItem",
-			message=f"TPIN: {tpin}, Item Code: {item_cd}, Item: {item.name}",
-		)
-		return
-
-	# Build the expected Smart Zambia API request payload
-	request_data = {"tpin": tpin, "bhfId": bhf_id, "itemCd": item_cd}
-
-	frappe.logger().info(f"[SMART]  Looking up existing Smart item: {request_data}")
-
-	# Enqueue Smart API call
-	frappe.enqueue(
-		process_request,
-		queue="default",
-		is_async=True,
-		request_data=request_data,
-		route_key="selectItem",  # Smart API endpoint
-		handler_function=fetch_matching_items_on_success,
-		request_method="POST",
-		doctype="Item",
-		document_name=item.name,
+def _process_item_registration_direct(item_name: str, branch_code: str, branch: str, settings_name: str):
+	"""Directly trigger saveItem/updateItem for an item (skipping selectItem)."""
+	from ..services.item_service import trigger_item_registration
+	
+	trigger_item_registration(
+		document_name=item_name,
 		settings_name=settings_name,
-		bhfid=bhf_id,
-		branch=branch,
-		error_callback=fetch_matching_items_on_success,
-		
-		
+		branch_code=branch_code,
+		branch_name=branch
 	)
 
 
@@ -513,6 +481,14 @@ def item_search_on_success(response: dict,branch: str, settings_name: str, **kwa
 
 		frappe.db.commit()
 
+		# --- STEP 3: Trigger updateItem (Sync Details) ---
+		from .item_api import update_item
+		frappe.enqueue(
+			update_item,
+			queue="default",
+			doc={"name": item_doc.name}
+		)
+
 	except Exception as e:
 		frappe.log_error(
 			title="ZRA Item Sync Fatal Error",
@@ -524,8 +500,31 @@ def get_link_value(doctype, fieldname, value):
 	return frappe.db.get_value(doctype, {fieldname: value}, "name")
 
 
-def handle_update_response(response, request_data):
+def handle_update_response(response, document_name=None, payload=None, **kwargs):
 	frappe.logger().info(f"[SMART] Update Response: {response}")
+
+	if not document_name and payload:
+		document_name = payload.get("itemNm")
+	
+	if not document_name:
+		return
+
+	# --- STEP 4: Trigger saveStockItems (Stock Link) ---
+	latest_sle = frappe.db.get_value(
+		"Stock Ledger Entry",
+		{"item_code": document_name},
+		"name",
+		order_by="creation desc"
+	)
+
+	if latest_sle:
+		from ..overrides.server.stock_ledger_entry import on_update
+		sle_doc = frappe.get_doc("Stock Ledger Entry", latest_sle)
+		frappe.enqueue(
+			on_update,
+			queue="default",
+			doc=sle_doc
+		)
 
 
 def handle_inventory_response(response, **kwargs):
