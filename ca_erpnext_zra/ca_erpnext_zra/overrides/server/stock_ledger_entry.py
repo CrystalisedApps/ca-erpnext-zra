@@ -16,7 +16,7 @@ from ...utils.smart_api_utils import split_user_email
 
 def on_update(doc: Document, method: str | None = None) -> None:
 	"""Handle stock movements and submit to ZRA Smart Invoice via process_request."""
-
+	
 	company_name = doc.company
 	vendor = ""
 	
@@ -253,6 +253,7 @@ def get_notes_docs_items_details(items: list[Document], all_present_items: list[
 
 def stock_mvt_submission_on_success(response: dict, document_name: str, **kwargs) -> None:
 	frappe.db.set_value("Stock Ledger Entry", document_name, {"custom_submitted_successfully": 1})
+	frappe.logger().info(f"[SMART] saveStockItems Success for {document_name}. Triggering saveStockMaster")
 	frappe.db.commit()
 
 	# --- STEP 5: Trigger saveStockMaster (Initial Stock Balance) ---
