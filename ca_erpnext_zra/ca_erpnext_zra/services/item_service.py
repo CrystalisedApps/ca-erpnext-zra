@@ -86,12 +86,14 @@ def handle_registration_response(
 
             # --- STEP 2: Trigger selectItem (Fetch Details) ---
             from ..apis.item_api import fetch_item_details
+            frappe.logger().info(f"[SMART] saveItem Success for {item_name}. Triggering selectItem (fetch_item_details)")
             frappe.enqueue(
                 fetch_item_details,
                 queue="default",
                 item_code=zra_item_code,
                 branch=branch,
-                settings_name=settings_name
+                settings_name=settings_name,
+                document_name=item_name
             )
 
     except Exception as e:

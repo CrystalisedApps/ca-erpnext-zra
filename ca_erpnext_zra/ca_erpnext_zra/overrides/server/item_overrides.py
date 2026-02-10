@@ -30,8 +30,9 @@ def on_update(doc, method=None):
                 }
             )
 
-            if not exists:
+            if not exists and not frappe.flags.in_item_registration:
                 # Pass branch and branch_code to registration
+                frappe.flags.in_item_registration = True
                 perform_item_registration(
                     doc=doc,
                     settings_name=setting.get("name") ,

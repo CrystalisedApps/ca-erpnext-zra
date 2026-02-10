@@ -672,6 +672,7 @@ def generate_vsdc_item_payload(item_name: str, bhfid, settings_name: str) -> dic
 		"regrId": frappe.session.user,
 		"modrNm": frappe.session.user,
 		"modrId": frappe.session.user,
+		"document_name": item_name,
 	}
 
 	return payload

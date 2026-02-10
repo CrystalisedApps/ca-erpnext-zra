@@ -124,7 +124,7 @@ def _process_item_registration_direct(item_name: str, branch_code: str, branch: 
 
 
 @frappe.whitelist()
-def fetch_item_details(item_code: str, branch: str,settings_name: str = None) -> None:
+def fetch_item_details(item_code: str, branch: str, settings_name: str = None, document_name: str = None) -> dict:
 	"""Fetch Item details from Smart Zambia API."""
 	settings = get_settings(settings_name)
 	if not settings:
@@ -137,6 +137,7 @@ def fetch_item_details(item_code: str, branch: str,settings_name: str = None) ->
 		"tpin": tpin,
 		"bhfId": branch_code or "000",
 		"itemCd": item_code,
+		"document_name": document_name,
 	}
 
 	frappe.enqueue(
@@ -148,13 +149,14 @@ def fetch_item_details(item_code: str, branch: str,settings_name: str = None) ->
 		handler_function=item_search_on_success,
 		request_method="POST",
 		doctype="Item",
+		document_name=document_name,
 		settings_name=settings["name"],
 	)
 	return {"queued": True, "item": item_code}
 
 
 @frappe.whitelist()
-def update_item(doc, method=None) -> dict | None:
+def update_item(doc, method=None, settings_name=None, branch=None) -> dict | None:
 	"""Update Item details in Smart Zambia API."""
 	import json
 
@@ -176,19 +178,26 @@ def update_item(doc, method=None) -> dict | None:
 	if not is_item_eligible_for_registration(item):
 		return None
 
-	settings = _get_single_smart_settings()
+	# Get settings
+	settings = get_settings(settings_name)
 	if not settings:
-		frappe.throw(_("No active Smart API Settings found"))
+		frappe.throw(_("No active Smart API Settings found."))
+
+	# Get branch logic
+	branch_code = "000"
+	if branch:
+		branch_code = frappe.db.get_value("Branch", branch, "custom_branch_code") or "000"
 
 	frappe.enqueue(
 		process_request,
 		queue="default",
 		is_async=True,
-		request_data=generate_vsdc_item_payload(item.name),
+		request_data=generate_vsdc_item_payload(item.name, branch_code, settings["name"]),
 		route_key="updateItem",
 		handler_function=handle_update_response,
 		request_method="POST",
 		doctype="Item",
+		document_name=item.name,
 		settings_name=settings["name"],
 	)
 	return {"queued": True, "item": item.name}
@@ -337,6 +346,7 @@ def item_search_on_success(response: dict,branch: str, settings_name: str, **kwa
 	"""
 
 	try:
+		item_doc = None
 		# Extract nested data safely
 		result = response.get("Result", {})
 		data = result.get("data", {})
@@ -389,105 +399,77 @@ def item_search_on_success(response: dict,branch: str, settings_name: str, **kwa
 					"custom_vat_category_code": item_data.get("vatCatCd", ""),
 					"custom_smart_safety_quantity": round(item_data.get("sftyQty", 0.0), 2),
 				}
-
+				# 1. Identify Target Item
+				item_doc = None
 				if existing_item:
 					item_doc = frappe.get_doc("Item", existing_item)
-					item_doc.update(item_fields)
-
-					# Remove duplicate UOMs
-					if hasattr(item_doc, "uoms") and item_doc.uoms:
-						seen_uoms = set()
-						unique_uoms = []
-						for row in item_doc.uoms:
-							if row.uom not in seen_uoms:
-								unique_uoms.append(row)
-								seen_uoms.add(row.uom)
-						item_doc.uoms = unique_uoms
-
-					# Remove duplicate or extra Item Defaults (important: do this BEFORE save)
-					if hasattr(item_doc, "item_defaults") and item_doc.item_defaults:
-						seen_companies = set()
-						unique_defaults = []
-						for row in item_doc.item_defaults:
-							if row.company not in seen_companies:
-								unique_defaults.append(row)
-								seen_companies.add(row.company)
-						item_doc.item_defaults = unique_defaults
-
-					# Save only once
-					item_doc.flags.ignore_mandatory = True
-					item_doc.save(ignore_permissions=True)
-
-					# Remove duplicate or extra Item Defaults
-					if hasattr(item_doc, "item_defaults") and item_doc.item_defaults:
-						seen_companies = set()
-						unique_defaults = []
-						for row in item_doc.item_defaults:
-							if row.company not in seen_companies:
-								unique_defaults.append(row)
-								seen_companies.add(row.company)
-						item_doc.item_defaults = unique_defaults
-
+				elif kwargs.get("document_name"):
+					item_doc = frappe.get_doc("Item", kwargs.get("document_name"))
+				
+				# 2. Update existing or Create new
+				if item_doc:
+					# Create a copy of fields to avoid overwriting item_code
+					update_data = item_fields.copy()
+					if "item_code" in update_data:
+						del update_data["item_code"]
+					
+					item_doc.update(update_data)
+					# Manage Mapping
+					existing_mapping_row = next(
+						(r for r in item_doc.get("custom_smart_setup_mapping", [])
+						 if r.smart_setup == settings_name and r.branch == branch),
+						None
+					)
+					if not existing_mapping_row:
+						item_doc.append("custom_smart_setup_mapping", {
+							"smart_setup": settings_name,
+							"zra_item_code": zra_item_code,
+							"branch": branch
+						})
+					else:
+						existing_mapping_row.zra_item_code = zra_item_code
+					
 					item_doc.flags.ignore_mandatory = True
 					item_doc.save(ignore_permissions=True)
 				else:
-					item_fields["item_group"] = (
-						frappe.db.get_value("Item Group", {"is_group": 1}, "name") or "All Item Groups"
-					)
+					# Fallback: Create new if truly unknown
+					item_fields["item_group"] = frappe.db.get_value("Item Group", {"is_group": 1}, "name") or "All Item Groups"
 					item_doc = frappe.get_doc({"doctype": "Item", **item_fields})
 					item_doc.flags.ignore_mandatory = True
-					item_doc.insert(
-						ignore_permissions=True,
-						ignore_mandatory=True,
-						ignore_if_duplicate=True,
-					)
-
-				# Maintain mapping (ZRA → ERPNext)
-				existing_mapping = frappe.db.exists(
-					"Smart Crystallised Mapping",
-					{
+					item_doc.insert(ignore_permissions=True, ignore_mandatory=True, ignore_if_duplicate=True)
+					
+					# Add mapping record for branch
+					frappe.get_doc({
+						"doctype": "Smart Crystallised Mapping",
 						"parent": item_doc.name,
 						"parenttype": "Item",
 						"parentfield": "custom_smart_setup_mapping",
+						"zra_item_code": zra_item_code,
 						"smart_setup": settings_name,
-					},
-				)
-
-				if existing_mapping:
-					frappe.db.set_value(
-						"Smart Crystallised Mapping",
-						existing_mapping,
-						{"zra_item_code": zra_item_code, "branch": branch},
-					)
-				else:
-					frappe.get_doc(
-						{
-							"doctype": "Smart Crystallised Mapping",
-							"parent": item_doc.name,
-							"parenttype": "Item",
-							"parentfield": "custom_smart_setup_mapping",
-							"zra_item_code": zra_item_code,
-							"smart_setup": settings_name,
-							"branch": branch
-						}
-					).insert(ignore_permissions=True)
+						"branch": branch
+					}).insert(ignore_permissions=True)
 
 			except Exception as e:
-				frappe.log_error(
-					title="ZRA Item Sync Error",
-					message=f"Error processing item {item_data.get('itemCd')}: {str(e)}",
-				)
+				frappe.log_error(title="ZRA Item Sync Error", message=f"Error: {e}")
 				continue
 
 		frappe.db.commit()
 
 		# --- STEP 3: Trigger updateItem (Sync Details) ---
-		from .item_api import update_item
-		frappe.enqueue(
-			update_item,
-			queue="default",
-			doc={"name": item_doc.name}
-		)
+		# Capture a reference for the enqueue to ensure we hit the right item
+		target_docname = kwargs.get("document_name") or (item_doc.name if 'item_doc' in locals() else None)
+		
+		if target_docname:
+			frappe.logger().info(f"[SMART] selectItem Success for {target_docname}. Triggering updateItem")
+			frappe.enqueue(
+				update_item,
+				queue="default",
+				doc={"name": target_docname},
+				settings_name=settings_name,
+				branch=branch
+			)
+		else:
+			frappe.logger().warning("[SMART] selectItem Success but no target_docname found. Chain stopped.")
 
 	except Exception as e:
 		frappe.log_error(
@@ -508,6 +490,9 @@ def handle_update_response(response, document_name=None, payload=None, **kwargs)
 	
 	if not document_name:
 		return
+
+	if response.get("IsSuccess") is True:
+		frappe.logger().info(f"[SMART] updateItem Success for {document_name}. Triggering saveStockItems (on_update)")
 
 	# --- STEP 4: Trigger saveStockItems (Stock Link) ---
 	latest_sle = frappe.db.get_value(
