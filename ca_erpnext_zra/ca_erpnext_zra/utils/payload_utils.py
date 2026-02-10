@@ -606,13 +606,13 @@ def generate_vsdc_item_payload(item_name: str, bhfid, settings_name: str) -> dic
 		link_doctype = item.meta.get_field(fieldname).options
 		link_value = item.get(fieldname)
 
-		# map Item field → correct code field in linked Doctype
+		# map Item field → correct code field in linked ZRA Doctype
 		field_map = {
 			"custom_smart_item_classification_code": "item_cls_cd",
-			"custom_smart_item_type": "class_code",
-			"custom_smart_country_of_origin": "class_code",
-			"custom_smart_packaging_unit_code": "class_code",
-			"custom_smart_quantity_unit_code": "class_code",
+			"custom_smart_item_type": "code",
+			"custom_smart_country_of_origin_": "code",
+			"custom_smart_packaging_unit": "code",
+			"custom_smart_quantity_unit": "code",
 			"custom_vat_category_code": "code",
 			"ipl_category_code": "class_code",
 			"trade_levy_category": "class_code",
@@ -622,8 +622,12 @@ def generate_vsdc_item_payload(item_name: str, bhfid, settings_name: str) -> dic
 		}
 
 		code_field = field_map.get(fieldname, "code")  # fallback to `code` if unsure
-
-		return frappe.db.get_value(link_doctype, link_value, code_field)
+		val = frappe.db.get_value(link_doctype, link_value, code_field)
+		
+		if not val:
+			frappe.logger().warning(f"[SMART] Missing code for {fieldname} (Doc: {link_doctype}, Value: {link_value}, TargetField: {code_field})")
+		
+		return val
 
 		# Fetch first settings record
 
