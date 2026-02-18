@@ -32,12 +32,11 @@ def get_principals(settings_name: str) -> None:
 	
 	# Logic to get last request date or default to 1 year ago
 	route_key = "selectPrincipals"
-	_, last_req_date = get_route_path(route_key, "Crystal VSDC")
+	url_path, _ = get_route_path(route_key, "Crystal VSDC")
 	
-	if last_req_date:
-		lastReqDt = last_req_date.strftime("%Y%m%d%H%M%S")
-	else:
-		lastReqDt = add_to_date(datetime.now(), years=-1).strftime("%Y%m%d%H%M%S")
+	# For manual principal fetching, we always want the full list (last 5 years)
+	# This avoids the issue where subsequent calls return nothing due to incremental ZRA logic
+	lastReqDt = add_to_date(datetime.now(), years=-5).strftime("%Y%m%d%H%M%S")
 
 	payload = {
 		"tpin": tpin,
