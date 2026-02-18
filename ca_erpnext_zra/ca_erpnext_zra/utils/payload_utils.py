@@ -779,12 +779,16 @@ def build_invoice_payload(invoice: "Document", settings_name: str) -> dict:
 		# Supply amount = net amount before tax
 		# sply_amt = fmt4(item.net_amount)
 
-		actual_sply_amt = fmt4(rate * qty)
-		sply_amt = actual_sply_amt
+		# Supply Amount (Gross)
+		item_sply_amt = fmt4(rate * qty)
 
 		# Discount
 		dc_amt = fmt4(item.get("discount_amount") or 0)
 		dc_rt = fmt4(item.get("discount_percentage") or 0)
+
+		# Taxable Amount (Net)
+		# ZRA expects vatTaxblAmt = splyAmt - dcAmt
+		item_vat_taxbl_amt = fmt4(item_sply_amt - dc_amt)
 
 		# Tax rate
 		tax_rate = float(item.get("custom_tax_rate") or 0)
@@ -804,16 +808,16 @@ def build_invoice_payload(invoice: "Document", settings_name: str) -> dict:
 
 		if is_mtv and rrp_raw > _safe_float(rate):
 			# Use MTV for tax calculation
-			taxable_amt = fmt4(_safe_float(rrp_raw) * _safe_float(qty))
-			vat_amt = fmt4(taxable_amt * tax_rate / 100)
+			item_vat_taxbl_amt = fmt4(_safe_float(rrp_raw) * _safe_float(qty))
 			# sply_amt in ZRA payload (vatTaxblAmt) should reflect MTV
-			sply_amt = taxable_amt
+			item_sply_amt = item_vat_taxbl_amt
 			# Track that MTV was applied
 			invoice.custom_mtv_applied = 1
-		else:
-			vat_amt = fmt4(sply_amt * tax_rate / 100)
-
+		
+		# Calculate VAT on the taxable amount (Net)
+		vat_amt = fmt4(item_vat_taxbl_amt * tax_rate / 100)
 		vat_rate = fmt4(_safe_float(rate) * tax_rate / 100)
+
 		item_code = (
 			item.get("custom_smart_item_code")
 			or frappe.db.get_value("Item", item.item_code, "custom_smart_item_code")
@@ -821,26 +825,16 @@ def build_invoice_payload(invoice: "Document", settings_name: str) -> dict:
 		)
 		
 		# Totals
-		tot_amt = fmt4(actual_sply_amt - dc_amt + vat_amt)
+		tot_amt = fmt4(item_vat_taxbl_amt + vat_amt)
 		tl_amt = tot_amt
 
-		sply_rate = fmt4(_safe_float(rate) + vat_rate)
-		# tl_amt = fmt4(sply_amt + vat_amt)   # line total including VAT
-		# tot_amt = fmt4(sply_amt - dc_amt + vat_amt)  # supply - discount + taxes
-
-		# Update tax category totals
-		# Fetch VAT category from Item master (custom_vat_category_code), not from child table
-		vat_cat = frappe.db.get_value("Item", item.item_code, "custom_vat_category_code") or "A"
-		
-		# MTV Enforcement: Only Category B allowed for MTV
-		if is_mtv:
-			vat_cat = frappe.db.get_value("Item", item.item_code, "custom_vat_category_code") or "B"
+		sply_rate = fmt4(_safe_float(rate) + (vat_amt / _safe_float(qty) if _safe_float(qty) > 0 else 0))
 			
+		# Update tax category totals
 		if vat_cat in tax_field_map:
 			taxbl, taxamt, taxrt = tax_field_map[vat_cat]
-
-			# For MTV, we only populate 'B' (which is now forced if is_mtv is true)
-			payload[taxbl] = fmt4(payload[taxbl] + sply_amt)
+			# Use NET taxable amount for category totals
+			payload[taxbl] = fmt4(payload[taxbl] + item_vat_taxbl_amt)
 			payload[taxamt] = fmt4(payload[taxamt] + vat_amt)
 			payload[taxrt] = int(round(tax_rate))
 
@@ -854,12 +848,12 @@ def build_invoice_payload(invoice: "Document", settings_name: str) -> dict:
 				"qty": qty,
 				"qtyUnitCd": uom_code,
 				"prc": sply_rate,
-				"splyAmt": tl_amt,
+				"splyAmt": item_sply_amt, 
 				"vatAmt": vat_amt,
-				"tlAmt": 0,
+				"tlAmt": tl_amt, 
 				"totAmt": tot_amt,
-				"vatTaxblAmt": sply_amt,
-				"tlTaxblAmt": sply_amt,
+				"vatTaxblAmt": item_vat_taxbl_amt,
+				"tlTaxblAmt": item_vat_taxbl_amt,
 				"pkg": item.get("package_qty") or 1,
 				"pkgUnitCd": pkg_code,
 				"dcAmt": dc_amt,
@@ -870,10 +864,10 @@ def build_invoice_payload(invoice: "Document", settings_name: str) -> dict:
 			}
 		)
 
-	# Update global totals AFTER items
-	payload["totAmt"] = sum(item["totAmt"] for item in payload["itemList"])
-	payload["totTaxAmt"] = sum(item["vatAmt"] for item in payload["itemList"])
-	payload["totTaxblAmt"] = sum(item["vatTaxblAmt"] for item in payload["itemList"])
+	# Update global totals with formatting
+	payload["totAmt"] = fmt4(sum(item["totAmt"] for item in payload["itemList"]))
+	payload["totTaxAmt"] = fmt4(sum(item["vatAmt"] for item in payload["itemList"]))
+	payload["totTaxblAmt"] = fmt4(sum(item["vatTaxblAmt"] for item in payload["itemList"]))
 
 	return payload
 
@@ -1568,7 +1562,8 @@ def build_rvat_sale_payload(docname: str, settings_name: str) -> dict:
 
 	# Add Principal ID if present (RVAT Feature)
 	if getattr(doc, "custom_principal_id", None):
-		payload["principalId"] = doc.custom_principal_id
+		# Send as string to match user's known-working example payload
+		payload["principalId"] = str(doc.custom_principal_id)
 
 	# Initialize tax category fields
 	for _, (taxbl, taxamt, taxrt) in tax_field_map.items():
@@ -1606,7 +1601,7 @@ def build_rvat_sale_payload(docname: str, settings_name: str) -> dict:
 			tax_rate = float(item.get("custom_tax_rate") or 0)
 
 		# MTV Logic
-		is_mtv = invoice.get("custom_is_mtv")
+		is_mtv = doc.get("custom_is_mtv")
 		rrp = (
 			item.get("custom_rrp")
 			or item.get("standard_rate")
@@ -1615,39 +1610,41 @@ def build_rvat_sale_payload(docname: str, settings_name: str) -> dict:
 			or 0
 		)
 		
-		actual_sply_amt = sply_amt
-		if is_mtv and rrp > _safe_float(rate):
-			# Use MTV for tax calculation
-			taxable_amt = fmt4(_safe_float(rrp) * _safe_float(qty))
-			vat_amt = fmt4(taxable_amt * tax_rate / 100)
-			# taxable_amt is used for vatTaxblAmt and tlTaxblAmt
-			sply_amt = taxable_amt
-			# Track that MTV was applied
-			invoice.custom_mtv_applied = 1
-		else:
-			vat_amt = fmt4(sply_amt * tax_rate / 100)
-
-		vat_rate = fmt4(_safe_float(rate) * tax_rate / 100)
+		# Taxable Amount (Net after discount)
+		item_vat_taxbl_amt = fmt4(sply_amt - dc_amt)
+		
+		# VAT on Net amount
+		vat_amt = fmt4(item_vat_taxbl_amt * tax_rate / 100)
+		
+		# Total Amount (Net + VAT)
+		tot_amt = fmt4(item_vat_taxbl_amt + vat_amt)
+		
+		# RVAT Fix: splyAmt must be Gross (Net + VAT) for ZRA validation code 910
+		item_sply_amt = tot_amt 
+		
+		# ZRA prc field should match splyAmt / qty
+		prc = fmt4(item_sply_amt / _safe_float(qty) if _safe_float(qty) > 0 else 0)
+		
+		tl_amt = 0.0 
+		
+		# Reset discount fields for payload as they are reflected in splyAmt/vatTaxblAmt
+		dc_amt_payload = 0.0
+		dc_rt_payload = 0.0
 		
 		item_code = (
 			item.get("custom_smart_item_code")
 			or frappe.db.get_value("Item", item.item_code, "custom_smart_item_code")
 		)
 		
-		# Totals
-		tot_amt = fmt4(actual_sply_amt - dc_amt + vat_amt)
-		
-		tl_amt = 0.0 
-
-		sply_rate = fmt4(rate + vat_rate)
-
 		# Update tax category totals
 		if is_mtv:
 			vat_cat = frappe.db.get_value("Item", item.item_code, "custom_vat_category_code") or "B"
 			
+		# Update tax category totals
 		if vat_cat in tax_field_map:
 			taxbl, taxamt, taxrt = tax_field_map[vat_cat]
-			payload[taxbl] = fmt4(payload[taxbl] + sply_amt)
+			# Use NET taxable amount for category totals
+			payload[taxbl] = fmt4(payload[taxbl] + item_vat_taxbl_amt)
 			payload[taxamt] = fmt4(payload[taxamt] + vat_amt)
 			payload[taxrt] = int(round(tax_rate))
 
@@ -1660,27 +1657,27 @@ def build_rvat_sale_payload(docname: str, settings_name: str) -> dict:
 				"itemClsCd": class_code,
 				"qty": qty,
 				"qtyUnitCd": uom_code,
-				"prc": sply_rate,
-				"splyAmt": sply_amt, 
+				"prc": prc,
+				"splyAmt": item_sply_amt, 
 				"vatAmt": vat_amt,
 				"tlAmt": tl_amt, 
 				"totAmt": tot_amt,
-				"vatTaxblAmt": sply_amt,
-				"tlTaxblAmt": sply_amt,
+				"vatTaxblAmt": item_vat_taxbl_amt,
+				"tlTaxblAmt": item_vat_taxbl_amt,
 				"pkg": item.get("package_qty") or 1,
 				"pkgUnitCd": pkg_code,
-				"dcAmt": dc_amt,
-				"dcRt": dc_rt,
+				"dcAmt": dc_amt_payload,
+				"dcRt": dc_rt_payload,
 				"bcd": item.barcode or "",
 				"vatCatCd": vat_cat,
 				"rrp": rrp,
 			}
 		)
 
-	# Update global totals
-	payload["totAmt"] = sum(item["totAmt"] for item in payload["itemList"])
-	payload["totTaxAmt"] = sum(item["vatAmt"] for item in payload["itemList"])
-	payload["totTaxblAmt"] = sum(item["vatTaxblAmt"] for item in payload["itemList"])
+	# Update global totals with rounding/formatting
+	payload["totAmt"] = fmt4(sum(item["totAmt"] for item in payload["itemList"]))
+	payload["totTaxAmt"] = fmt4(sum(item["vatAmt"] for item in payload["itemList"]))
+	payload["totTaxblAmt"] = fmt4(sum(item["vatTaxblAmt"] for item in payload["itemList"]))
 
 	return payload
 

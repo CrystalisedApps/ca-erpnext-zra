@@ -110,7 +110,7 @@ frappe.ui.form.on(parentDoctype, {
 			} else if (doc.custom_is_export_sale) {
 				return { filters: { "custom_vat_category_code": "C1", "custom_smart_item_code": ["!=", ""] } };
 			} else if (doc.custom_principal_id) {
-				return { filters: { "custom_taxation_type": "RVAT", "custom_smart_item_code": ["!=", ""] } };
+				return { filters: { "custom_vat_category_code": "RVAT", "custom_smart_item_code": ["!=", ""] } };
 			}
 			return {};
 		});
@@ -488,54 +488,23 @@ function getPrincipalsAction(settings, frm) {
 		frappe.call({
 			method: "ca_erpnext_zra.ca_erpnext_zra.apis.sales_api.get_principals",
 			args: { settings_name: settings_name },
+			freeze: true,
+			freeze_message: __("Fetching Principals from ZRA..."),
 			callback: (r) => {
-				if (r.message && r.message.data) {
-					// r.message.data is expected to be the list of principals
-					const principals = r.message.data.itemList || r.message.data;
-					// Adjust based on actual API response structure. 
-					// VSDC usually returns { resultCd, data: { itemList: [...] } } or similar
+				if (r.message && r.message.Result && r.message.Result.data) {
+					// Correctly navigate the response structure based on ZRA API
+					const principals = r.message.Result.data.taxpayerPrincipalList || r.message.Result.data.itemList || [];
 
-					// If it's a direct list
 					let list = Array.isArray(principals) ? principals : [];
-
-					// Fallback: check if the response itself is the list
-					if (Array.isArray(r.message)) {
-						list = r.message;
-					}
 
 					if (list.length === 0) {
 						frappe.msgprint(__("No principals found."));
 						return;
 					}
 
-					const d = new frappe.ui.Dialog({
-						title: __("Select Principal"),
-						fields: [
-							{
-								label: "Principal",
-								fieldname: "principal",
-								fieldtype: "Table",
-								fields: [
-									{ fieldname: "tpin", label: "TPIN", fieldtype: "Data", in_list_view: 1 },
-									{ fieldname: "bhfId", label: "Branch ID", fieldtype: "Data", in_list_view: 1 },
-									{ fieldname: "prncplNm", label: "Name", fieldtype: "Data", in_list_view: 1 }
-								],
-								data: list,
-								get_data: () => list
-							}
-						],
-						primary_action_label: __("Select"),
-						primary_action: () => {
-							// Table selection is tricky in standard Dialog. 
-							// Better to use a Select field if list is small, or a custom HTML selection.
-							// For simplicity, let's use a Select field populated with options.
-							d.hide();
-						}
-					});
-
 					// Re-implementing with Select for simplicity as Table selection in Dialog needs custom JS
 					const options = list.map(p => ({
-						label: `${p.prncplNm || p.tpin} (${p.tpin})`,
+						label: `${p.principalNm || p.tpin} (${p.tpin})`,
 						value: p.tpin,
 						original: p
 					}));
@@ -561,9 +530,9 @@ function getPrincipalsAction(settings, frm) {
 							frm.set_value("custom_is_exempt", 0);
 							frm.set_value("custom_is_disbursement", 0);
 
-							frm.set_value("custom_principal_id", selected.tpin);
-							if (selected.prncplNm) {
-								frm.set_value("custom_principal_name", selected.prncplNm);
+							frm.set_value("custom_principal_id", selected.id);
+							if (selected.principalNm) {
+								frm.set_value("custom_principal_name", selected.principalNm);
 							}
 
 							// Trigger cleanup logic for RVAT compliance
