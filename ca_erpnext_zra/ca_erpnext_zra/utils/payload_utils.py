@@ -722,6 +722,7 @@ def build_invoice_payload(invoice: "Document", settings_name: str) -> dict:
 		"IPL1": ("taxblAmtIpl1", "taxAmtIpl1", "taxRtIpl1"),
 		"IPL2": ("taxblAmtIpl2", "taxAmtIpl2", "taxRtIpl2"),
 		"TL": ("taxblAmtTl", "taxAmtTl", "taxRtTl"),
+        "RVAT": ("taxblAmtRvat", "taxAmtRvat", "taxRtRvat"),
 	}
 
 	payload = {
@@ -780,15 +781,13 @@ def build_invoice_payload(invoice: "Document", settings_name: str) -> dict:
 		# sply_amt = fmt4(item.net_amount)
 
 		# Supply Amount (Gross)
-		item_sply_amt = fmt4(rate * qty)
+		sply_amt = fmt4(rate * qty)
 
-		# Discount
 		dc_amt = fmt4(item.get("discount_amount") or 0)
 		dc_rt = fmt4(item.get("discount_percentage") or 0)
 
-		# Taxable Amount (Net)
-		# ZRA expects vatTaxblAmt = splyAmt - dcAmt
-		item_vat_taxbl_amt = fmt4(item_sply_amt - dc_amt)
+		# Taxable Amount 
+		taxable_amt = fmt4(sply_amt - dc_amt)
 
 		# Tax rate
 		tax_rate = float(item.get("custom_tax_rate") or 0)
@@ -814,8 +813,8 @@ def build_invoice_payload(invoice: "Document", settings_name: str) -> dict:
 			# Track that MTV was applied
 			invoice.custom_mtv_applied = 1
 		
-		# Calculate VAT on the taxable amount (Net)
-		vat_amt = fmt4(item_vat_taxbl_amt * tax_rate / 100)
+		# Calculate VAT on the taxable amount
+		vat_amt = fmt4(taxable_amt * tax_rate / 100)
 		vat_rate = fmt4(_safe_float(rate) * tax_rate / 100)
 
 		item_code = (
@@ -824,17 +823,19 @@ def build_invoice_payload(invoice: "Document", settings_name: str) -> dict:
 			or item.item_code
 		)
 		
-		# Totals
-		tot_amt = fmt4(item_vat_taxbl_amt + vat_amt)
+		tot_amt = fmt4(taxable_amt + vat_amt)
 		tl_amt = tot_amt
 
 		sply_rate = fmt4(_safe_float(rate) + (vat_amt / _safe_float(qty) if _safe_float(qty) > 0 else 0))
+		
+		# Get VAT category for tax field mapping
+		vat_cat = frappe.db.get_value("Item", item.item_code, "custom_vat_category_code")
 			
 		# Update tax category totals
 		if vat_cat in tax_field_map:
 			taxbl, taxamt, taxrt = tax_field_map[vat_cat]
 			# Use NET taxable amount for category totals
-			payload[taxbl] = fmt4(payload[taxbl] + item_vat_taxbl_amt)
+			payload[taxbl] = fmt4(payload[taxbl] + taxable_amt)
 			payload[taxamt] = fmt4(payload[taxamt] + vat_amt)
 			payload[taxrt] = int(round(tax_rate))
 
@@ -848,12 +849,12 @@ def build_invoice_payload(invoice: "Document", settings_name: str) -> dict:
 				"qty": qty,
 				"qtyUnitCd": uom_code,
 				"prc": sply_rate,
-				"splyAmt": item_sply_amt, 
+				"splyAmt": tl_amt, 
 				"vatAmt": vat_amt,
-				"tlAmt": tl_amt, 
+				"tlAmt": 0,
 				"totAmt": tot_amt,
-				"vatTaxblAmt": item_vat_taxbl_amt,
-				"tlTaxblAmt": item_vat_taxbl_amt,
+				"vatTaxblAmt": sply_amt,
+				"tlTaxblAmt": sply_amt,
 				"pkg": item.get("package_qty") or 1,
 				"pkgUnitCd": pkg_code,
 				"dcAmt": dc_amt,
