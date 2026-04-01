@@ -393,15 +393,25 @@ def item_search_on_success(response: dict,branch: str, settings_name: str, **kwa
 				}
 
 				if item_data.get("itemClsCd"):
-					item_fields["custom_smart_item_classification_code"] = item_data.get("itemClsCd")
+					classification_record = frappe.db.get_value(
+						"Crystal ZRA Smart Invoice Item Classification", 
+						{"item_cls_cd": item_data.get("itemClsCd")}, 
+						"name"
+					)
+				if classification_record:
+						item_fields["custom_smart_item_classification_code"] = classification_record
 				if item_data.get("itemTyCd"):
 					item_fields["custom_smart_item_type"] = item_data.get("itemTyCd")
 				if item_data.get("orgnNatCd"):
-					country_code = item_data.get("orgnNatCd").lower()
+					country_code = item_data.get("orgnNatCd")
 					item_fields["custom_smart_country_of_origin_code"] = country_code
-					country_link = get_link_value("Country", "code", country_code)
-					if country_link:
-						item_fields["custom_smart_country_of_origin_"] = country_link
+					country_record = frappe.db.get_value(
+						"Crystallised Smart Country", 
+						{"code": country_code}, 
+						"name"
+					)
+					if country_record:
+						item_fields["custom_smart_country_of_origin_"] = country_record
 				if item_data.get("pkgUnitCd"):
 					item_fields["custom_smart_packaging_unit"] = item_data.get("pkgUnitCd")
 				if item_data.get("vatCatCd"):
